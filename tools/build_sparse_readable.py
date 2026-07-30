@@ -1,0 +1,521 @@
+#!/usr/bin/env python3
+"""Generate a readable, diagram-rich Sparse Attention study page."""
+
+from pathlib import Path
+
+OUT = Path(__file__).resolve().parents[1] / "topics/sparse-attention/index.html"
+
+
+def grid_svg(kind: str, n: int = 12, cell: int = 16) -> str:
+    """Draw attention pattern heatmap: full / window / longformer / bigbird / nsa."""
+    gap = 1
+    size = n * (cell + gap)
+    rects = []
+    for i in range(n):  # query row
+        for j in range(n):  # key col
+            x = j * (cell + gap)
+            y = i * (cell + gap)
+            allowed = False
+            color = "#cfd8d3"
+            if j > i:
+                color = "#ebe6db"  # future
+            else:
+                dist = i - j
+                if kind == "full":
+                    allowed = True
+                    color = "#0f6e56"
+                elif kind == "window":
+                    w = 3
+                    allowed = dist <= w
+                    color = "#0f6e56" if allowed else "#d9e2dd"
+                elif kind == "longformer":
+                    w = 2
+                    global_cols = {0, 1}
+                    global_rows = {0, 1}
+                    allowed = dist <= w or j in global_cols or i in global_rows
+                    if j in global_cols or i in global_rows:
+                        color = "#b85c38"
+                    elif dist <= w:
+                        color = "#0f6e56"
+                    else:
+                        color = "#d9e2dd"
+                elif kind == "bigbird":
+                    w = 2
+                    # random-ish deterministic
+                    rnd = ((i * 7 + j * 13) % 11) == 0
+                    block = (i // 3 == j // 3)
+                    allowed = dist <= w or j < 2 or rnd or (block and dist < 6)
+                    if j < 2:
+                        color = "#b85c38"
+                    elif rnd:
+                        color = "#1f4e79"
+                    elif dist <= w:
+                        color = "#0f6e56"
+                    else:
+                        color = "#d9e2dd"
+                elif kind == "nsa":
+                    # compression every 3 + selected blocks + local window
+                    w = 2
+                    in_sel = (j // 3) in {0, i // 3, max(0, i // 3 - 2)}
+                    allowed = dist <= w or in_sel
+                    if dist <= w:
+                        color = "#0f6e56"
+                    elif in_sel:
+                        color = "#1f4e79"
+                    else:
+                        color = "#d9e2dd"
+                if not allowed and j <= i and kind != "full":
+                    pass
+            op = "0.9" if allowed or (kind == "full" and j <= i) else "0.45"
+            if j > i:
+                op = "0.55"
+            rects.append(
+                f'<rect x="{x}" y="{y}" width="{cell}" height="{cell}" rx="2.5" fill="{color}" opacity="{op}"/>'
+            )
+    return f'<g>{"".join(rects)}</g>', size
+
+
+def pattern_fig() -> str:
+    patterns = [
+        ("full", "Full / 因果全连接"),
+        ("window", "Sliding Window"),
+        ("longformer", "Longformer\n局部+全局"),
+        ("bigbird", "BigBird\n局部+全局+随机"),
+        ("nsa", "NSA 风格\n窗+选块"),
+    ]
+    parts = [
+        '<svg viewBox="0 0 780 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="五种注意力连边图案">'
+    ]
+    parts.append('<rect width="780" height="220" fill="#fffcf5"/>')
+    x = 18
+    for kind, title in patterns:
+        g, size = grid_svg(kind, n=10, cell=12)
+        parts.append(f'<g transform="translate({x},36)">{g}</g>')
+        for li, line in enumerate(title.split("\n")):
+            parts.append(
+                f'<text x="{x + size/2}" y="{28 + li*12}" text-anchor="middle" '
+                f'font-family="Manrope,sans-serif" font-size="11" fill="#1c2420" font-weight="600">{line}</text>'
+            )
+        x += size + 28
+    parts.append(
+        '<g transform="translate(90,200)" font-family="Manrope,sans-serif" font-size="11" fill="#5a6a62">'
+        '<rect x="0" y="-8" width="10" height="10" rx="2" fill="#0f6e56"/><text x="14" y="0">局部/窗口</text>'
+        '<rect x="90" y="-8" width="10" height="10" rx="2" fill="#b85c38"/><text x="104" y="0">全局 token</text>'
+        '<rect x="200" y="-8" width="10" height="10" rx="2" fill="#1f4e79"/><text x="214" y="0">随机/选中块</text>'
+        '<rect x="320" y="-8" width="10" height="10" rx="2" fill="#ebe6db"/><text x="334" y="0">未来（因果禁止）</text>'
+        "</g>"
+    )
+    parts.append("</svg>")
+    return "\n".join(parts)
+
+
+def pipeline_fig() -> str:
+    return """
+<svg viewBox="0 0 740 160" xmlns="http://www.w3.org/2000/svg" role="img">
+  <rect width="740" height="160" fill="#fffcf5"/>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#0f6e56"/>
+    </marker>
+  </defs>
+  <g font-family="Manrope,sans-serif">
+    <rect x="20" y="50" width="120" height="56" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="80" y="75" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">1. 定图案</text>
+    <text x="80" y="93" text-anchor="middle" font-size="11" fill="#5a6a62">掩码 / 索引 S(t)</text>
+
+    <line x1="145" y1="78" x2="175" y2="78" stroke="#0f6e56" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect x="180" y="50" width="120" height="56" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="240" y="75" text-anchor="middle" font-size="13" font-weight="700" fill="#b85c38">2. 算分数</text>
+    <text x="240" y="93" text-anchor="middle" font-size="11" fill="#5a6a62">只对允许的 Q·K</text>
+
+    <line x1="305" y1="78" x2="335" y2="78" stroke="#0f6e56" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect x="340" y="50" width="120" height="56" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="400" y="75" text-anchor="middle" font-size="13" font-weight="700" fill="#1f4e79">3. Softmax</text>
+    <text x="400" y="93" text-anchor="middle" font-size="11" fill="#5a6a62">仅在 S(t) 上归一化</text>
+
+    <line x1="465" y1="78" x2="495" y2="78" stroke="#0f6e56" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect x="500" y="50" width="120" height="56" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="560" y="75" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">4. 加权 V</text>
+    <text x="560" y="93" text-anchor="middle" font-size="11" fill="#5a6a62">Σ α_i V_i</text>
+
+    <text x="370" y="140" text-anchor="middle" font-size="12" fill="#7d8c84">禁止位置等价于分数 = −∞，从不进入 softmax 分母</text>
+  </g>
+</svg>
+"""
+
+
+def nsa_fig() -> str:
+    return """
+<svg viewBox="0 0 740 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NSA 三路并行">
+  <rect width="740" height="260" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <rect x="20" y="100" width="90" height="50" rx="10" fill="#1c2420"/>
+    <text x="65" y="130" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Query q_t</text>
+
+    <path d="M115 125 H150" stroke="#5a6a62" stroke-width="2"/>
+    <path d="M150 60 V190" stroke="#5a6a62" stroke-width="2"/>
+    <path d="M150 60 H180" stroke="#5a6a62" stroke-width="2"/>
+    <path d="M150 125 H180" stroke="#5a6a62" stroke-width="2"/>
+    <path d="M150 190 H180" stroke="#5a6a62" stroke-width="2"/>
+
+    <rect x="180" y="35" width="220" height="50" rx="10" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="290" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">压缩注意力 Compression</text>
+    <text x="290" y="73" text-anchor="middle" font-size="11" fill="#5a6a62">块级粗粒度摘要 · 看全局轮廓</text>
+
+    <rect x="180" y="100" width="220" height="50" rx="10" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="290" y="120" text-anchor="middle" font-size="13" font-weight="700" fill="#1f4e79">选择注意力 Selection</text>
+    <text x="290" y="138" text-anchor="middle" font-size="11" fill="#5a6a62">按重要性选出若干 token 块</text>
+
+    <rect x="180" y="165" width="220" height="50" rx="10" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="290" y="185" text-anchor="middle" font-size="13" font-weight="700" fill="#b85c38">滑动窗口 Window</text>
+    <text x="290" y="203" text-anchor="middle" font-size="11" fill="#5a6a62">保留最近局部上下文</text>
+
+    <path d="M400 60 H430 V190 H400" fill="none" stroke="#5a6a62" stroke-width="2"/>
+    <path d="M430 125 H460" stroke="#5a6a62" stroke-width="2"/>
+
+    <rect x="460" y="100" width="120" height="50" rx="10" fill="#efe9dc" stroke="#5a6a62"/>
+    <text x="520" y="122" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">门控融合</text>
+    <text x="520" y="140" text-anchor="middle" font-size="11" fill="#5a6a62">g·Attn 加权</text>
+
+    <path d="M580 125 H610" stroke="#5a6a62" stroke-width="2"/>
+    <rect x="610" y="100" width="100" height="50" rx="10" fill="#0f6e56"/>
+    <text x="660" y="130" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">输出 o*</text>
+
+    <text x="370" y="245" text-anchor="middle" font-size="12" fill="#7d8c84">NSA（DeepSeek）：三路并行，端到端可训练，硬件对齐的块稀疏</text>
+  </g>
+</svg>
+"""
+
+
+PAGE = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>稀疏注意力 Sparse Attention · 精读</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<style>
+:root{{
+  --bg:#f6f3ec; --bg2:#efe9dc; --paper:#fffcf5; --ink:#1c2420; --muted:#5a6a62;
+  --faint:#7d8c84; --line:#d8d0c0; --accent:#0f6e56; --accent-soft:#d8efe6;
+  --warm:#b85c38; --warm-soft:#f3e0d6; --blue:#1f4e79; --blue-soft:#dce8f3;
+  --shadow:0 12px 40px rgba(40,50,40,.08); --serif:"Literata",Georgia,"Noto Serif SC",serif;
+  --sans:"Manrope",system-ui,"Noto Sans SC",sans-serif; --mono:ui-monospace,Menlo,monospace;
+  --measure:44rem;
+}}
+*{{box-sizing:border-box}}
+html{{scroll-behavior:smooth}}
+body{{margin:0;color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.8;
+background:radial-gradient(900px 500px at 0% 0%,rgba(15,110,86,.07),transparent 55%),
+radial-gradient(700px 400px at 100% 8%,rgba(184,92,56,.06),transparent 50%),
+linear-gradient(180deg,var(--bg),var(--bg2))}}
+a{{color:var(--accent);text-underline-offset:3px}}
+a:hover{{color:var(--warm)}}
+.layout{{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}}
+.nav{{position:sticky;top:0;height:100vh;overflow:auto;padding:28px 18px 40px;border-right:1px solid var(--line);
+background:rgba(255,252,245,.78);backdrop-filter:blur(10px);font-family:var(--sans)}}
+.nav .brand{{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:0 0 8px}}
+.nav h1{{font-size:22px;margin:0 0 6px;line-height:1.25}}
+.nav .sub{{font-size:12.5px;color:var(--muted);margin:0 0 18px;line-height:1.5}}
+.nav a{{display:block;padding:8px 10px;border-radius:8px;color:var(--muted);text-decoration:none;font-size:13.5px;margin-bottom:2px}}
+.nav a:hover,.nav a.active{{background:var(--accent-soft);color:var(--ink)}}
+.nav .box{{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:12px;color:var(--faint);line-height:1.55}}
+.main{{padding:28px 40px 100px;max-width:880px}}
+.toolbar{{position:sticky;top:0;z-index:10;margin:0 -40px 22px;padding:12px 40px;display:flex;flex-wrap:wrap;gap:8px;
+background:rgba(246,243,236,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(8px);font-family:var(--sans)}}
+.btn{{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:8px 12px;font-size:12.5px;text-decoration:none}}
+.btn:hover{{border-color:var(--accent);color:var(--accent)}}
+.btn.primary{{background:var(--accent);color:#fff;border-color:var(--accent)}}
+.hero{{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:28px 30px;box-shadow:var(--shadow);margin-bottom:10px}}
+.hero h2{{font-family:var(--sans);font-size:34px;margin:0 0 12px;letter-spacing:-.02em;line-height:1.2}}
+.hero p{{margin:0;color:var(--muted);font-family:var(--sans);font-size:15.5px;line-height:1.7;max-width:48rem}}
+.pills{{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}}
+.pill{{font-family:var(--sans);font-size:12px;padding:6px 11px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}}
+.pill.warm{{background:var(--warm-soft);color:var(--warm)}}
+.pill.blue{{background:var(--blue-soft);color:var(--blue)}}
+h3.sec{{font-family:var(--sans);font-size:24px;margin:48px 0 16px;scroll-margin-top:76px;letter-spacing:-.02em}}
+h3.sec .num{{color:var(--accent);margin-right:10px}}
+h4{{font-family:var(--sans);font-size:17px;margin:26px 0 10px}}
+.prose p{{margin:0 0 1.05em;max-width:var(--measure)}}
+.callout{{border-left:4px solid var(--accent);background:var(--accent-soft);padding:14px 16px;border-radius:0 12px 12px 0;
+margin:16px 0 22px;font-family:var(--sans);font-size:15px;line-height:1.65;color:#163a30;max-width:48rem}}
+.callout.warm{{border-color:var(--warm);background:var(--warm-soft);color:#5a2e1c}}
+.callout.blue{{border-color:var(--blue);background:var(--blue-soft);color:#1a3550}}
+.fig{{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px;margin:18px 0 6px;box-shadow:var(--shadow);overflow:auto}}
+.fig svg{{display:block;width:100%;height:auto;max-width:780px;margin:0 auto}}
+.caption{{font-family:var(--sans);font-size:13px;color:var(--faint);margin:0 0 22px;text-align:center}}
+.formula{{font-family:var(--mono);font-size:13.5px;line-height:1.65;background:#1c2420;color:#e8f2ec;border-radius:14px;
+padding:14px 16px;overflow:auto;margin:12px 0 20px;max-width:48rem;white-space:pre}}
+.grid2{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0 22px}}
+.card{{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px}}
+.card h5{{font-family:var(--sans);margin:0 0 6px;font-size:14.5px}}
+.card p{{margin:0;font-family:var(--sans);font-size:13.5px;color:var(--muted);line-height:1.55}}
+.steps{{counter-reset:step;margin:12px 0 22px;padding:0;list-style:none;max-width:48rem}}
+.steps li{{position:relative;padding:14px 16px 14px 58px;margin:0 0 10px;background:var(--paper);border:1px solid var(--line);border-radius:14px}}
+.steps li::before{{counter-increment:step;content:counter(step);position:absolute;left:14px;top:16px;width:30px;height:30px;border-radius:50%;
+background:var(--accent);color:#fff;font-family:var(--sans);font-size:13px;display:flex;align-items:center;justify-content:center;font-weight:700}}
+.steps li strong{{font-family:var(--sans);display:block;margin-bottom:4px;font-size:15px}}
+.steps li span{{color:var(--muted);font-size:15.5px}}
+.term-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin:12px 0}}
+.term{{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px}}
+.term b{{font-family:var(--sans);color:var(--warm);display:block;margin-bottom:4px;font-size:14px}}
+.term p{{margin:0;font-family:var(--sans);font-size:13.5px;color:var(--muted);line-height:1.5}}
+.refgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}}
+.ref{{display:flex;flex-direction:column;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px;min-height:130px}}
+.ref .tag{{font-family:var(--sans);font-size:11px;align-self:start;padding:3px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}}
+.ref .tag.imp{{background:var(--warm-soft);color:var(--warm)}}
+.ref h5{{margin:0;font-family:var(--sans);font-size:14.5px}}
+.ref p{{margin:0;font-family:var(--sans);font-size:13.5px;color:var(--muted);flex:1;line-height:1.5}}
+.compare{{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:14px;margin:12px 0 22px;max-width:48rem}}
+.compare th,.compare td{{border:1px solid var(--line);padding:10px 12px;text-align:left;background:var(--paper);vertical-align:top}}
+.compare th{{background:var(--accent-soft);color:#163a30}}
+@media (max-width:900px){{
+  .layout{{grid-template-columns:1fr}}
+  .nav{{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}}
+  .main{{padding:18px 16px 80px}}
+  .toolbar{{margin:0 -16px 16px;padding:10px 16px}}
+  .grid2{{grid-template-columns:1fr}}
+  .hero h2{{font-size:26px}}
+}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="nav">
+  <div class="brand">LLM Learning · Topic</div>
+  <h1>稀疏注意力</h1>
+  <p class="sub">对照 Longformer / BigBird / Sparse Transformer / NSA 重写 · 浅色长文精读</p>
+  <nav id="toc">
+    <a href="#intro">1. 先建立直觉</a>
+    <a href="#math">2. 数学上在做什么</a>
+    <a href="#patterns">3. 主流稀疏图案</a>
+    <a href="#ops">4. 操作怎么落地</a>
+    <a href="#nsa">5. NSA 现代方案</a>
+    <a href="#practice">6. 工程里怎么用</a>
+    <a href="#choose">7. 怎么选型</a>
+    <a href="#glossary">8. 名词解释</a>
+    <a href="#refs">9. 原文与引用</a>
+  </nav>
+  <div class="box">阅读建议：先看图，再读长文。稀疏决定「算哪些格子」；<a href="../flash-attention/index.html">Flash Attention</a> 决定「格子怎么在 GPU 上算」。</div>
+</aside>
+
+<main class="main">
+  <div class="toolbar">
+    <a class="btn primary" href="./papers/NSA_2502.11089.pdf" target="_blank">NSA 原文 PDF</a>
+    <a class="btn" href="./papers/Longformer_2004.05150.pdf" target="_blank">Longformer</a>
+    <a class="btn" href="./papers/BigBird_2007.14062.pdf" target="_blank">BigBird</a>
+    <a class="btn" href="./papers/SparseTransformer_1904.10509.pdf" target="_blank">Sparse Transformer</a>
+    <a class="btn" href="../flash-attention/index.html">Flash 专题 →</a>
+  </div>
+
+  <header class="hero">
+    <h2>稀疏注意力：谁和谁该算？</h2>
+    <p>标准注意力让每个 token 与几乎所有历史 token 交互，代价随长度平方增长。稀疏注意力的关键不是换一套新公式，而是<strong>规定（或学习）一张允许连边的图</strong>：每个 query 只对少数 key 做 softmax。本页按 Longformer、BigBird、Sparse Transformer、DeepSeek NSA 等原文，把图案、操作步骤与现代可训练方案讲透。</p>
+    <div class="pills">
+      <span class="pill">改连边，不改 softmax 本质</span>
+      <span class="pill warm">常见复杂度 O(L·w) / O(#块)</span>
+      <span class="pill blue">工业主流：局部 + 全局 / 块路由</span>
+    </div>
+  </header>
+
+  <article class="prose">
+
+  <h3 class="sec" id="intro"><span class="num">01</span>先建立直觉</h3>
+
+  <p>把注意力想成一张分数表：<strong>行</strong>是「正在提问的位置」（query），<strong>列</strong>是「可以被查阅的历史位置」（key）。格子里先填相似度，再经 softmax 变成权重，最后用这些权重去加权对应的 value，得到该行的输出向量。</p>
+
+  <p>全注意力（Full Attention）在因果语言模型里，几乎等于：只要不看未来，这张表的<strong>下三角全部填满</strong>。长度 L 时，有效格子大约是 L²/2。L=4k 已经不小；到 64k、128k 时，即便 Flash Attention 已经把「怎么搬显存」优化得很好，你仍然要为海量 query–key 配对付出计算。长上下文推理里，注意力往往能占掉绝大部分延迟——NSA 技术报告也强调：64k 解码时 softmax 注意力可占整体延迟的 70–80%。</p>
+
+  <p>稀疏注意力的出发点很朴素：softmax 之后，真正拿到大权重的位置通常很少（邻近词、标点、开头的 sink、检索头盯住的远处句子）。那为什么还要为「注定接近 0」的格子付钱？于是我们改规则：</p>
+
+  <div class="callout">
+    <strong>一句话：</strong>对每个 query 位置 t，只允许它与子集 S(t) 里的 key 计算分数并做 softmax；集合外视为不存在（分数 −∞）。输出仍是加权求和 value，只是邻居变少了，复杂度从「跟 L 成平方」变成「跟 |S(t)| 成正比」。
+  </div>
+
+  <div class="fig">{pattern_fig()}</div>
+  <p class="caption">图 1 · 行=query、列=key。绿色局部、橙色全局、蓝色随机/选中块；浅灰为因果禁止的未来。</p>
+
+  <p>读图时请抓住两件事：① 白色/浅色不是「算了再扔掉」，理想实现里这些格子<strong>根本不算</strong>；② 不同论文的差别，几乎都是「S(t) 怎么定」——固定图案、随机、还是模型学习路由。</p>
+
+
+  <h3 class="sec" id="math"><span class="num">02</span>数学上在做什么</h3>
+
+  <p>标准因果注意力（Vaswani et al.；NSA 报告式 (1)(2)）对位置 t 写：</p>
+
+  <div class="formula">o_t = Attn(q_t, k_1:t, v_1:t)
+α_t,i = exp(q_tᵀ k_i / √d) / Σ_j exp(q_tᵀ k_j / √d)
+o_t = Σ_i α_t,i · v_i</div>
+
+  <p>稀疏版只是把求和与归一化限制在允许集 S(t) ⊆ {{1…t}}：</p>
+
+  <div class="formula">α_t,i = exp(q_tᵀ k_i / √d) / Σ_{{j∈S(t)}} exp(q_tᵀ k_j / √d)   (仅 i∈S(t))
+o_t = Σ_{{i∈S(t)}} α_t,i · v_i</div>
+
+  <div class="callout warm">
+    <strong>容易误解的点：</strong>稀疏之后，softmax 分母变小了，所以允许集里的权重会被「重新放大」。这不是 bug，而是设计：你把概率质量从删掉的边上，重新分配给留下的边。因此图案必须保证信息仍能（多跳）传到远处，否则模型会「看不见」长程依赖。
+  </div>
+
+  <p>这也解释了为什么 Longformer / BigBird 都强调<strong>局部窗口不够</strong>——必须加全局节点或随机边，让图在理论上连通；BigBird 甚至证明：在一定条件下，带随机边的稀疏注意力仍是序列函数的万能近似器。</p>
+
+
+  <h3 class="sec" id="patterns"><span class="num">03</span>主流稀疏图案（按原文）</h3>
+
+  <h4>3.1 滑动窗口（Local / Sliding Window）</h4>
+  <p>每个 token 只看最近 w 个位置：S(t) = {{t−w, …, t}}（再加因果约束）。复杂度约 O(L·w)。Mistral 等现代 LLM 直接把 sliding window 写进架构；FlashAttention-2 也提供 <code>window_size</code>，在 kernel 里跳过窗外的 key 块。</p>
+  <p><strong>优点：</strong>实现简单、对 GPU 友好、局部语法/搭配很强。<strong>缺点：</strong>距离超过 w 的信息必须靠多层「接力」传递，层数不够时远距依赖会丢。Longformer 原文把「扩张窗口 / 全局 token」当作补救。</p>
+
+  <h4>3.2 Longformer：局部 + 全局 token</h4>
+  <p>Longformer（Beltagy et al., 2020）的核心图案是：</p>
+  <ul>
+    <li><strong>滑动窗口</strong>负责局部上下文；</li>
+    <li>再选少量 <strong>global tokens</strong>（如 [CLS]、任务相关位置），它们可以 attend 全序列，也被全序列 attend。</li>
+  </ul>
+  <p>直觉：把文档里的「枢纽车站」设成全局站，普通站只连邻近站——全网仍可达，边数却近似线性。这是今天「工业长文本」最常见的骨架之一：<strong>90% 局部 + 少量全局</strong>。</p>
+
+  <h4>3.3 BigBird：局部 + 全局 + 随机块</h4>
+  <p>BigBird（Zaheer et al., 2020）在窗口与全局之外，再加 <strong>随机稀疏边</strong>（常以块为单位）。随机边缩短了图上的平均路径长度，理论性质更漂亮。工程上它推动了「块稀疏」表示：不是每个 token 各选邻居，而是按 block 决定整块是否参与，方便用块矩阵核。</p>
+
+  <h4>3.4 Sparse Transformer：固定步长 / 跨步图案</h4>
+  <p>Sparse Transformer（Child et al., 2019）更早提出用固定 stride、局部块等模式把自注意力变稀疏，让生成模型能吃更长序列。今天纯 LLM 预训练里「手写 stride」已不如窗口+全局流行，但「用固定图案换线性复杂度」的思路一脉相承。</p>
+
+  <h4>3.5 学习式路由 / Top-k / 块选择</h4>
+  <p>固定图案省事，但「谁重要」其实依赖输入。于是有 Reformer（LSH 分桶）、Routing Transformer、各种 Top-k，以及 2025 的 <strong>NSA（Native Sparse Attention）</strong>：先压缩成粗粒度块，再选重要块做细粒度注意力，并保留滑动窗口。路由更灵活，也更吃实现——选得太碎会破坏连续内存访问，Flash 类 kernel 用不上。</p>
+
+  <table class="compare">
+    <tr><th>方案</th><th>S(t) 怎么定</th><th>复杂度直觉</th><th>一句话印象</th></tr>
+    <tr><td>Sliding Window</td><td>最近 w 个</td><td>O(L·w)</td><td>最易落地</td></tr>
+    <tr><td>Longformer</td><td>窗口 + 全局位</td><td>近线性</td><td>文档任务经典</td></tr>
+    <tr><td>BigBird</td><td>窗口 + 全局 + 随机</td><td>近线性</td><td>理论+块稀疏</td></tr>
+    <tr><td>NSA</td><td>压缩 + 选块 + 窗口</td><td>由选块数控制</td><td>可训练、硬件对齐</td></tr>
+  </table>
+
+
+  <h3 class="sec" id="ops"><span class="num">04</span>操作怎么落地（算子四步）</h3>
+
+  <div class="fig">{pipeline_fig()}</div>
+  <p class="caption">图 2 · 稀疏注意力的标准操作流水线。关键是第 1 步的图案要能映射成「跳过计算」，而不是「算完再 mask」。</p>
+
+  <ol class="steps">
+    <li><strong>构造图案：掩码或索引表</strong>
+      <span>为每个 query（或每个 query 块）生成允许的 key 下标 S(t)，或块级 bitmask。PyTorch 教学实现常在 logits 上对禁止位加 −inf；高性能实现则直接不加载这些 key。</span></li>
+    <li><strong>只对允许位置算 QKᵀ</strong>
+      <span>朴素做法：先算完整矩阵再 mask——简单但浪费。正确方向：gather 子集，或块稀疏 GEMM（xFormers / Triton）。与 Flash 结合时：整块被 mask 掉的 key tile 直接不读入 SRAM。</span></li>
+    <li><strong>在允许集上 Softmax</strong>
+      <span>归一化分母只含 S(t)。窗口图案每行宽度固定，kernel 最好写。学习式 Top-k 则每行宽度为 k，但索引可能不连续。</span></li>
+    <li><strong>对允许的 V 加权求和</strong>
+      <span>与 dense 相同，只是 V 被限制在子集。块稀疏下：小块 Q×K → softmax → ×V → 累加，循环块——这正是 Flash tiling 的朋友。</span></li>
+  </ol>
+
+  <div class="callout blue">
+    <strong>训练时还要注意反向：</strong>梯度只流经允许边。若图案含离散采样（某些哈希/聚类选 token），可能切断梯度——NSA 报告批评过「推理期才稀疏、训练不可微」的方案。可训练稀疏要末要么固定图案，要么让选择过程可导/用直通估计，并尽量块对齐以便反传也能走高效 kernel。
+  </div>
+
+
+  <h3 class="sec" id="nsa"><span class="num">05</span>NSA：可训练的现代稀疏（DeepSeek 技术报告）</h3>
+
+  <p>NSA（Native Sparse Attention, arXiv:2502.11089）把问题拆成两件必须同时成立的事：① <strong>硬件上真的加速</strong>（理论稀疏不等于墙钟时间下降）；② <strong>训练期原生稀疏</strong>（不要只在推理剪枝，以免偏离预训练轨迹）。</p>
+
+  <div class="fig">{nsa_fig()}</div>
+  <p class="caption">图 3 · NSA 对每个 query 并行三条注意力路径，再门控融合（对照报告 Figure 2）。</p>
+
+  <h4>5.1 三路分别解决什么</h4>
+  <div class="grid2">
+    <div class="card"><h5>Compression 压缩</h5><p>把连续 token 块用可学习映射压成块级 K/V，用粗粒度表示抓住长程语义轮廓，大幅减少要参与注意力的「键」数量。</p></div>
+    <div class="card"><h5>Selection 选择</h5><p>在重要块上保留细粒度 token，避免「只看摘要」丢失关键细节。按块选而不是按零散 token 选，利于连续内存与 Tensor Core。</p></div>
+    <div class="card"><h5>Sliding Window</h5><p>强制保留最近局部上下文——语言建模里邻近依赖极强，窗口是便宜且必要的底线。</p></div>
+    <div class="card"><h5>门控融合</h5><p>三路输出用输入相关的门控 g∈[0,1] 加权相加，模型可学习何时更信全局摘要、何时更信精选细节。</p></div>
+  </div>
+
+  <h4>5.2 为什么强调「块」与算术强度</h4>
+  <p>报告花大量篇幅讨论：很多稀疏法在 MHA 上「看起来省了」，但到 GQA/MQA 上，同一组 query heads 各自选不同 KV，并集一扩大，内存带宽优势就消失。NSA 的策略是让稀疏模式与分组共享的 KV 布局兼容，并用块级算子提高算术强度，让优化目标在 prefill（算力界）与 decode（带宽界）两侧都站得住。</p>
+
+  <p>实验叙述上：在 27B 骨干、260B token 预训练设定下，NSA 在通用、长上下文与推理评测上平均不弱于 Full Attention，并在 64k 的 decode/前向/反向阶段都给出显著加速——这是「原生训练的稀疏」想证明的故事。</p>
+
+
+  <h3 class="sec" id="practice"><span class="num">06</span>工程里怎么用（2024–2026）</h3>
+
+  <h4>6.1 架构层：混合堆叠</h4>
+  <p>很多长上下文模型并不让每一层都全连接，而是：多数层用窗口 / 线性注意力（如 Mamba、GDN、KDA），每隔几层插一层全注意力或稀疏全局层。稀疏在这里是<strong>架构超参</strong>，不是推理开关。</p>
+
+  <h4>6.2 框架接口</h4>
+  <ul>
+    <li>Hugging Face：<code>attention_mask</code>；Mistral 系 <code>sliding_window</code>；Longformer 的 local+global 位置。</li>
+    <li>FlashAttention-2：<code>window_size=(w_left, w_right)</code> 融合局部注意力。</li>
+    <li>PyTorch SDPA：在支持时走 flash/mem-efficient 后端；复杂稀疏掩码可能回退。</li>
+  </ul>
+
+  <h4>6.3 推理：KV cache 上的「另一种稀疏」</h4>
+  <p>还有一类方法训练仍用全注意力，解码时剪 cache（H2O、StreamingLLM sink、SnapKV）：省的是<strong>存与读</strong>，不一定省 prefill 算力。它和「前向计算稀疏」互补：一个管算哪些，一个管缓存留哪些。</p>
+
+  <h4>6.4 和 Flash 的关系（务必分清）</h4>
+  <div class="callout">
+    <strong>稀疏</strong>决定注意力图上哪些边存在；<strong>Flash</strong>决定存在的边如何在 GPU 内存层次上被高效计算。最佳实践往往是：块稀疏图案 + Flash 风格 tiling；NSA 类方法在选中的密集子块上再跑高效 attention kernel。
+  </div>
+
+
+  <h3 class="sec" id="choose"><span class="num">07</span>怎么选型</h3>
+
+  <table class="compare">
+    <tr><th>你的瓶颈</th><th>更稳妥的选择</th></tr>
+    <tr><td>部署简单、上下文中等</td><td>固定 sliding window（可加 sink/全局首 token）</td></tr>
+    <tr><td>长文档 QA / 摘要</td><td>Longformer 式 局部+全局</td></tr>
+    <tr><td>要理论连通 + 块核</td><td>BigBird 式块稀疏</td></tr>
+    <tr><td>从预训练就省长序列算力</td><td>NSA 类可训练块路由</td></tr>
+    <tr><td>模型已训完，只想省解码显存</td><td>KV 剪枝 / StreamingLLM</td></tr>
+  </table>
+
+  <p>没有免费午餐：删边就会改变模型能表达的依赖。要么用全局/随机/选块把远距通路补回来，要么接受「远距只能多层接力」。选图案前先问清楚：痛点是 prefill 算力、decode 带宽，还是训练通信。</p>
+
+
+  <h3 class="sec" id="glossary"><span class="num">08</span>名词解释</h3>
+  <div class="term-grid">
+    <div class="term"><b>稀疏注意力</b><p>每个 query 只与 key 子集计算注意力，避免完整 L×L 连边。</p></div>
+    <div class="term"><b>sparsity pattern / mask</b><p>规定哪些 (query,key) 允许计算的图案或掩码。</p></div>
+    <div class="term"><b>sliding window</b><p>只保留最近 w 个位置的局部注意力。</p></div>
+    <div class="term"><b>global token</b><p>可与全序列双向（或单向）连接的枢纽位置。</p></div>
+    <div class="term"><b>block sparse</b><p>以块为单位允许/禁止注意力，便于 GPU 块矩阵核。</p></div>
+    <div class="term"><b>Top-k / routing</b><p>按分数或路由器动态选择参与注意力的 key/块。</p></div>
+    <div class="term"><b>attention sink</b><p>少数位置稳定吸引大量注意力质量；常作流式生成的锚点。</p></div>
+    <div class="term"><b>NSA</b><p>DeepSeek 提出的原生可训练稀疏注意力：压缩+选择+窗口。</p></div>
+    <div class="term"><b>算术强度</b><p>计算量/访存量之比；决定算子是算力界还是带宽界。</p></div>
+    <div class="term"><b>KV cache 剪枝</b><p>解码时丢弃或合并缓存条目，属推理期稀疏。</p></div>
+  </div>
+
+
+  <h3 class="sec" id="refs"><span class="num">09</span>原文 PDF 与重点引用</h3>
+  <div class="refgrid">
+    <div class="ref"><span class="tag">必读 · 本地 PDF</span><h5>Native Sparse Attention (NSA)</h5><p>可训练层次稀疏：压缩、选块、窗口；硬件对齐讨论最完整的现代报告之一。</p><a href="./papers/NSA_2502.11089.pdf">打开 PDF</a> · <a href="https://arxiv.org/abs/2502.11089">arXiv</a></div>
+    <div class="ref"><span class="tag">必读 · 本地 PDF</span><h5>Longformer</h5><p>局部窗口 + 全局 token 的经典操作范式，文档 Transformer 起点。</p><a href="./papers/Longformer_2004.05150.pdf">打开 PDF</a> · <a href="https://arxiv.org/abs/2004.05150">arXiv</a></div>
+    <div class="ref"><span class="tag imp">重点 · 本地 PDF</span><h5>BigBird</h5><p>局部+全局+随机；块稀疏与理论连通性。</p><a href="./papers/BigBird_2007.14062.pdf">打开 PDF</a> · <a href="https://arxiv.org/abs/2007.14062">arXiv</a></div>
+    <div class="ref"><span class="tag imp">重点 · 本地 PDF</span><h5>Sparse Transformer</h5><p>早期固定稀疏图案，长序列生成的重要前驱。</p><a href="./papers/SparseTransformer_1904.10509.pdf">打开 PDF</a> · <a href="https://arxiv.org/abs/1904.10509">arXiv</a></div>
+    <div class="ref"><span class="tag">扩展</span><h5>StreamingLLM / Attention Sinks</h5><p>推理期用 sink 稳定超长生成，理解「缓存稀疏」。</p><a href="https://arxiv.org/abs/2309.17453">arXiv</a></div>
+    <div class="ref"><span class="tag">扩展</span><h5>FlashAttention-2</h5><p>与窗口稀疏结合的 IO 感知核；读完本页建议接着读 Flash 专题。</p><a href="../flash-attention/index.html">本仓库专题</a> · <a href="https://arxiv.org/abs/2307.08691">arXiv</a></div>
+  </div>
+
+  <p style="margin-top:36px;font-family:var(--sans);font-size:13px;color:var(--faint)">本页为学习用精读整理，公式与实验数字以各 PDF 原文为准。示意图为教学重绘，非论文原图扫描件。</p>
+  </article>
+</main>
+</div>
+<script>
+const links=[...document.querySelectorAll('#toc a')];
+const secs=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io=new IntersectionObserver(entries=>{{
+  entries.forEach(en=>{{
+    if(!en.isIntersecting) return;
+    const id='#'+en.target.id;
+    links.forEach(a=>a.classList.toggle('active', a.getAttribute('href')===id));
+  }});
+}}, {{rootMargin:'-20% 0px -65% 0px', threshold:0.01}});
+secs.forEach(s=>io.observe(s));
+</script>
+</body>
+</html>
+"""
+
+OUT.write_text(PAGE, encoding="utf-8")
+print(f"Wrote {OUT} ({OUT.stat().st_size} bytes)")
