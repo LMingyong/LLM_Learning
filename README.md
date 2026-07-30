@@ -11,7 +11,16 @@
 | **Attention Residuals** | [`papers/attention-residuals/index.html`](./papers/attention-residuals/index.html) |
 | Kimi Linear / Delta Attention | [`papers/kimi-linear-delta-attention/`](./papers/kimi-linear-delta-attention/) |
 
-约定：之后每篇论文都放在 `papers/<slug>/`，优先提供 **原文 PDF + HTML 精读**（对照翻译、段末小结、名词解释、重点引用）。
+## 技术专题（两个文件夹，各一篇 HTML）
+
+入口：[`topics/`](./topics/)
+
+| 专题 | 精读入口 |
+|------|----------|
+| **稀疏注意力** Sparse Attention | [`topics/sparse-attention/index.html`](./topics/sparse-attention/index.html) |
+| **Flash Attention** | [`topics/flash-attention/index.html`](./topics/flash-attention/index.html) |
+
+约定：`papers/<slug>/` 单篇论文；`topics/<slug>/` 跨论文专题。均提供 HTML 精读（对照翻译、段末小结、名词、引用）。
 
 ## 代码模块
 
