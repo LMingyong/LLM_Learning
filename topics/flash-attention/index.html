@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Flash Attention · 闪存注意力</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&family=Sora:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg0:#071316; --bg1:#0d1f24; --line:rgba(180,220,210,.14);
+  --text:#e7f2ef; --muted:#9bb4ae; --faint:#6f8b84;
+  --accent:#3dceb0; --accent2:#f0b35a; --card:#0f2429cc;
+  --shadow:0 18px 50px rgba(0,0,0,.35); --radius:18px;
+  --serif:"Source Serif 4","Noto Serif SC",Georgia,serif;
+  --sans:"Sora","Noto Sans SC",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--text);font-family:var(--serif);
+  background:radial-gradient(1200px 700px at 10% -10%,rgba(61,206,176,.18),transparent 55%),
+    radial-gradient(900px 600px at 100% 0%,rgba(240,179,90,.12),transparent 50%),
+    linear-gradient(180deg,var(--bg0),var(--bg1) 40%,#08181c);min-height:100vh}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.35;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+  mix-blend-mode:soft-light}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.app{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow:auto;padding:22px 16px 28px;
+  border-right:1px solid var(--line);background:linear-gradient(180deg,rgba(8,24,28,.92),rgba(8,24,28,.75));backdrop-filter:blur(10px)}
+.brand{font-family:var(--sans);font-weight:600;font-size:13px;color:var(--accent);margin:0 0 6px}
+.side h1{font-family:var(--sans);font-size:20px;line-height:1.25;margin:0 0 8px}
+.side .meta{font-family:var(--sans);font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:16px}
+.side nav a{display:block;padding:8px 10px;border-radius:10px;color:var(--muted);
+  font-family:var(--sans);font-size:13px;text-decoration:none;margin-bottom:2px}
+.side nav a:hover,.side nav a.active{background:rgba(61,206,176,.1);color:var(--text)}
+.side .hint{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:12px;
+  font-family:var(--sans);font-size:12px;color:var(--faint);line-height:1.55}
+.main{padding:22px 28px 80px;max-width:1100px}
+.topbar{position:sticky;top:0;z-index:20;margin:0 -28px 22px;padding:14px 28px;
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  background:rgba(7,19,22,.82);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.seg{display:inline-flex;padding:4px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;
+  font-family:var(--sans);font-size:12px;padding:8px 12px;border-radius:999px}
+.seg button.on{background:rgba(61,206,176,.18);color:var(--text)}
+.btn{font-family:var(--sans);font-size:12px;border:1px solid var(--line);background:rgba(255,255,255,.04);
+  color:var(--text);border-radius:999px;padding:8px 12px;cursor:pointer}
+.btn:hover{border-color:rgba(61,206,176,.45)}
+.search{flex:1;min-width:180px}
+.search input{width:100%;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.25);
+  color:var(--text);padding:9px 14px;font-family:var(--sans);font-size:13px;outline:none}
+.search input:focus{border-color:rgba(61,206,176,.55)}
+.hero{border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:22px;
+  background:linear-gradient(135deg,rgba(61,206,176,.12),transparent 40%),linear-gradient(180deg,rgba(20,48,57,.9),rgba(15,36,41,.75));
+  box-shadow:var(--shadow)}
+.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:28px}
+.hero p{margin:0;color:var(--muted);font-family:var(--sans);font-size:14px;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-family:var(--sans);font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.chip em{color:var(--accent2);font-style:normal}
+.section{margin:28px 0 10px;scroll-margin-top:78px}
+.section h3{font-family:var(--sans);font-size:18px;margin:0 0 12px;padding-bottom:8px;
+  border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:10px}
+.section h3 span{font-size:12px;color:var(--faint);font-weight:500}
+.card{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:14px 16px;margin:0 0 12px;
+  transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover{border-color:rgba(61,206,176,.35);transform:translateY(-1px);box-shadow:0 10px 30px rgba(0,0,0,.22)}
+.card.active{border-color:rgba(61,206,176,.55);box-shadow:0 0 0 1px rgba(61,206,176,.2)}
+.summary{font-family:var(--sans);font-size:13px;color:#d8fff4;background:rgba(61,206,176,.1);
+  border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 10px 10px 0;margin:0 0 10px;line-height:1.5}
+.lang{font-size:15.5px;line-height:1.75}
+.lang .en{color:#d7e7e2}.lang .zh{color:#f3faf7}
+.lang .label{font-family:var(--sans);font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+body.mode-zh .en-block,body.mode-en .zh-block{display:none}
+body.mode-zh .pair,body.mode-en .pair{grid-template-columns:1fr}
+.terms{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.term{font-family:var(--sans);font-size:11px;padding:4px 8px;border-radius:999px;cursor:pointer;
+  background:rgba(240,179,90,.1);color:#ffd89a;border:1px solid rgba(240,179,90,.25)}
+.term:hover{background:rgba(240,179,90,.2)}
+.pre{font-family:var(--mono);font-size:12.5px;line-height:1.55;background:rgba(0,0,0,.35);
+  border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0;overflow:auto;color:#cde8e0}
+.hidden-by-search{display:none !important}
+.drawer{position:fixed;top:0;right:0;width:min(420px,100%);height:100vh;overflow:auto;z-index:40;
+  background:linear-gradient(180deg,#0c2026,#09171b);border-left:1px solid var(--line);
+  transform:translateX(100%);transition:transform .28s ease;padding:18px 16px 40px;box-shadow:var(--shadow)}
+.drawer.open{transform:none}
+.drawer h2{font-family:var(--sans);margin:0 0 6px;font-size:18px}
+.gitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.gitem b{font-family:var(--sans);color:var(--accent2)}
+.gitem p{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.55}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ref{border:1px solid var(--line);border-radius:16px;padding:14px;background:rgba(15,36,41,.85);
+  display:flex;flex-direction:column;gap:8px;min-height:140px}
+.ref .lv{font-family:var(--sans);font-size:11px;align-self:start;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.ref .lv.must{color:#08201b;background:var(--accent);border-color:transparent;font-weight:700}
+.ref .lv.imp{color:#2a1c05;background:var(--accent2);border-color:transparent;font-weight:700}
+.ref h4{margin:0;font-family:var(--sans);font-size:15px;line-height:1.35}
+.ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint)}
+.flow{border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0;background:rgba(0,0,0,.2)}
+.flow ol{margin:0;padding-left:20px;font-family:var(--sans);font-size:13px;line-height:1.7;color:var(--muted)}
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .pair{grid-template-columns:1fr}
+  .main{padding:16px 14px 70px}
+  .topbar{margin:0 -14px 16px;padding:12px 14px}
+}
+</style></head>
+<body class="mode-both"><div class="app">
+<aside class="side">
+<div class="brand">LLM Learning · Topic Reader</div>
+<h1>Flash Attention</h1>
+<div class="meta">IO 感知 · 分块 · 在线 Softmax</div>
+<nav id="toc"><a href="#problem">0. 为什么需要 Flash Attention</a>
+<a href="#naive">1. 朴素注意力在硬件上怎么走</a>
+<a href="#online">2. 在线 Softmax（Flash 的数学核心）</a>
+<a href="#fa1">3. FlashAttention-1 怎么做</a>
+<a href="#fa2">4. FlashAttention-2 优化了什么</a>
+<a href="#fa3">5. FlashAttention-3 与前沿</a>
+<a href="#algo">6. 完整前向流程（逐步）</a>
+<a href="#decode">7. 推理场景：Prefill 与 Decode</a>
+<a href="#sparse">8. 与稀疏注意力的关系</a>
+<a href="#when">9. 何时真的更快</a>
+<a href="#glossary">名词重点解释</a>
+<a href="#refs">重点引用论文</a>
+</nav>
+<div class="hint">
+<div><span class="kbd">1</span>对照 <span class="kbd">2</span>译文 <span class="kbd">3</span>原文</div>
+<div style="margin-top:6px"><span class="kbd">J</span>/<span class="kbd">K</span>跳段 <span class="kbd">G</span>名词 <span class="kbd">/</span>搜索</div>
+</div></aside>
+<main class="main">
+<div class="topbar">
+<div class="seg" id="modeSeg">
+<button data-mode="both" class="on">对照</button>
+<button data-mode="zh">仅译文</button>
+<button data-mode="en">仅原文</button>
+</div>
+<button class="btn" id="btnGlossary">名词表</button>
+<a class="btn" href="../sparse-attention/index.html">Sparse Attention 专题 →</a>
+<div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
+</div>
+<section class="hero"><h2>Flash Attention 精读</h2><p>Flash 不是新的注意力公式，而是把标准注意力写成 GPU 内存层次友好的分块算法，避免物化 L×L 矩阵。</p><div class="chips"><span class="chip">核心：<em>SRAM 分块 + 在线 softmax</em></span><span class="chip">收益：<em>省 HBM 读写</em></span><span class="chip">版本：<em>FA-1 / FA-2 / FA-3</em></span><span class="chip">关系：<em>可与稀疏掩码结合</em></span></div></section>
+<section class="section" id="formula"><h3>核心公式 / 流程 <span>先建立直觉</span></h3><div class="card"><div class="pre">朴素实现（慢在哪）：
+  S = Q K^T / √d          # 写出 L×L 到 HBM  ← 巨大读写
+  P = softmax(S)          # 再读一遍 S
+  O = P V                 # 再读 P
+
+Flash Attention 思想：
+  把 Q,K,V 切成小块 (tile)，在 SRAM 里完成：
+    局部 QK^T → 在线 softmax 统计量 (m, l) → 累加 PV
+  永不存完整 L×L 的 S 或 P
+
+在线 softmax（单 query 行，分块键 K^(1), K^(2), ...）：
+  维护 running max m 与 sum l
+  每来一块：更新 m,l，并重缩放已有输出累加器</div></div></section>
+<section class="section" id="problem"><h3>0. 为什么需要 Flash Attention <span>2 段</span></h3>
+<article class="card para" data-idx="1" data-blob="naive attention on gpu: load q,k from hbm, compute s=qk^t (writes l×l to hbm), read s for softmax, write p, read p and v for output. attention is memory-bound: flops are cheap relative to hbm traffic. the l×l intermediate dominates memory for long l. 朴素 gpu 注意力：q,k 从 hbm 加载，算 s=qk^t 并写回 hbm（l×l），再读 s 做 softmax 得 p，再读 p 和 v。注意力是内存瓶颈：flop 便宜，hbm 往返昂贵。l 大时 l×l 中间矩阵是噩梦。 问题不在公式，而在「算子怎么搬数据」。 hbm memory-bound">
+<div class="summary"><b>小结</b> · 问题不在公式，而在「算子怎么搬数据」。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Naive attention on GPU: load Q,K from HBM, compute S=QK^T (writes L×L to HBM), read S for softmax, write P, read P and V for output. Attention is memory-bound: FLOPs are cheap relative to HBM traffic. The L×L intermediate dominates memory for long L.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">朴素 GPU 注意力：Q,K 从 HBM 加载，算 S=QK^T 并写回 HBM（L×L），再读 S 做 softmax 得 P，再读 P 和 V。注意力是内存瓶颈：FLOP 便宜，HBM 往返昂贵。L 大时 L×L 中间矩阵是噩梦。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="HBM">HBM</span><span class="term" data-term="memory-bound">memory-bound</span></div></article>
+<article class="card para" data-idx="2" data-blob="gpu hierarchy: hbm is large but slow; on-chip sram (shared memory / l1) is tiny but fast. standard kernels don&#x27;t fuse the attention pipeline, so intermediates spill to hbm repeatedly. flash attention is an io-aware algorithm: minimize hbm reads/writes, not just flops. gpu 层次：hbm 大但慢；片上 sram 小但快。普通 kernel 不融合注意力流水线，中间结果反复落 hbm。flash 是 io 感知算法：最小化 hbm 读写，而非只减 flop。 flash = 算法 + 实现，针对内存墙而非改数学。 sram io-aware">
+<div class="summary"><b>小结</b> · Flash = 算法 + 实现，针对内存墙而非改数学。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">GPU hierarchy: HBM is large but slow; on-chip SRAM (shared memory / L1) is tiny but fast. Standard kernels don&#x27;t fuse the attention pipeline, so intermediates spill to HBM repeatedly. Flash Attention is an IO-aware algorithm: minimize HBM reads/writes, not just FLOPs.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">GPU 层次：HBM 大但慢；片上 SRAM 小但快。普通 kernel 不融合注意力流水线，中间结果反复落 HBM。Flash 是 IO 感知算法：最小化 HBM 读写，而非只减 FLOP。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="SRAM">SRAM</span><span class="term" data-term="IO-aware">IO-aware</span></div></article>
+</section>
+<section class="section" id="naive"><h3>1. 朴素注意力在硬件上怎么走 <span>2 段</span></h3>
+<article class="card para" data-idx="3" data-blob="for one head, shapes: q,k,v ∈ r^{l×d}. step a: gemm qk^t costs o(l²d) flops and produces l² elements. step b: softmax rows of s. step c: gemm pv. each step touches hbm-sized tensors. total hbm traffic scales with l² for s and p, even though final output is only l×d. 单头：q,k,v 为 l×d。a：qk^t 产生 l² 元素；b：行 softmax；c：p×v。每步都碰 hbm 级张量。hbm 流量随 l² 增长，而最终输出只有 l×d。 l² 中间量是「隐形杀手」——训练反传还要再来一遍。 gemm">
+<div class="summary"><b>小结</b> · L² 中间量是「隐形杀手」——训练反传还要再来一遍。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">For one head, shapes: Q,K,V ∈ R^{L×d}. Step A: GEMM QK^T costs O(L²d) FLOPs and produces L² elements. Step B: softmax rows of S. Step C: GEMM PV. Each step touches HBM-sized tensors. Total HBM traffic scales with L² for S and P, even though final output is only L×d.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">单头：Q,K,V 为 L×d。A：QK^T 产生 L² 元素；B：行 softmax；C：P×V。每步都碰 HBM 级张量。HBM 流量随 L² 增长，而最终输出只有 L×d。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="GEMM">GEMM</span></div></article>
+<article class="card para" data-idx="4" data-blob="training backward needs s or p (or recomputation). materializing s costs o(l²) memory per head per layer, limiting batch and context. flash&#x27;s forward never forms full s/p in hbm; backward recomputes blocks on the fly from q,k,v stored tiles. 训练反向需要 s 或 p（或重算）。存 s 每层每头 o(l²) 限制 batch 与上下文。flash 前向不在 hbm 存完整 s/p；反向用 q,k,v 分块重算。 省显存使更长上下文、更大 batch 成为可能——这是最大工程价值。 recomputation">
+<div class="summary"><b>小结</b> · 省显存使更长上下文、更大 batch 成为可能——这是最大工程价值。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Training backward needs S or P (or recomputation). Materializing S costs O(L²) memory per head per layer, limiting batch and context. Flash&#x27;s forward never forms full S/P in HBM; backward recomputes blocks on the fly from Q,K,V stored tiles.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">训练反向需要 S 或 P（或重算）。存 S 每层每头 O(L²) 限制 batch 与上下文。Flash 前向不在 HBM 存完整 S/P；反向用 Q,K,V 分块重算。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="recomputation">recomputation</span></div></article>
+</section>
+<section class="section" id="online"><h3>2. 在线 Softmax（Flash 的数学核心） <span>2 段</span></h3>
+<article class="card para" data-idx="5" data-blob="softmax for row vector x split into chunks x^(1), x^(2), ... cannot compute max and sum globally before seeing all chunks. online algorithm maintains running max m and running sum of exponentials l. when a new chunk arrives, update m_new = max(m_old, max(x^(chunk))), rescale previous accumulator, add new contributions. 行 softmax 分块时，不能先看完全部再归一化。在线算法维护 running max m 与 exp 之和 l。新块到来：m_new=max(m_old, max(chunk))，重缩放旧累加器，加入新块贡献。 分块算注意力必须在线 softmax，否则数学不等价。 online softmax">
+<div class="summary"><b>小结</b> · 分块算注意力必须在线 softmax，否则数学不等价。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Softmax for row vector x split into chunks x^(1), x^(2), ... Cannot compute max and sum globally before seeing all chunks. Online algorithm maintains running max m and running sum of exponentials l. When a new chunk arrives, update m_new = max(m_old, max(x^(chunk))), rescale previous accumulator, add new contributions.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">行 softmax 分块时，不能先看完全部再归一化。在线算法维护 running max m 与 exp 之和 l。新块到来：m_new=max(m_old, max(chunk))，重缩放旧累加器，加入新块贡献。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="online softmax">online softmax</span></div></article>
+<article class="card para" data-idx="6" data-blob="for attention output o = softmax(s)v, similarly accumulate weighted v with rescaling when m increases. milakov &amp; gimelshein (2018) and flashattention cite this for stable fused softmax. result is bitwise-exact to standard softmax (up to floating order). 输出 o=softmax(s)v 同样用重缩放累加 v。与标准 softmax 数值等价（浮点顺序内精确）。flash 把它嵌进 attention 循环。 这是 flash 能「分块还不改结果」的理论保证。 online softmax">
+<div class="summary"><b>小结</b> · 这是 Flash 能「分块还不改结果」的理论保证。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">For attention output O = softmax(S)V, similarly accumulate weighted V with rescaling when m increases. Milakov &amp; Gimelshein (2018) and FlashAttention cite this for stable fused softmax. Result is bitwise-exact to standard softmax (up to floating order).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">输出 O=softmax(S)V 同样用重缩放累加 V。与标准 softmax 数值等价（浮点顺序内精确）。Flash 把它嵌进 attention 循环。</div></div>
+</div><div class="pre">新块 j：m_j = max(m_{j-1}, max(S^(j)))
+l_j = e^{m_{j-1}-m_j} l_{j-1} + sum(e^{S^(j)-m_j})
+O_j = e^{m_{j-1}-m_j} O_{j-1} + e^{S^(j)-m_j} V^(j)</div>
+<div class="terms"><span class="term" data-term="online softmax">online softmax</span></div></article>
+</section>
+<section class="section" id="fa1"><h3>3. FlashAttention-1 怎么做 <span>3 段</span></h3>
+<article class="card para" data-idx="7" data-blob="tiling: choose block sizes b_c (keys), b_r (queries) fitting sram. outer loop over query blocks; inner loop over key blocks. load tile q_r, k_c, v_c to sram, compute s_rc = q_r k_c^t, apply online softmax update to output accumulator o_r, without writing s_rc to hbm. 分块：选 b_c（key 块）、b_r（query 块）放进 sram。外循环 query 块，内循环 key 块。载入 q_r,k_c,v_c，算 s_rc=q_r k_c^t，在线更新 o_r，不写 s_rc 到 hbm。 fa-1 伪代码结构：外 q 内 k，片上完成 softmax+乘 v。 tiling sram">
+<div class="summary"><b>小结</b> · FA-1 伪代码结构：外 Q 内 K，片上完成 softmax+乘 V。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Tiling: choose block sizes B_c (keys), B_r (queries) fitting SRAM. Outer loop over query blocks; inner loop over key blocks. Load tile Q_r, K_c, V_c to SRAM, compute S_rc = Q_r K_c^T, apply online softmax update to output accumulator O_r, without writing S_rc to HBM.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">分块：选 B_c（key 块）、B_r（query 块）放进 SRAM。外循环 query 块，内循环 key 块。载入 Q_r,K_c,V_c，算 S_rc=Q_r K_c^T，在线更新 O_r，不写 S_rc 到 HBM。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="tiling">tiling</span><span class="term" data-term="SRAM">SRAM</span></div></article>
+<article class="card para" data-idx="8" data-blob="causal masking: for block where query index &lt; key index, skip or mask inside tile before softmax. same tiling works with local window: skip key tiles outside window without loading them. 因果掩码：query 块在 key 块「未来」则跳过或在块内 mask。滑动窗口同理：窗口外的 key 块不加载。 稀疏模式与 flash 结合点：少加载块 = 少 hbm。 causal masking sliding window">
+<div class="summary"><b>小结</b> · 稀疏模式与 Flash 结合点：少加载块 = 少 HBM。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Causal masking: for block where query index &lt; key index, skip or mask inside tile before softmax. Same tiling works with local window: skip key tiles outside window without loading them.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">因果掩码：query 块在 key 块「未来」则跳过或在块内 mask。滑动窗口同理：窗口外的 key 块不加载。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="causal masking">causal masking</span><span class="term" data-term="sliding window">sliding window</span></div></article>
+<article class="card para" data-idx="9" data-blob="flashattention-1 contribution: prove io complexity drops from ω(l²) hbm accesses for naive to o(l²·d²/m) where m is sram size—when d²&lt;m, sub-quadratic in hbm traffic sense. delivered 2–4× wall-clock speedups on a100 for typical llm shapes. fa-1 理论：hbm 访问从 ω(l²) 降到 o(l²d²/m)。a100 上典型 llm 形状 2–4× 加速，且显存大幅下降。 第一次把「注意力=融合 kernel」做成标准件。 flashattention-1">
+<div class="summary"><b>小结</b> · 第一次把「注意力=融合 kernel」做成标准件。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">FlashAttention-1 contribution: prove IO complexity drops from Ω(L²) HBM accesses for naive to O(L²·d²/M) where M is SRAM size—when d²&lt;M, sub-quadratic in HBM traffic sense. Delivered 2–4× wall-clock speedups on A100 for typical LLM shapes.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">FA-1 理论：HBM 访问从 Ω(L²) 降到 O(L²d²/M)。A100 上典型 LLM 形状 2–4× 加速，且显存大幅下降。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="FlashAttention-1">FlashAttention-1</span></div></article>
+</section>
+<section class="section" id="fa2"><h3>4. FlashAttention-2 优化了什么 <span>2 段</span></h3>
+<article class="card para" data-idx="10" data-blob="fa-2 improves work partitioning: fewer non-matmul ops, better warp occupancy, sequence-parallel within a block (split q processing across warps). reorders loops to reduce idle warps. keeps same io analysis but higher flop utilization—often ~2× over fa-1. fa-2：更好工作划分，减少非 matmul 操作，提高 warp 占用；块内序列并行。循环重排减少空转。io 分析同类，flop 利用率更高，常比 fa-1 再快约 2×。 fa-2 是今天 hf/vllm 默认后端的常见版本。 flashattention-2 warp">
+<div class="summary"><b>小结</b> · FA-2 是今天 HF/vLLM 默认后端的常见版本。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">FA-2 improves work partitioning: fewer non-matmul ops, better warp occupancy, sequence-parallel within a block (split Q processing across warps). Reorders loops to reduce idle warps. Keeps same IO analysis but higher FLOP utilization—often ~2× over FA-1.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">FA-2：更好工作划分，减少非 matmul 操作，提高 warp 占用；块内序列并行。循环重排减少空转。IO 分析同类，FLOP 利用率更高，常比 FA-1 再快约 2×。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="FlashAttention-2">FlashAttention-2</span><span class="term" data-term="warp">warp</span></div></article>
+<article class="card para" data-idx="11" data-blob="supports head dimension up to 256, multi-query attention variants, sliding window (`window_size`), alibi, dropout in kernel. backward pass also tiled with recomputation—no l×l stash. interface: `flash_attn_func(q,k,v, causal=true, window_size=(-1,-1))`. 支持 head_dim≤256、滑动窗口 window_size、alibi、dropout。反向同样分块重算。接口如 flash_attn_func(..., causal=true, window_size=(w,w))。 部署时查：causal 与 window 参数是否与模型一致。 window_size alibi">
+<div class="summary"><b>小结</b> · 部署时查：causal 与 window 参数是否与模型一致。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Supports head dimension up to 256, multi-query attention variants, sliding window (`window_size`), ALiBi, dropout in kernel. Backward pass also tiled with recomputation—no L×L stash. Interface: `flash_attn_func(q,k,v, causal=True, window_size=(-1,-1))`.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">支持 head_dim≤256、滑动窗口 window_size、ALiBi、dropout。反向同样分块重算。接口如 flash_attn_func(..., causal=True, window_size=(w,w))。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="window_size">window_size</span><span class="term" data-term="ALiBi">ALiBi</span></div></article>
+</section>
+<section class="section" id="fa3"><h3>5. FlashAttention-3 与前沿 <span>2 段</span></h3>
+<article class="card para" data-idx="12" data-blob="flashattention-3 targets hopper (h100): exploits tensor memory accelerator (tma), warp-specialized pipelining, fp8 low-precision paths. asynchronous data movement overlaps gemm with softmax. focus on very large heads and datacenter inference/training throughput. fa-3 面向 hopper：tma、warp 专业化流水线、fp8。异步搬数据与 gemm/softmax 重叠。面向大 head、数据中心吞吐。 新硬件特性 → 新 kernel；算法骨架仍是在线 softmax + tiling。 flashattention-3 fp8 tma">
+<div class="summary"><b>小结</b> · 新硬件特性 → 新 kernel；算法骨架仍是在线 softmax + tiling。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">FlashAttention-3 targets Hopper (H100): exploits Tensor Memory Accelerator (TMA), warp-specialized pipelining, FP8 low-precision paths. Asynchronous data movement overlaps GEMM with softmax. Focus on very large heads and datacenter inference/training throughput.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">FA-3 面向 Hopper：TMA、warp 专业化流水线、FP8。异步搬数据与 GEMM/softmax 重叠。面向大 head、数据中心吞吐。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="FlashAttention-3">FlashAttention-3</span><span class="term" data-term="FP8">FP8</span><span class="term" data-term="TMA">TMA</span></div></article>
+<article class="card para" data-idx="13" data-blob="ecosystem: flashattention-2/3 in pytorch sdpa backend, huggingface `attn_implementation=&#x27;flash_attention_2&#x27;`, vllm, megatron-lm. pagedattention (vllm) is orthogonal—memory layout for kv cache; flash is compute kernel. often used together. 生态：pytorch sdpa、hf flash_attention_2、vllm、megatron。pagedattention 管 kv 怎么存；flash 管注意力怎么算。常一起用。 flash 解决算子；pagedattention 解决 batch 调度。 sdpa pagedattention">
+<div class="summary"><b>小结</b> · Flash 解决算子；PagedAttention 解决 batch 调度。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Ecosystem: FlashAttention-2/3 in PyTorch SDPA backend, HuggingFace `attn_implementation=&#x27;flash_attention_2&#x27;`, vLLM, Megatron-LM. PagedAttention (vLLM) is orthogonal—memory layout for KV cache; Flash is compute kernel. Often used together.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">生态：PyTorch SDPA、HF flash_attention_2、vLLM、Megatron。PagedAttention 管 KV 怎么存；Flash 管注意力怎么算。常一起用。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="SDPA">SDPA</span><span class="term" data-term="PagedAttention">PagedAttention</span></div></article>
+</section>
+<section class="section" id="algo"><h3>6. 完整前向流程（逐步） <span>2 段</span></h3>
+<article class="card para" data-idx="14" data-blob="input: q,k,v on hbm. choose tiles br×bc. for each query tile i: initialize online stats (m_i, l_i, o_i) in sram. for each key tile j (causal: j≤i): load k_j,v_j; compute s_ij=q_i k_j^t; apply mask; online_softmax_update(s_ij, v_j → o_i, m_i, l_i). after all j, write o_i to hbm. 输入 q,k,v 在 hbm。对每个 query 块 i：初始化 m,l,o。对每个合法 key 块 j：加载 k_j,v_j；s_ij=q_ik_j^t；mask；在线更新 o_i。完成后写 o_i。 整段注意力一次 kernel 调用完成，无 l×l 落盘。 forward pass">
+<div class="summary"><b>小结</b> · 整段注意力一次 kernel 调用完成，无 L×L 落盘。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Input: Q,K,V on HBM. Choose tiles Br×Bc. For each query tile i: initialize online stats (m_i, l_i, O_i) in SRAM. For each key tile j (causal: j≤i): load K_j,V_j; compute S_ij=Q_i K_j^T; apply mask; online_softmax_update(S_ij, V_j → O_i, m_i, l_i). After all j, write O_i to HBM.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">输入 Q,K,V 在 HBM。对每个 query 块 i：初始化 m,l,O。对每个合法 key 块 j：加载 K_j,V_j；S_ij=Q_iK_j^T；mask；在线更新 O_i。完成后写 O_i。</div></div>
+</div><div class="flow"><ol><li>选块大小 Br,Bc（受 SRAM 限制）</li><li>外循环：query 块 i</li><li>内循环：key 块 j（因果/窗口过滤）</li><li>片上：S_ij = Q_i K_j^T → mask → online softmax → 累加 O_i</li><li>写出 O_i</li></ol></div>
+<div class="terms"><span class="term" data-term="forward pass">forward pass</span></div></article>
+<article class="card para" data-idx="15" data-blob="backward: recompute s_ij per tile during backward pass (or store minimal stats). gradients dq,dk,dv accumulated tile-wise. recomputation trades extra compute for memory—favorable on modern gpus. 反向：按块重算 s_ij（或存少量统计量），分块累加 dq,dk,dv。用额外计算换显存——在 gpu 上通常划算。 训练能跑更长序列，主要靠这套重算哲学。 backward pass">
+<div class="summary"><b>小结</b> · 训练能跑更长序列，主要靠这套重算哲学。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Backward: recompute S_ij per tile during backward pass (or store minimal stats). Gradients dQ,dK,dV accumulated tile-wise. Recomputation trades extra compute for memory—favorable on modern GPUs.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">反向：按块重算 S_ij（或存少量统计量），分块累加 dQ,dK,dV。用额外计算换显存——在 GPU 上通常划算。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="backward pass">backward pass</span></div></article>
+</section>
+<section class="section" id="decode"><h3>7. 推理场景：Prefill 与 Decode <span>2 段</span></h3>
+<article class="card para" data-idx="16" data-blob="prefill (many queries at once): flashattention shines—large matmuls, high parallelism, tiling amortizes overhead. this is the main training and long-prompt inference path. prefill（一次很多 query）：flash 最强——大矩阵乘、并行度高、分块摊销开销。训练与长 prompt 推理主战场。 长上下文 prefill 省 hbm 最明显。 prefill">
+<div class="summary"><b>小结</b> · 长上下文 prefill 省 HBM 最明显。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Prefill (many queries at once): FlashAttention shines—large matmuls, high parallelism, tiling amortizes overhead. This is the main training and long-prompt inference path.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Prefill（一次很多 query）：Flash 最强——大矩阵乘、并行度高、分块摊销开销。训练与长 prompt 推理主战场。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="prefill">prefill</span></div></article>
+<article class="card para" data-idx="17" data-blob="decode (one new token per step): sequence length of q is 1; kernel becomes memory-latency sensitive. flashattention with kv cache reads full history k,v each step—still o(l) per layer. flashdecoding / split-k variants batch across heads and sequence chunks to improve occupancy. decode（每步 1 个新 token）：q 长度 1，受延迟与 kv 读取影响。每步仍要读全长 k,v——每层 o(l)。flashdecoding 等通过分 head、分 k 块提高占用率。 decode 瓶颈常在 kv cache 带宽，不是 softmax 本身。 decode flashdecoding kv cache">
+<div class="summary"><b>小结</b> · Decode 瓶颈常在 KV cache 带宽，不是 softmax 本身。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Decode (one new token per step): sequence length of Q is 1; kernel becomes memory-latency sensitive. FlashAttention with KV cache reads full history K,V each step—still O(L) per layer. FlashDecoding / split-K variants batch across heads and sequence chunks to improve occupancy.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Decode（每步 1 个新 token）：Q 长度 1，受延迟与 KV 读取影响。每步仍要读全长 K,V——每层 O(L)。FlashDecoding 等通过分 head、分 K 块提高占用率。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="decode">decode</span><span class="term" data-term="FlashDecoding">FlashDecoding</span><span class="term" data-term="KV cache">KV cache</span></div></article>
+</section>
+<section class="section" id="sparse"><h3>8. 与稀疏注意力的关系 <span>2 段</span></h3>
+<article class="card para" data-idx="18" data-blob="flashattention does not require dense attention—it skips loading key tiles that are fully masked (causal future, outside sliding window, block-sparse forbidden blocks). sparse pattern reduces inner loop iterations and hbm loads. flash 不要求全连接：完全被 mask 的 key 块可不加载（未来位、窗口外、块稀疏禁止块）。稀疏让内循环更短、hbm 更少。 稀疏定义「算哪些块」；flash 定义「块怎么在片上算」。 block-sparse">
+<div class="summary"><b>小结</b> · 稀疏定义「算哪些块」；Flash 定义「块怎么在片上算」。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">FlashAttention does not require dense attention—it skips loading key tiles that are fully masked (causal future, outside sliding window, block-sparse forbidden blocks). Sparse pattern reduces inner loop iterations and HBM loads.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Flash 不要求全连接：完全被 mask 的 key 块可不加载（未来位、窗口外、块稀疏禁止块）。稀疏让内循环更短、HBM 更少。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="block-sparse">block-sparse</span></div></article>
+<article class="card para" data-idx="19" data-blob="block-sparse flash: bitmask over (query_block, key_block) pairs. inside allowed blocks, run standard flash tile kernel. nsa-style hierarchical sparse can use flash for dense sub-blocks after routing selects them. 块稀疏 flash：对 (query块,key块) 用 bitmask。允许块内走标准 flash tile。nsa 路由选中区域后再用 flash 做密集子块。 长上下文 sota 常是「稀疏路由 + flash 密集子算子」。 nsa">
+<div class="summary"><b>小结</b> · 长上下文 SOTA 常是「稀疏路由 + Flash 密集子算子」。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Block-sparse Flash: bitmask over (query_block, key_block) pairs. Inside allowed blocks, run standard Flash tile kernel. NSA-style hierarchical sparse can use Flash for dense sub-blocks after routing selects them.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">块稀疏 Flash：对 (query块,key块) 用 bitmask。允许块内走标准 Flash tile。NSA 路由选中区域后再用 Flash 做密集子块。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="NSA">NSA</span></div></article>
+</section>
+<section class="section" id="when"><h3>9. 何时真的更快 <span>2 段</span></h3>
+<article class="card para" data-idx="20" data-blob="flash wins when: long l, moderate d, gpu with limited hbm bandwidth (a100/h100), training with activation checkpointing. less dramatic for very small l (kernel launch overhead) or when already using highly fused cublas paths on tiny sequences. flash 赢在长 l、适中 d、hbm 带宽受限、训练要 checkpoint。短序列优势小（启动开销）。 不是魔法：短 prompt、极小 batch 未必快很多。 ">
+<div class="summary"><b>小结</b> · 不是魔法：短 prompt、极小 batch 未必快很多。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Flash wins when: long L, moderate d, GPU with limited HBM bandwidth (A100/H100), training with activation checkpointing. Less dramatic for very small L (kernel launch overhead) or when already using highly fused cuBLAS paths on tiny sequences.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Flash 赢在长 L、适中 d、HBM 带宽受限、训练要 checkpoint。短序列优势小（启动开销）。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="21" data-blob="checklist: (1) `torch.backends.cuda.enable_flash_sdp(true)` or explicit flash_attn; (2) dtype fp16/bf16; (3) head_dim supported; (4) causal flag matches model; (5) for local models set window_size; (6) fallback to sdpa/math if head size or mask type unsupported. 检查清单：启用 flash sdpa 或 flash_attn；fp16/bf16；head_dim 合法；causal 一致；局部模型设 window_size；不支持则回退 math。 落地先跑通 fallback，再查 kernel 是否真被调用。 sdpa">
+<div class="summary"><b>小结</b> · 落地先跑通 fallback，再查 kernel 是否真被调用。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Checklist: (1) `torch.backends.cuda.enable_flash_sdp(True)` or explicit flash_attn; (2) dtype fp16/bf16; (3) head_dim supported; (4) causal flag matches model; (5) for local models set window_size; (6) fallback to SDPA/math if head size or mask type unsupported.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">检查清单：启用 flash SDPA 或 flash_attn；fp16/bf16；head_dim 合法；causal 一致；局部模型设 window_size；不支持则回退 math。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="SDPA">SDPA</span></div></article>
+</section>
+<section class="section" id="glossary"><h3>名词重点解释</h3><div class="refgrid">
+<div class="gitem" id="term-Flash Attention" data-blob="flash attention io 感知的分块注意力实现，避免物化 l×l 矩阵。"><b>Flash Attention</b><p>IO 感知的分块注意力实现，避免物化 L×L 矩阵。</p></div>
+<div class="gitem" id="term-HBM" data-blob="hbm gpu 高带宽显存，容量大、延迟高，注意力瓶颈常在此。"><b>HBM</b><p>GPU 高带宽显存，容量大、延迟高，注意力瓶颈常在此。</p></div>
+<div class="gitem" id="term-SRAM" data-blob="sram 片上高速存储（共享内存/l1），flash 分块目标所在地。"><b>SRAM</b><p>片上高速存储（共享内存/L1），Flash 分块目标所在地。</p></div>
+<div class="gitem" id="term-IO-aware" data-blob="io-aware 算法设计以最小化内存读写为目标，而非最小 flop。"><b>IO-aware</b><p>算法设计以最小化内存读写为目标，而非最小 FLOP。</p></div>
+<div class="gitem" id="term-memory-bound" data-blob="memory-bound 算子耗时受内存带宽限制，而非计算单元饱和。"><b>memory-bound</b><p>算子耗时受内存带宽限制，而非计算单元饱和。</p></div>
+<div class="gitem" id="term-tiling" data-blob="tiling 把大矩阵切成小块以适应 sram 并减少 hbm 往返。"><b>tiling</b><p>把大矩阵切成小块以适应 SRAM 并减少 HBM 往返。</p></div>
+<div class="gitem" id="term-online softmax" data-blob="online softmax 分块计算 softmax 时在线维护 max 与 sum 的技巧。"><b>online softmax</b><p>分块计算 softmax 时在线维护 max 与 sum 的技巧。</p></div>
+<div class="gitem" id="term-GEMM" data-blob="gemm 通用矩阵乘，qk^t 与 pv 都是 gemm。"><b>GEMM</b><p>通用矩阵乘，QK^T 与 PV 都是 GEMM。</p></div>
+<div class="gitem" id="term-recomputation" data-blob="recomputation 反向时不存中间激活，前向时重算以省显存。"><b>recomputation</b><p>反向时不存中间激活，前向时重算以省显存。</p></div>
+<div class="gitem" id="term-FlashAttention-1" data-blob="flashattention-1 首版 flash：证明 io 复杂度并给出分块前向。"><b>FlashAttention-1</b><p>首版 Flash：证明 IO 复杂度并给出分块前向。</p></div>
+<div class="gitem" id="term-FlashAttention-2" data-blob="flashattention-2 改进并行与循环顺序，更高 gpu 利用率。"><b>FlashAttention-2</b><p>改进并行与循环顺序，更高 GPU 利用率。</p></div>
+<div class="gitem" id="term-FlashAttention-3" data-blob="flashattention-3 hopper 架构、tma、fp8 等硬件特化版本。"><b>FlashAttention-3</b><p>Hopper 架构、TMA、FP8 等硬件特化版本。</p></div>
+<div class="gitem" id="term-warp" data-blob="warp gpu 上 32 线程的执行组；占用率影响速度。"><b>warp</b><p>GPU 上 32 线程的执行组；占用率影响速度。</p></div>
+<div class="gitem" id="term-causal masking" data-blob="causal masking 禁止 query 看未来 key 的掩码。"><b>causal masking</b><p>禁止 query 看未来 key 的掩码。</p></div>
+<div class="gitem" id="term-sliding window" data-blob="sliding window flashattention-2 的 window_size 局部注意力参数。"><b>sliding window</b><p>FlashAttention-2 的 window_size 局部注意力参数。</p></div>
+<div class="gitem" id="term-window_size" data-blob="window_size 滑动窗口半径；(-1,-1) 表示全注意力。"><b>window_size</b><p>滑动窗口半径；(-1,-1) 表示全注意力。</p></div>
+<div class="gitem" id="term-prefill" data-blob="prefill 推理时一次性处理输入 prompt 的阶段。"><b>prefill</b><p>推理时一次性处理输入 prompt 的阶段。</p></div>
+<div class="gitem" id="term-decode" data-blob="decode 自回归逐 token 生成阶段。"><b>decode</b><p>自回归逐 token 生成阶段。</p></div>
+<div class="gitem" id="term-FlashDecoding" data-blob="flashdecoding 优化 decode 阶段 kv 读取的 flash 变体。"><b>FlashDecoding</b><p>优化 decode 阶段 KV 读取的 Flash 变体。</p></div>
+<div class="gitem" id="term-KV cache" data-blob="kv cache 解码缓存历史 k/v。"><b>KV cache</b><p>解码缓存历史 K/V。</p></div>
+<div class="gitem" id="term-PagedAttention" data-blob="pagedattention vllm kv 分页；与 flash 计算互补。"><b>PagedAttention</b><p>vLLM KV 分页；与 Flash 计算互补。</p></div>
+<div class="gitem" id="term-SDPA" data-blob="sdpa pytorch scaled_dot_product_attention，可后端到 flash。"><b>SDPA</b><p>PyTorch scaled_dot_product_attention，可后端到 Flash。</p></div>
+<div class="gitem" id="term-TMA" data-blob="tma hopper tensor memory accelerator，异步大块传输。"><b>TMA</b><p>Hopper Tensor Memory Accelerator，异步大块传输。</p></div>
+<div class="gitem" id="term-FP8" data-blob="fp8 8 位浮点；fa-3 低精度路径。"><b>FP8</b><p>8 位浮点；FA-3 低精度路径。</p></div>
+<div class="gitem" id="term-block-sparse" data-blob="block-sparse 块级稀疏；与 flash 块循环天然契合。"><b>block-sparse</b><p>块级稀疏；与 Flash 块循环天然契合。</p></div>
+<div class="gitem" id="term-forward pass" data-blob="forward pass 前向计算。"><b>forward pass</b><p>前向计算。</p></div>
+<div class="gitem" id="term-backward pass" data-blob="backward pass 反向传播。"><b>backward pass</b><p>反向传播。</p></div>
+<div class="gitem" id="term-ALiBi" data-blob="alibi 注意力线性偏置位置编码；flash kernel 可选支持。"><b>ALiBi</b><p>注意力线性偏置位置编码；Flash kernel 可选支持。</p></div>
+<div class="gitem" id="term-NSA" data-blob="nsa 可与 flash 子块组合的学习式稀疏注意力。"><b>NSA</b><p>可与 Flash 子块组合的学习式稀疏注意力。</p></div>
+</div></section>
+<section class="section" id="refs"><h3>重点引用论文</h3><div class="refgrid">
+<div class="ref" data-blob="flashattention: fast and memory-efficient exact attention (fa-1) 原始论文：io 模型、在线 softmax、分块前向；理解 flash 的必读。"><span class="lv must">必读</span><h4>FlashAttention: Fast and Memory-Efficient Exact Attention (FA-1)</h4><p>原始论文：IO 模型、在线 softmax、分块前向；理解 Flash 的必读。</p><a href="https://arxiv.org/abs/2205.14135" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="flashattention-2: faster attention with better parallelism 工程主流版本；并行策略与 window_size 等接口。"><span class="lv must">必读</span><h4>FlashAttention-2: Faster Attention with Better Parallelism</h4><p>工程主流版本；并行策略与 window_size 等接口。</p><a href="https://arxiv.org/abs/2307.08621" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="flashattention-3: fast and accurate attention with fp8 (hopper) h100 路径、tma、fp8；硬件演进后的 kernel 设计。"><span class="lv imp">重点</span><h4>FlashAttention-3: Fast and Accurate Attention with FP8 (Hopper)</h4><p>H100 路径、TMA、FP8；硬件演进后的 kernel 设计。</p><a href="https://arxiv.org/abs/2407.08608" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="online normalizer calculation for softmax 在线 softmax 数值技巧的来源之一。"><span class="lv imp">重点</span><h4>Online normalizer calculation for softmax</h4><p>在线 softmax 数值技巧的来源之一。</p><a href="https://arxiv.org/abs/1805.02867" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="efficient streaming language models with attention sinks 理解 decode 阶段 kv 与 sink；与 flash decode 优化对照。"><span class="lv ">扩展</span><h4>Efficient Streaming Language Models with Attention Sinks</h4><p>理解 decode 阶段 KV 与 sink；与 Flash decode 优化对照。</p><a href="https://arxiv.org/abs/2309.17453" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="pagedattention (vllm paper) kv 内存管理；与 flash 计算层配合构成推理栈。"><span class="lv ">扩展</span><h4>PagedAttention (vLLM paper)</h4><p>KV 内存管理；与 Flash 计算层配合构成推理栈。</p><a href="https://arxiv.org/abs/2309.06180" target="_blank" rel="noopener">打开 →</a></div>
+</div></section></main></div>
+
+<aside class="drawer" id="drawer"><button class="btn" id="closeDrawer">关闭</button>
+<h2>名词速查</h2><div id="drawerBody"></div></aside>
+<script>
+const body=document.body;const cards=[...document.querySelectorAll('.para')];let idx=0;
+const glossary={"Flash Attention":"IO \u611f\u77e5\u7684\u5206\u5757\u6ce8\u610f\u529b\u5b9e\u73b0\uff0c\u907f\u514d\u7269\u5316 L\u00d7L \u77e9\u9635\u3002",
+"HBM":"GPU \u9ad8\u5e26\u5bbd\u663e\u5b58\uff0c\u5bb9\u91cf\u5927\u3001\u5ef6\u8fdf\u9ad8\uff0c\u6ce8\u610f\u529b\u74f6\u9888\u5e38\u5728\u6b64\u3002",
+"SRAM":"\u7247\u4e0a\u9ad8\u901f\u5b58\u50a8\uff08\u5171\u4eab\u5185\u5b58/L1\uff09\uff0cFlash \u5206\u5757\u76ee\u6807\u6240\u5728\u5730\u3002",
+"IO-aware":"\u7b97\u6cd5\u8bbe\u8ba1\u4ee5\u6700\u5c0f\u5316\u5185\u5b58\u8bfb\u5199\u4e3a\u76ee\u6807\uff0c\u800c\u975e\u6700\u5c0f FLOP\u3002",
+"memory-bound":"\u7b97\u5b50\u8017\u65f6\u53d7\u5185\u5b58\u5e26\u5bbd\u9650\u5236\uff0c\u800c\u975e\u8ba1\u7b97\u5355\u5143\u9971\u548c\u3002",
+"tiling":"\u628a\u5927\u77e9\u9635\u5207\u6210\u5c0f\u5757\u4ee5\u9002\u5e94 SRAM \u5e76\u51cf\u5c11 HBM \u5f80\u8fd4\u3002",
+"online softmax":"\u5206\u5757\u8ba1\u7b97 softmax \u65f6\u5728\u7ebf\u7ef4\u62a4 max \u4e0e sum \u7684\u6280\u5de7\u3002",
+"GEMM":"\u901a\u7528\u77e9\u9635\u4e58\uff0cQK^T \u4e0e PV \u90fd\u662f GEMM\u3002",
+"recomputation":"\u53cd\u5411\u65f6\u4e0d\u5b58\u4e2d\u95f4\u6fc0\u6d3b\uff0c\u524d\u5411\u65f6\u91cd\u7b97\u4ee5\u7701\u663e\u5b58\u3002",
+"FlashAttention-1":"\u9996\u7248 Flash\uff1a\u8bc1\u660e IO \u590d\u6742\u5ea6\u5e76\u7ed9\u51fa\u5206\u5757\u524d\u5411\u3002",
+"FlashAttention-2":"\u6539\u8fdb\u5e76\u884c\u4e0e\u5faa\u73af\u987a\u5e8f\uff0c\u66f4\u9ad8 GPU \u5229\u7528\u7387\u3002",
+"FlashAttention-3":"Hopper \u67b6\u6784\u3001TMA\u3001FP8 \u7b49\u786c\u4ef6\u7279\u5316\u7248\u672c\u3002",
+"warp":"GPU \u4e0a 32 \u7ebf\u7a0b\u7684\u6267\u884c\u7ec4\uff1b\u5360\u7528\u7387\u5f71\u54cd\u901f\u5ea6\u3002",
+"causal masking":"\u7981\u6b62 query \u770b\u672a\u6765 key \u7684\u63a9\u7801\u3002",
+"sliding window":"FlashAttention-2 \u7684 window_size \u5c40\u90e8\u6ce8\u610f\u529b\u53c2\u6570\u3002",
+"window_size":"\u6ed1\u52a8\u7a97\u53e3\u534a\u5f84\uff1b(-1,-1) \u8868\u793a\u5168\u6ce8\u610f\u529b\u3002",
+"prefill":"\u63a8\u7406\u65f6\u4e00\u6b21\u6027\u5904\u7406\u8f93\u5165 prompt \u7684\u9636\u6bb5\u3002",
+"decode":"\u81ea\u56de\u5f52\u9010 token \u751f\u6210\u9636\u6bb5\u3002",
+"FlashDecoding":"\u4f18\u5316 decode \u9636\u6bb5 KV \u8bfb\u53d6\u7684 Flash \u53d8\u4f53\u3002",
+"KV cache":"\u89e3\u7801\u7f13\u5b58\u5386\u53f2 K/V\u3002",
+"PagedAttention":"vLLM KV \u5206\u9875\uff1b\u4e0e Flash \u8ba1\u7b97\u4e92\u8865\u3002",
+"SDPA":"PyTorch scaled_dot_product_attention\uff0c\u53ef\u540e\u7aef\u5230 Flash\u3002",
+"TMA":"Hopper Tensor Memory Accelerator\uff0c\u5f02\u6b65\u5927\u5757\u4f20\u8f93\u3002",
+"FP8":"8 \u4f4d\u6d6e\u70b9\uff1bFA-3 \u4f4e\u7cbe\u5ea6\u8def\u5f84\u3002",
+"block-sparse":"\u5757\u7ea7\u7a00\u758f\uff1b\u4e0e Flash \u5757\u5faa\u73af\u5929\u7136\u5951\u5408\u3002",
+"forward pass":"\u524d\u5411\u8ba1\u7b97\u3002",
+"backward pass":"\u53cd\u5411\u4f20\u64ad\u3002",
+"ALiBi":"\u6ce8\u610f\u529b\u7ebf\u6027\u504f\u7f6e\u4f4d\u7f6e\u7f16\u7801\uff1bFlash kernel \u53ef\u9009\u652f\u6301\u3002",
+"NSA":"\u53ef\u4e0e Flash \u5b50\u5757\u7ec4\u5408\u7684\u5b66\u4e60\u5f0f\u7a00\u758f\u6ce8\u610f\u529b\u3002"};
+function setMode(m){body.classList.remove('mode-both','mode-zh','mode-en');body.classList.add('mode-'+m);
+document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));}
+document.getElementById('modeSeg').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.mode);};
+function focusCard(i){if(!cards.length)return;idx=(i+cards.length)%cards.length;cards.forEach(c=>c.classList.remove('active'));
+const c=cards[idx];c.classList.add('active');c.scrollIntoView({behavior:'smooth',block:'center'});}
+const q=document.getElementById('q');q.oninput=()=>{const s=q.value.trim().toLowerCase();
+document.querySelectorAll('[data-blob]').forEach(el=>{el.classList.toggle('hidden-by-search',s&&!(el.dataset.blob||'').includes(s));});};
+const drawer=document.getElementById('drawer');const drawerBody=document.getElementById('drawerBody');
+document.getElementById('btnGlossary').onclick=()=>{drawerBody.innerHTML=Object.entries(glossary).map(([k,v])=>`<div class="gitem"><b>${k}</b><p>${v}</p></div>`).join('');drawer.classList.add('open');};
+document.getElementById('closeDrawer').onclick=()=>drawer.classList.remove('open');
+document.body.onclick=e=>{const t=e.target.closest('.term');if(!t)return;
+drawerBody.innerHTML=`<div class="gitem"><b>${t.dataset.term}</b><p>${glossary[t.dataset.term]||'暂无'}</p></div>`;drawer.classList.add('open');};
+const tocLinks=[...document.querySelectorAll('#toc a')];
+const sections=tocLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const id='#'+en.target.id;
+tocLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===id));});},
+{rootMargin:'-20% 0px -65% 0px',threshold:0.01}).observe?sections.forEach(s=>new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const id='#'+en.target.id;
+tocLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===id));});},
+{rootMargin:'-20% 0px -65% 0px',threshold:0.01}).observe(s)):null;
+document.onkeydown=e=>{if(e.target.matches('input,textarea'))return;
+if(e.key==='1')setMode('both');if(e.key==='2')setMode('zh');if(e.key==='3')setMode('en');
+if(e.key==='j'||e.key==='J'){e.preventDefault();focusCard(idx+1);}
+if(e.key==='k'||e.key==='K'){e.preventDefault();focusCard(idx-1);}
+if(e.key==='g'||e.key==='G')document.getElementById('btnGlossary').click();
+if(e.key==='/'){e.preventDefault();q.focus();};};
+</script></body></html>
