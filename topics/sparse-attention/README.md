@@ -2,16 +2,26 @@
 
 | 字段 | 内容 |
 |------|------|
-| 类型 | 专题精读（跨多篇论文） |
-| 入口 | [`index.html`](./index.html) |
+| 类型 | 专题精读（对照多篇原文） |
+| 入口 | **[`index.html`](./index.html)**（浅色长文 + 示意图） |
 
-## 覆盖内容
+## 本页特点
 
-- 稀疏注意力在算什么、掩码/路由如何定义
-- 主流模式：滑动窗口、全局+局部、块稀疏、Top-k 路由
-- 算子四步：掩码 → 分数 → softmax → 加权 V
-- 工程落地：HF `sliding_window`、Flash `window_size`、vLLM、长序列训练
+- 对照 **Longformer / BigBird / Sparse Transformer / NSA** 技术报告重写
+- 加长中文讲解，少堆术语卡片
+- 内嵌 SVG：五种连边图案、四步流水线、NSA 三路结构
+- 本地 PDF：`papers/` 目录
 
-## 关联专题
+## 文件
 
-- [Flash Attention](../flash-attention/) — 稀疏定义「算哪些块」，Flash 定义「块怎么在片上算」
+| 路径 | 说明 |
+|------|------|
+| `index.html` | 精读主入口 |
+| `papers/*.pdf` | 原文 PDF |
+| `../flash-attention/` | 相关专题：Flash 如何高效算「留下的边」 |
+
+重新生成页面：
+
+```bash
+python3 tools/build_sparse_readable.py
+```
