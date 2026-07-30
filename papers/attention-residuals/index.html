@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Attention Residuals 精读 · AttnRes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&family=Sora:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg0:#071316;
+  --bg1:#0d1f24;
+  --panel:#10262c;
+  --panel2:#143039;
+  --line:rgba(180,220,210,.14);
+  --text:#e7f2ef;
+  --muted:#9bb4ae;
+  --faint:#6f8b84;
+  --accent:#3dceb0;
+  --accent2:#f0b35a;
+  --danger:#ff7a7a;
+  --card:#0f2429cc;
+  --shadow:0 18px 50px rgba(0,0,0,.35);
+  --radius:18px;
+  --serif:"Source Serif 4","Noto Serif SC",Georgia,serif;
+  --sans:"Sora","Noto Sans SC",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  color:var(--text);
+  font-family:var(--serif);
+  background:
+    radial-gradient(1200px 700px at 10% -10%, rgba(61,206,176,.18), transparent 55%),
+    radial-gradient(900px 600px at 100% 0%, rgba(240,179,90,.12), transparent 50%),
+    linear-gradient(180deg,var(--bg0),var(--bg1) 40%, #08181c);
+  min-height:100vh;
+}
+body::before{
+  content:"";
+  position:fixed; inset:0; pointer-events:none; opacity:.35;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+  mix-blend-mode:soft-light;
+}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+.app{display:grid; grid-template-columns:280px minmax(0,1fr); min-height:100vh}
+.side{
+  position:sticky; top:0; height:100vh; overflow:auto;
+  padding:22px 16px 28px; border-right:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(8,24,28,.92), rgba(8,24,28,.75));
+  backdrop-filter:blur(10px);
+}
+.brand{font-family:var(--sans); font-weight:600; letter-spacing:.02em; font-size:13px; color:var(--accent); margin:0 0 6px}
+.side h1{font-family:var(--sans); font-size:20px; line-height:1.25; margin:0 0 8px}
+.side .meta{font-family:var(--sans); font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:16px}
+.side nav a{
+  display:block; padding:8px 10px; border-radius:10px; color:var(--muted);
+  font-family:var(--sans); font-size:13px; text-decoration:none; margin-bottom:2px;
+}
+.side nav a:hover,.side nav a.active{background:rgba(61,206,176,.1); color:var(--text)}
+.side .hint{margin-top:18px; padding:12px; border:1px solid var(--line); border-radius:12px; font-family:var(--sans); font-size:12px; color:var(--faint); line-height:1.55}
+.main{padding:22px 28px 80px; max-width:1100px}
+.topbar{
+  position:sticky; top:0; z-index:20; margin:0 -28px 22px; padding:14px 28px;
+  display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  background:rgba(7,19,22,.82); border-bottom:1px solid var(--line); backdrop-filter:blur(12px);
+}
+.seg{display:inline-flex; padding:4px; border-radius:999px; background:rgba(255,255,255,.04); border:1px solid var(--line)}
+.seg button{
+  appearance:none; border:0; background:transparent; color:var(--muted); cursor:pointer;
+  font-family:var(--sans); font-size:12px; padding:8px 12px; border-radius:999px;
+}
+.seg button.on{background:rgba(61,206,176,.18); color:var(--text)}
+.btn{
+  font-family:var(--sans); font-size:12px; border:1px solid var(--line); background:rgba(255,255,255,.04);
+  color:var(--text); border-radius:999px; padding:8px 12px; cursor:pointer;
+}
+.btn:hover{border-color:rgba(61,206,176,.45)}
+.btn.primary{background:linear-gradient(135deg,rgba(61,206,176,.35),rgba(61,206,176,.12)); border-color:rgba(61,206,176,.4)}
+.search{flex:1; min-width:180px}
+.search input{
+  width:100%; border-radius:999px; border:1px solid var(--line); background:rgba(0,0,0,.25);
+  color:var(--text); padding:9px 14px; font-family:var(--sans); font-size:13px; outline:none;
+}
+.search input:focus{border-color:rgba(61,206,176,.55)}
+.hero{
+  border:1px solid var(--line); border-radius:var(--radius); padding:22px 24px; margin-bottom:22px;
+  background:
+    linear-gradient(135deg, rgba(61,206,176,.12), transparent 40%),
+    linear-gradient(180deg, rgba(20,48,57,.9), rgba(15,36,41,.75));
+  box-shadow:var(--shadow);
+  animation:rise .6s ease both;
+}
+.hero h2{font-family:var(--sans); margin:0 0 8px; font-size:28px}
+.hero p{margin:0; color:var(--muted); font-family:var(--sans); font-size:14px; line-height:1.6}
+.chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px}
+.chip{font-family:var(--sans); font-size:11px; padding:6px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted)}
+.chip em{color:var(--accent2); font-style:normal}
+.section{margin:28px 0 10px; scroll-margin-top:78px}
+.section h3{
+  font-family:var(--sans); font-size:18px; margin:0 0 12px; padding-bottom:8px;
+  border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:10px;
+}
+.section h3 span{font-size:12px; color:var(--faint); font-weight:500}
+.card{
+  border:1px solid var(--line); background:var(--card); border-radius:16px; padding:14px 16px; margin:0 0 12px;
+  transition:border-color .2s, transform .2s, box-shadow .2s;
+  animation:rise .5s ease both;
+}
+.card:hover{border-color:rgba(61,206,176,.35); transform:translateY(-1px); box-shadow:0 10px 30px rgba(0,0,0,.22)}
+.card.active{border-color:rgba(61,206,176,.55); box-shadow:0 0 0 1px rgba(61,206,176,.2)}
+.summary{
+  font-family:var(--sans); font-size:13px; color:#d8fff4; background:rgba(61,206,176,.1);
+  border-left:3px solid var(--accent); padding:8px 10px; border-radius:0 10px 10px 0; margin:0 0 10px; line-height:1.5;
+}
+.lang{font-size:15.5px; line-height:1.75}
+.lang .en{color:#d7e7e2}
+.lang .zh{color:#f3faf7}
+.lang .label{font-family:var(--sans); font-size:11px; color:var(--faint); letter-spacing:.08em; text-transform:uppercase; margin:0 0 4px}
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+body.mode-zh .en-block, body.mode-en .zh-block{display:none}
+body.mode-zh .pair, body.mode-en .pair{grid-template-columns:1fr}
+.terms{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
+.term{
+  font-family:var(--sans); font-size:11px; padding:4px 8px; border-radius:999px; cursor:pointer;
+  background:rgba(240,179,90,.1); color:#ffd89a; border:1px solid rgba(240,179,90,.25);
+}
+.term:hover{background:rgba(240,179,90,.2)}
+.hidden-by-search{display:none !important}
+.drawer{
+  position:fixed; top:0; right:0; width:min(420px,100%); height:100vh; overflow:auto; z-index:40;
+  background:linear-gradient(180deg,#0c2026,#09171b); border-left:1px solid var(--line);
+  transform:translateX(100%); transition:transform .28s ease; padding:18px 16px 40px; box-shadow:var(--shadow);
+}
+.drawer.open{transform:none}
+.drawer h2{font-family:var(--sans); margin:0 0 6px; font-size:18px}
+.drawer .close{float:right}
+.gitem{border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin:8px 0}
+.gitem b{font-family:var(--sans); color:var(--accent2)}
+.gitem p{margin:6px 0 0; color:var(--muted); font-size:14px; line-height:1.55}
+.refgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px}
+.ref{
+  border:1px solid var(--line); border-radius:16px; padding:14px; background:rgba(15,36,41,.85);
+  display:flex; flex-direction:column; gap:8px; min-height:150px;
+}
+.ref .lv{font-family:var(--sans); font-size:11px; align-self:start; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted)}
+.ref .lv.must{color:#08201b; background:var(--accent); border-color:transparent; font-weight:700}
+.ref .lv.imp{color:#2a1c05; background:var(--accent2); border-color:transparent; font-weight:700}
+.ref h4{margin:0; font-family:var(--sans); font-size:15px; line-height:1.35}
+.ref p{margin:0; color:var(--muted); font-size:13px; line-height:1.5; flex:1}
+.kbd{font-family:var(--mono); font-size:11px; border:1px solid var(--line); border-bottom-width:2px; border-radius:6px; padding:1px 5px; color:var(--faint)}
+@keyframes rise{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .side{position:relative; height:auto; border-right:0; border-bottom:1px solid var(--line)}
+  .pair{grid-template-columns:1fr}
+  .main{padding:16px 14px 70px}
+  .topbar{margin:0 -14px 16px; padding:12px 14px}
+}
+</style>
+</head>
+<body class="mode-both">
+<div class="app">
+<aside class="side">
+  <div class="brand">LLM Learning · Paper Reader</div>
+  <h1>Attention Residuals</h1>
+  <div class="meta">
+    Kimi Team · arXiv:2603.15031<br/>
+    原文 PDF + 逐段翻译 + 段末小结 + 名词解释 + 重点引用
+  </div>
+  <nav id="toc">
+<a href="#abstract">Abstract 摘要</a>
+<a href="#intro">1 Introduction 引言</a>
+<a href="#contrib">Contributions 贡献</a>
+<a href="#motivation">2 Motivation 动机</a>
+<a href="#method">3 Attention Residuals 方法</a>
+<a href="#block">3.2 Block AttnRes 块注意力残差</a>
+<a href="#infra">4 Infrastructure 系统实现</a>
+<a href="#exp">5 Experiments 实验</a>
+<a href="#ablation">5.3 Ablation 消融</a>
+<a href="#analysis">5.4–6 分析与理论</a>
+<a href="#related">7 Related Work &amp; Conclusion 相关工作与结论</a>
+<a href="#glossary">名词重点解释</a>
+<a href="#refs">重点引用论文</a>
+
+  </nav>
+  <div class="hint">
+    <div><span class="kbd">1</span> 对照 · <span class="kbd">2</span> 译文 · <span class="kbd">3</span> 原文</div>
+    <div style="margin-top:6px"><span class="kbd">J</span>/<span class="kbd">K</span> 下一段/上一段 · <span class="kbd">G</span> 名词表 · <span class="kbd">/</span> 搜索</div>
+  </div>
+</aside>
+<main class="main">
+  <div class="topbar">
+    <div class="seg" id="modeSeg">
+      <button data-mode="both" class="on">对照</button>
+      <button data-mode="zh">仅译文</button>
+      <button data-mode="en">仅原文</button>
+    </div>
+    <button class="btn" id="btnGlossary">名词表</button>
+    <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+    <a class="btn" href="https://arxiv.org/abs/2603.15031" target="_blank" rel="noopener">arXiv</a>
+    <div class="search"><input id="q" type="search" placeholder="搜索原文 / 译文 / 小结 / 名词…" /></div>
+  </div>
+
+  <section class="hero">
+    <h2>注意力残差 · 精读页</h2>
+    <p>把固定单位权重的残差累加，换成「沿深度维」的 softmax 注意力。优先读金色名词芯片与每段绿色小结；需要细节再展开原文/译文。</p>
+    <div class="chips">
+      <span class="chip">核心：<em>AttnRes</em></span>
+      <span class="chip">可扩展：<em>Block AttnRes (N≈8)</em></span>
+      <span class="chip">痛点：<em>PreNorm dilution</em></span>
+      <span class="chip">载体：<em>Kimi Linear 48B / 1.4T</em></span>
+    </div>
+  </section>
+
+  <section class="section" id="formula">
+    <h3>一眼公式 <span>读正文前先看</span></h3>
+    <div class="card">
+      <div class="summary">标准残差均匀求和 → AttnRes 用 α 加权；α 来自每层伪查询 w_l 对历史层输出做 softmax。</div>
+      <div class="lang">
+        <p><b>标准残差：</b> h<sub>l</sub> = h<sub>l-1</sub> + f<sub>l-1</sub>(h<sub>l-1</sub>) = Σ<sub>i&lt;l</sub> v<sub>i</sub></p>
+        <p><b>AttnRes：</b> h<sub>l</sub> = Σ<sub>i&lt;l</sub> α<sub>i→l</sub> · v<sub>i</sub>，α = softmax( w<sub>l</sub>ᵀ RMSNorm(k) )</p>
+        <p><b>Block：</b> 先把层压成 N 个块表示 b<sub>n</sub>，再对块做注意力（成本 O(Nd)）。</p>
+      </div>
+    </div>
+  </section>
+<section class="section" id="abstract"><h3>Abstract 摘要 <span>3 段</span></h3>
+
+<article class="card para" data-idx="1" data-blob="residual connections with prenorm are standard in modern llms, yet they accumulate all layer outputs with fixed unit weights. this uniform aggregation causes uncontrolled hidden-state growth with depth, progressively diluting each layer&#x27;s contribution. we propose attention residuals (attnres), which replaces this fixed accumulation with softmax attention over preceding layer outputs, allowing each layer to selectively aggregate earlier representations with learned, input-dependent weights. 残差连接配合 prenorm 已成为现代大语言模型的标配，但它们以固定的单位权重累加所有层输出。这种均匀聚合会使隐藏状态幅度随深度失控增长，并逐步稀释每一层的贡献。我们提出注意力残差（attention residuals, attnres）：用对先前层输出的 softmax 注意力替换固定累加，使每一层能以可学习、依赖输入的权重选择性地聚合更早的表示。 问题：固定权重残差 → prenorm dilution；方案：沿深度做 softmax 注意力聚合。 attnres prenorm dilution prenorm">
+  <div class="summary"><b>小结</b> · 问题：固定权重残差 → PreNorm dilution；方案：沿深度做 softmax 注意力聚合。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Residual connections with PreNorm are standard in modern LLMs, yet they accumulate all layer outputs with fixed unit weights. This uniform aggregation causes uncontrolled hidden-state growth with depth, progressively diluting each layer&#x27;s contribution. We propose Attention Residuals (AttnRes), which replaces this fixed accumulation with softmax attention over preceding layer outputs, allowing each layer to selectively aggregate earlier representations with learned, input-dependent weights.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">残差连接配合 PreNorm 已成为现代大语言模型的标配，但它们以固定的单位权重累加所有层输出。这种均匀聚合会使隐藏状态幅度随深度失控增长，并逐步稀释每一层的贡献。我们提出注意力残差（Attention Residuals, AttnRes）：用对先前层输出的 softmax 注意力替换固定累加，使每一层能以可学习、依赖输入的权重选择性地聚合更早的表示。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="AttnRes">AttnRes</span><span class="term" data-term="PreNorm dilution">PreNorm dilution</span><span class="term" data-term="PreNorm">PreNorm</span></div>
+</article>
+
+<article class="card para" data-idx="2" data-blob="to address the memory and communication overhead of attending over all preceding layer outputs for large-scale model training, we introduce block attnres, which partitions layers into blocks and attends over block-level representations, reducing the memory footprint while preserving most of the gains of full attnres. combined with cache-based pipeline communication and a two-phase computation strategy, block attnres becomes a practical drop-in replacement for standard residual connections with minimal overhead. 为应对大规模训练中对所有先前层输出做注意力带来的显存与通信开销，我们提出 block attnres：把层划分成若干块，只在块级表示上做注意力，从而降低显存占用，同时保留 full attnres 的大部分收益。再结合基于缓存的流水线通信与两阶段计算策略，block attnres 可 practically 作为标准残差的即插即用替代，开销很小。 可扩展版：块级注意力 + 流水线缓存 + 两阶段计算，接近零成本替换。 block attnres two-phase computation">
+  <div class="summary"><b>小结</b> · 可扩展版：块级注意力 + 流水线缓存 + 两阶段计算，接近零成本替换。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">To address the memory and communication overhead of attending over all preceding layer outputs for large-scale model training, we introduce Block AttnRes, which partitions layers into blocks and attends over block-level representations, reducing the memory footprint while preserving most of the gains of full AttnRes. Combined with cache-based pipeline communication and a two-phase computation strategy, Block AttnRes becomes a practical drop-in replacement for standard residual connections with minimal overhead.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">为应对大规模训练中对所有先前层输出做注意力带来的显存与通信开销，我们提出 Block AttnRes：把层划分成若干块，只在块级表示上做注意力，从而降低显存占用，同时保留 Full AttnRes 的大部分收益。再结合基于缓存的流水线通信与两阶段计算策略，Block AttnRes 可 practically 作为标准残差的即插即用替代，开销很小。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="Block AttnRes">Block AttnRes</span><span class="term" data-term="two-phase computation">two-phase computation</span></div>
+</article>
+
+<article class="card para" data-idx="3" data-blob="scaling law experiments confirm that the improvement is consistent across model sizes, and ablations validate the benefit of content-dependent depth-wise selection. we further integrate attnres into the kimi linear architecture (48b total / 3b activated parameters) and pre-train on 1.4t tokens, where attnres mitigates prenorm dilution, yielding more uniform output magnitudes and gradient distribution across depth, and improves downstream performance across all evaluated tasks. 缩放律实验表明收益在不同模型规模上一致；消融验证了「内容依赖的深度维选择」确实有用。我们进一步把 attnres 接入 kimi linear（总参 48b / 激活 3b），在 1.4t token 上预训练：attnres 缓解 prenorm dilution，使各层输出幅度与梯度分布更均匀，并在所有评测任务上提升下游表现。 实证：缩放一致；48b kimi linear + 1.4t token 全任务提升。 kimi linear scaling law">
+  <div class="summary"><b>小结</b> · 实证：缩放一致；48B Kimi Linear + 1.4T token 全任务提升。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Scaling law experiments confirm that the improvement is consistent across model sizes, and ablations validate the benefit of content-dependent depth-wise selection. We further integrate AttnRes into the Kimi Linear architecture (48B total / 3B activated parameters) and pre-train on 1.4T tokens, where AttnRes mitigates PreNorm dilution, yielding more uniform output magnitudes and gradient distribution across depth, and improves downstream performance across all evaluated tasks.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">缩放律实验表明收益在不同模型规模上一致；消融验证了「内容依赖的深度维选择」确实有用。我们进一步把 AttnRes 接入 Kimi Linear（总参 48B / 激活 3B），在 1.4T token 上预训练：AttnRes 缓解 PreNorm dilution，使各层输出幅度与梯度分布更均匀，并在所有评测任务上提升下游表现。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="Kimi Linear">Kimi Linear</span><span class="term" data-term="scaling law">scaling law</span></div>
+</article>
+</section>
+<section class="section" id="intro"><h3>1 Introduction 引言 <span>7 段</span></h3>
+
+<article class="card para" data-idx="4" data-blob="standard residual connections are the de facto building block of modern llms. the update h_l = h_{l-1} + f_{l-1}(h_{l-1}) is widely understood as a gradient highway that lets gradients bypass transformations via identity mappings, enabling stable training at depth. yet residuals also play a second role that has received less attention. 标准残差连接是现代 llm 事实上的基本构件。更新式 h_l = h_{l-1} + f_{l-1}(h_{l-1}) 通常被理解为「梯度高速公路」：梯度可经由恒等映射绕过变换，从而在深度网络中稳定训练。但残差还有第二个较少被强调的角色。 残差不只是梯度通路，还决定「深度方向上信息如何聚合」。 residual connection gradient highway">
+  <div class="summary"><b>小结</b> · 残差不只是梯度通路，还决定「深度方向上信息如何聚合」。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Standard residual connections are the de facto building block of modern LLMs. The update h_l = h_{l-1} + f_{l-1}(h_{l-1}) is widely understood as a gradient highway that lets gradients bypass transformations via identity mappings, enabling stable training at depth. Yet residuals also play a second role that has received less attention.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">标准残差连接是现代 LLM 事实上的基本构件。更新式 h_l = h_{l-1} + f_{l-1}(h_{l-1}) 通常被理解为「梯度高速公路」：梯度可经由恒等映射绕过变换，从而在深度网络中稳定训练。但残差还有第二个较少被强调的角色。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="residual connection">residual connection</span><span class="term" data-term="gradient highway">gradient highway</span></div>
+</article>
+
+<article class="card para" data-idx="5" data-blob="unrolling the recurrence shows that every layer receives the same uniformly-weighted sum of all prior layer outputs; residuals define how information aggregates across depth. unlike sequence mixing and expert routing, which now employ learnable input-dependent weighting, this depth-wise aggregation remains governed by fixed unit weights, with no mechanism to selectively emphasize or suppress individual layer contributions. 展开递推可见：每一层收到的都是对所有先前层输出的同权求和；残差其实定义了信息如何沿深度聚合。序列混合与专家路由已普遍采用可学习、依赖输入的加权，但深度维聚合仍被固定单位权重统治，无法选择性地强调或抑制某一层的贡献。 序列维已可学习路由，深度维仍是死板的单位权重累加。 depth-wise aggregation">
+  <div class="summary"><b>小结</b> · 序列维已可学习路由，深度维仍是死板的单位权重累加。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Unrolling the recurrence shows that every layer receives the same uniformly-weighted sum of all prior layer outputs; residuals define how information aggregates across depth. Unlike sequence mixing and expert routing, which now employ learnable input-dependent weighting, this depth-wise aggregation remains governed by fixed unit weights, with no mechanism to selectively emphasize or suppress individual layer contributions.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">展开递推可见：每一层收到的都是对所有先前层输出的同权求和；残差其实定义了信息如何沿深度聚合。序列混合与专家路由已普遍采用可学习、依赖输入的加权，但深度维聚合仍被固定单位权重统治，无法选择性地强调或抑制某一层的贡献。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="depth-wise aggregation">depth-wise aggregation</span></div>
+</article>
+
+<article class="card para" data-idx="6" data-blob="in practice, prenorm has become the dominant paradigm, yet its unweighted accumulation causes hidden-state magnitudes to grow as o(l) with depth, progressively diluting each layer&#x27;s relative contribution. early-layer information is buried and cannot be selectively retrieved; empirically, a significant fraction of layers can be pruned with minimal loss. recent efforts such as scaled residual paths and multi-stream recurrences remain bound to the additive recurrence, while methods that do introduce cross-layer access are difficult to scale. the situation parallels the challenges that rnns faced over the sequence dimension before attention provided an alternative. 实践中 prenorm 已成主流，但无权重累加使隐藏状态幅度随深度按 o(l) 增长，逐步稀释每层相对贡献。早期层信息被埋没且无法选择性取回；经验上大量层可被剪掉而损失很小。缩放残差路径、多流递推等方法仍困在加性递推里；真正引入跨层访问的方法又难以扩展。这正像注意力出现之前，rnn 在序列维上面对的困境。 prenorm dilution + 不可选择性取回；类比：深度维需要类似「注意力」的解。 prenorm dilution cross-layer access">
+  <div class="summary"><b>小结</b> · PreNorm dilution + 不可选择性取回；类比：深度维需要类似「注意力」的解。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">In practice, PreNorm has become the dominant paradigm, yet its unweighted accumulation causes hidden-state magnitudes to grow as O(L) with depth, progressively diluting each layer&#x27;s relative contribution. Early-layer information is buried and cannot be selectively retrieved; empirically, a significant fraction of layers can be pruned with minimal loss. Recent efforts such as scaled residual paths and multi-stream recurrences remain bound to the additive recurrence, while methods that do introduce cross-layer access are difficult to scale. The situation parallels the challenges that RNNs faced over the sequence dimension before attention provided an alternative.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">实践中 PreNorm 已成主流，但无权重累加使隐藏状态幅度随深度按 O(L) 增长，逐步稀释每层相对贡献。早期层信息被埋没且无法选择性取回；经验上大量层可被剪掉而损失很小。缩放残差路径、多流递推等方法仍困在加性递推里；真正引入跨层访问的方法又难以扩展。这正像注意力出现之前，RNN 在序列维上面对的困境。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="PreNorm dilution">PreNorm dilution</span><span class="term" data-term="cross-layer access">cross-layer access</span></div>
+</article>
+
+<article class="card para" data-idx="7" data-blob="we observe a formal duality between depth-wise accumulation and the sequential recurrence in rnns. building on this duality, we propose attention residuals (attnres), which replaces the fixed accumulation h_l = σ_i v_i with h_l = σ_i α_{i→l} · v_i, where α_{i→l} are softmax attention weights computed from a single learned pseudo-query w_l ∈ r^d per layer. this lightweight mechanism enables selective, content-aware retrieval across depth with only one d-dimensional vector per layer. 我们观察到：深度维累加与 rnn 的序列递推存在形式对偶。据此提出 attnres：把固定累加 h_l = σ_i v_i 换成 h_l = σ_i α_{i→l} · v_i，其中 α_{i→l} 由每层一个可学习伪查询向量 w_l ∈ r^d 经 softmax 得到。机制很轻：每层只需一个 d 维向量，即可实现沿深度的选择性、内容感知检索。 核心公式：深度维 softmax 注意力；每层仅一个伪查询 w_l。 pseudo-query sequence-depth duality attnres">
+  <div class="summary"><b>小结</b> · 核心公式：深度维 softmax 注意力；每层仅一个伪查询 w_l。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">We observe a formal duality between depth-wise accumulation and the sequential recurrence in RNNs. Building on this duality, we propose Attention Residuals (AttnRes), which replaces the fixed accumulation h_l = Σ_i v_i with h_l = Σ_i α_{i→l} · v_i, where α_{i→l} are softmax attention weights computed from a single learned pseudo-query w_l ∈ R^d per layer. This lightweight mechanism enables selective, content-aware retrieval across depth with only one d-dimensional vector per layer.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">我们观察到：深度维累加与 RNN 的序列递推存在形式对偶。据此提出 AttnRes：把固定累加 h_l = Σ_i v_i 换成 h_l = Σ_i α_{i→l} · v_i，其中 α_{i→l} 由每层一个可学习伪查询向量 w_l ∈ R^d 经 softmax 得到。机制很轻：每层只需一个 d 维向量，即可实现沿深度的选择性、内容感知检索。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="pseudo-query">pseudo-query</span><span class="term" data-term="sequence-depth duality">sequence-depth duality</span><span class="term" data-term="AttnRes">AttnRes</span></div>
+</article>
+
+<article class="card para" data-idx="8" data-blob="indeed, standard residual connections and prior recurrence-based variants can all be shown to perform depth-wise linear attention; attnres generalizes them to depth-wise softmax attention, completing for depth the same linear-to-softmax transition that proved transformative over sequences. 事实上，标准残差与既有基于递推的变体都可以看成深度维线性注意力；attnres 把它们推广到深度维 softmax 注意力——完成了序列维上曾经「线性→softmax」那次关键性跃迁在深度维上的对应。 旧残差 ≈ 深度线性注意力；attnres = 深度 softmax 注意力。 depth-wise linear attention depth-wise softmax attention">
+  <div class="summary"><b>小结</b> · 旧残差 ≈ 深度线性注意力；AttnRes = 深度 softmax 注意力。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Indeed, standard residual connections and prior recurrence-based variants can all be shown to perform depth-wise linear attention; AttnRes generalizes them to depth-wise softmax attention, completing for depth the same linear-to-softmax transition that proved transformative over sequences.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">事实上，标准残差与既有基于递推的变体都可以看成深度维线性注意力；AttnRes 把它们推广到深度维 softmax 注意力——完成了序列维上曾经「线性→softmax」那次关键性跃迁在深度维上的对应。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="depth-wise linear attention">depth-wise linear attention</span><span class="term" data-term="depth-wise softmax attention">depth-wise softmax attention</span></div>
+</article>
+
+<article class="card para" data-idx="9" data-blob="in standard training, full attnres adds negligible overhead, since the layer outputs it requires are already retained for backpropagation. at scale, however, activation recomputation and pipeline parallelism are routinely employed, and these activations must now be explicitly preserved and communicated across pipeline stages. we introduce block attnres to maintain efficiency in this regime: layers are partitioned into n blocks, each reduced to a single representation via standard residuals, with cross-block attention applied only over the n block-level summaries. this brings both memory and communication down to o(nd). 普通训练中，full attnres 几乎无额外开销，因为反传本来就要保留层输出。但大规模场景常用激活重计算与流水线并行，这些激活就必须被显式保留并跨 stage 通信。为此提出 block attnres：把层划成 n 个块，块内用标准残差压成一个表示，块间只对 n 个块级摘要做注意力，使显存与通信降到 o(nd)。 full 小规模免费；大规模用 block，成本 o(nd)。 full attnres block attnres pipeline parallelism">
+  <div class="summary"><b>小结</b> · Full 小规模免费；大规模用 Block，成本 O(Nd)。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">In standard training, Full AttnRes adds negligible overhead, since the layer outputs it requires are already retained for backpropagation. At scale, however, activation recomputation and pipeline parallelism are routinely employed, and these activations must now be explicitly preserved and communicated across pipeline stages. We introduce Block AttnRes to maintain efficiency in this regime: layers are partitioned into N blocks, each reduced to a single representation via standard residuals, with cross-block attention applied only over the N block-level summaries. This brings both memory and communication down to O(Nd).</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">普通训练中，Full AttnRes 几乎无额外开销，因为反传本来就要保留层输出。但大规模场景常用激活重计算与流水线并行，这些激活就必须被显式保留并跨 stage 通信。为此提出 Block AttnRes：把层划成 N 个块，块内用标准残差压成一个表示，块间只对 N 个块级摘要做注意力，使显存与通信降到 O(Nd)。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="Full AttnRes">Full AttnRes</span><span class="term" data-term="Block AttnRes">Block AttnRes</span><span class="term" data-term="pipeline parallelism">pipeline parallelism</span></div>
+</article>
+
+<article class="card para" data-idx="10" data-blob="scaling law experiments confirm that attnres consistently outperforms the baseline across compute budgets, with block attnres matching the loss of a baseline trained with 1.25× more compute. we further integrate attnres into the kimi linear architecture (48b total / 3b activated) and pre-train on 1.4t tokens. analysis shows attnres mitigates prenorm dilution, with output magnitudes remaining bounded across depth and gradient norms distributing more uniformly across layers. on downstream benchmarks, the final model improves over the baseline across all evaluated tasks. 缩放律显示 attnres 在各算力预算下都优于基线；block attnres 的 loss 相当于基线多用 1.25× 算力。接入 kimi linear（48b/3b）并在 1.4t token 上预训练后：输出幅度沿深度有界，梯度更均匀，下游全任务提升。 约等于白捡 1.25× 算力；大模型上动力学更健康、全任务更好。 scaling law">
+  <div class="summary"><b>小结</b> · 约等于白捡 1.25× 算力；大模型上动力学更健康、全任务更好。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Scaling law experiments confirm that AttnRes consistently outperforms the baseline across compute budgets, with Block AttnRes matching the loss of a baseline trained with 1.25× more compute. We further integrate AttnRes into the Kimi Linear architecture (48B total / 3B activated) and pre-train on 1.4T tokens. Analysis shows AttnRes mitigates PreNorm dilution, with output magnitudes remaining bounded across depth and gradient norms distributing more uniformly across layers. On downstream benchmarks, the final model improves over the baseline across all evaluated tasks.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">缩放律显示 AttnRes 在各算力预算下都优于基线；Block AttnRes 的 loss 相当于基线多用 1.25× 算力。接入 Kimi Linear（48B/3B）并在 1.4T token 上预训练后：输出幅度沿深度有界，梯度更均匀，下游全任务提升。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="scaling law">scaling law</span></div>
+</article>
+</section>
+<section class="section" id="contrib"><h3>Contributions 贡献 <span>3 段</span></h3>
+
+<article class="card para" data-idx="11" data-blob="attention residuals. we propose attnres, which replaces fixed residual accumulation with learned softmax attention over depth, and its scalable variant block attnres that reduces memory and communication from o(ld) to o(nd). through a unified structured-matrix analysis, we show that standard residuals and prior recurrence-based variants correspond to depth-wise linear attention, while attnres performs depth-wise softmax attention. 注意力残差：提出 attnres（用可学习的深度维 softmax 注意力替换固定残差累加），以及可扩展的 block attnres（把显存/通信从 o(ld) 降到 o(nd)）。用统一的结构矩阵分析表明：标准残差与既往递推变体对应深度维线性注意力，而 attnres 是深度维 softmax 注意力。 方法贡献：full + block；理论视角：深度混合矩阵 / 线性→softmax。 structured-matrix analysis">
+  <div class="summary"><b>小结</b> · 方法贡献：Full + Block；理论视角：深度混合矩阵 / 线性→softmax。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Attention Residuals. We propose AttnRes, which replaces fixed residual accumulation with learned softmax attention over depth, and its scalable variant Block AttnRes that reduces memory and communication from O(Ld) to O(Nd). Through a unified structured-matrix analysis, we show that standard residuals and prior recurrence-based variants correspond to depth-wise linear attention, while AttnRes performs depth-wise softmax attention.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">注意力残差：提出 AttnRes（用可学习的深度维 softmax 注意力替换固定残差累加），以及可扩展的 Block AttnRes（把显存/通信从 O(Ld) 降到 O(Nd)）。用统一的结构矩阵分析表明：标准残差与既往递推变体对应深度维线性注意力，而 AttnRes 是深度维 softmax 注意力。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="structured-matrix analysis">structured-matrix analysis</span></div>
+</article>
+
+<article class="card para" data-idx="12" data-blob="infrastructure for scale. we develop system optimizations that make block attnres practical at scale, including cross-stage caching that eliminates redundant transfers under pipeline parallelism and a two-phase inference strategy that amortizes cross-block attention via online softmax. training overhead is marginal; inference latency overhead is less than 2% on typical workloads. 规模化基建：跨 stage 缓存消除流水线冗余传输；两阶段推理用 online softmax 摊销块间注意力。训练开销很小；典型推理负载下延迟开销 &lt; 2%。 系统贡献：可真正上大规模，推理几乎无感。 cross-stage caching online softmax">
+  <div class="summary"><b>小结</b> · 系统贡献：可真正上大规模，推理几乎无感。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Infrastructure for scale. We develop system optimizations that make Block AttnRes practical at scale, including cross-stage caching that eliminates redundant transfers under pipeline parallelism and a two-phase inference strategy that amortizes cross-block attention via online softmax. Training overhead is marginal; inference latency overhead is less than 2% on typical workloads.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">规模化基建：跨 stage 缓存消除流水线冗余传输；两阶段推理用 online softmax 摊销块间注意力。训练开销很小；典型推理负载下延迟开销 &lt; 2%。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="cross-stage caching">cross-stage caching</span><span class="term" data-term="online softmax">online softmax</span></div>
+</article>
+
+<article class="card para" data-idx="13" data-blob="comprehensive evaluation and analysis. we validate attnres via scaling laws, ablations, and downstream benchmarks on a 48b model pre-trained on 1.4t tokens, demonstrating consistent improvements. training dynamics analysis further reveals that attnres mitigates prenorm dilution, yielding bounded hidden-state magnitudes and more uniform gradient distribution across depth. 全面评估：缩放律、消融、以及 48b / 1.4t token 下游评测均显示稳定提升；训练动力学分析进一步证实其缓解 prenorm dilution。 评估贡献：从小到大、从 loss 到动力学到下游指标。 prenorm dilution">
+  <div class="summary"><b>小结</b> · 评估贡献：从小到大、从 loss 到动力学到下游指标。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Comprehensive evaluation and analysis. We validate AttnRes via scaling laws, ablations, and downstream benchmarks on a 48B model pre-trained on 1.4T tokens, demonstrating consistent improvements. Training dynamics analysis further reveals that AttnRes mitigates PreNorm dilution, yielding bounded hidden-state magnitudes and more uniform gradient distribution across depth.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">全面评估：缩放律、消融、以及 48B / 1.4T token 下游评测均显示稳定提升；训练动力学分析进一步证实其缓解 PreNorm dilution。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="PreNorm dilution">PreNorm dilution</span></div>
+</article>
+</section>
+<section class="section" id="motivation"><h3>2 Motivation 动机 <span>4 段</span></h3>
+
+<article class="card para" data-idx="14" data-blob="notation. consider inputs of shape b×t×d. for a single token, h_l ∈ r^d is the hidden state entering layer l (l=1…l); the token embedding is h_1. f_l is the transformation of layer l; in transformers we treat each self-attention or mlp as an individual layer. 记号：输入形状 b×t×d。对单 token，h_l ∈ r^d 是进入第 l 层的隐藏状态（l=1…l）；词嵌入为 h_1。f_l 是第 l 层变换；在 transformer 中把每个 self-attention 或 mlp 都当成单独一层。 关键：本文的「层」= attention 或 mlp，不是整个 transformer block。 layer">
+  <div class="summary"><b>小结</b> · 关键：本文的「层」= Attention 或 MLP，不是整个 Transformer block。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Notation. Consider inputs of shape B×T×d. For a single token, h_l ∈ R^d is the hidden state entering layer l (l=1…L); the token embedding is h_1. f_l is the transformation of layer l; in Transformers we treat each self-attention or MLP as an individual layer.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">记号：输入形状 B×T×d。对单 token，h_l ∈ R^d 是进入第 l 层的隐藏状态（l=1…L）；词嵌入为 h_1。f_l 是第 l 层变换；在 Transformer 中把每个 self-attention 或 MLP 都当成单独一层。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="layer">layer</span></div>
+</article>
+
+<article class="card para" data-idx="15" data-blob="residual learning. residuals allow gradients to bypass transformations: h_l = h_{l-1} + f_{l-1}(h_{l-1}). expanding gives h_l = h_1 + σ_{i=1}^{l-1} f_i(h_i). the key insight is identity mapping: a direct path for information and gradients. in backprop, ∂l/∂h_l expands to a product that always preserves an identity term, providing a depth-independent gradient highway. 残差学习：h_l = h_{l-1} + f_{l-1}(h_{l-1})，展开即嵌入加所有先前层输出之和。关键是恒等映射，反传展开式中恒保留 i 项，形成与深度无关的梯度通路。 经典残差 = 恒等捷径 + 均匀求和。 identity mapping">
+  <div class="summary"><b>小结</b> · 经典残差 = 恒等捷径 + 均匀求和。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Residual Learning. Residuals allow gradients to bypass transformations: h_l = h_{l-1} + f_{l-1}(h_{l-1}). Expanding gives h_l = h_1 + Σ_{i=1}^{l-1} f_i(h_i). The key insight is identity mapping: a direct path for information and gradients. In backprop, ∂L/∂h_l expands to a product that always preserves an identity term, providing a depth-independent gradient highway.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">残差学习：h_l = h_{l-1} + f_{l-1}(h_{l-1})，展开即嵌入加所有先前层输出之和。关键是恒等映射，反传展开式中恒保留 I 项，形成与深度无关的梯度通路。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="identity mapping">identity mapping</span></div>
+</article>
+
+<article class="card para" data-idx="16" data-blob="generalizing residuals. fixed unit coefficients treat every layer uniformly. highway networks introduce learned element-wise gates: h_l = (1−g_l)⊙h_{l-1} + g_l⊙f_{l-1}(h_{l-1}). more generally both are weighted recurrences h_l = α_l·h_{l-1} + β_l·f_{l-1}(h_{l-1}), with residual α=β=1 and highway α=1−g, β=g. 推广残差：固定单位系数无法适应深度混合。highway 引入逐元素门控：在变换与恒等路径间插值。二者都是加权递推 h_l = α_l·h_{l-1} + β_l·f(...)，残差取 α=β=1，highway 取 α=1−g、β=g。 highway 可学门控，但仍是「只看上一状态」的递推。 highway networks">
+  <div class="summary"><b>小结</b> · Highway 可学门控，但仍是「只看上一状态」的递推。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Generalizing Residuals. Fixed unit coefficients treat every layer uniformly. Highway networks introduce learned element-wise gates: h_l = (1−g_l)⊙h_{l-1} + g_l⊙f_{l-1}(h_{l-1}). More generally both are weighted recurrences h_l = α_l·h_{l-1} + β_l·f_{l-1}(h_{l-1}), with residual α=β=1 and Highway α=1−g, β=g.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">推广残差：固定单位系数无法适应深度混合。Highway 引入逐元素门控：在变换与恒等路径间插值。二者都是加权递推 h_l = α_l·h_{l-1} + β_l·f(...)，残差取 α=β=1，Highway 取 α=1−g、β=g。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="Highway networks">Highway networks</span></div>
+</article>
+
+<article class="card para" data-idx="17" data-blob="limitations. whether fixed or gated, each layer only accesses its immediate input h_{l-1}—a single compressed state conflating all earlier outputs. this implies: (1) no selective access—attention vs mlp get the same aggregate; (2) irreversible loss—once aggregated, information cannot be selectively recovered; (3) output growth—later layers learn larger outputs to stay influential, risking instability. these motivate selective aggregation over all preceding layers. 局限：无论固定还是门控，每层只能访问紧邻输入 h_{l-1}——一个混杂了全部历史的压缩状态。后果：(1) 无法选择性访问；(2) 聚合损失不可逆；(3) 深层为争影响力输出越来越大，训练不稳。因此需要能对所有先前层做选择性聚合的机制。 三大痛点：不能选、不能恢复、深层输出膨胀。 selective access">
+  <div class="summary"><b>小结</b> · 三大痛点：不能选、不能恢复、深层输出膨胀。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Limitations. Whether fixed or gated, each layer only accesses its immediate input h_{l-1}—a single compressed state conflating all earlier outputs. This implies: (1) no selective access—attention vs MLP get the same aggregate; (2) irreversible loss—once aggregated, information cannot be selectively recovered; (3) output growth—later layers learn larger outputs to stay influential, risking instability. These motivate selective aggregation over all preceding layers.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">局限：无论固定还是门控，每层只能访问紧邻输入 h_{l-1}——一个混杂了全部历史的压缩状态。后果：(1) 无法选择性访问；(2) 聚合损失不可逆；(3) 深层为争影响力输出越来越大，训练不稳。因此需要能对所有先前层做选择性聚合的机制。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="selective access">selective access</span></div>
+</article>
+</section>
+<section class="section" id="method"><h3>3 Attention Residuals 方法 <span>4 段</span></h3>
+
+<article class="card para" data-idx="18" data-blob="the duality of time and depth. like rnns over time, residuals compress all prior information into a single state h_l over depth. transformers improved rnns by replacing recurrence with attention. we propose the same for depth: h_l = α_{0→l}·h_1 + σ_{i=1}^{l-1} α_{i→l}·f_i(h_i), with σ α = 1. depth l is typically &lt; 1000, so o(l²) depth attention is feasible. we call this attention residuals (attnres). 时间—深度对偶：残差像 rnn 一样把历史压进单一状态。transformer 用注意力取代了序列递推；我们对深度做同样的事：用归一化权重对嵌入与各层输出加权求和。深度通常不大（l&lt;1000），o(l²) 可接受。此即 attnres。 把「序列注意力」搬到「层间/深度维」。 sequence-depth duality attnres">
+  <div class="summary"><b>小结</b> · 把「序列注意力」搬到「层间/深度维」。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">The Duality of Time and Depth. Like RNNs over time, residuals compress all prior information into a single state h_l over depth. Transformers improved RNNs by replacing recurrence with attention. We propose the same for depth: h_l = α_{0→l}·h_1 + Σ_{i=1}^{l-1} α_{i→l}·f_i(h_i), with Σ α = 1. Depth L is typically &lt; 1000, so O(L²) depth attention is feasible. We call this Attention Residuals (AttnRes).</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">时间—深度对偶：残差像 RNN 一样把历史压进单一状态。Transformer 用注意力取代了序列递推；我们对深度做同样的事：用归一化权重对嵌入与各层输出加权求和。深度通常不大（L&lt;1000），O(L²) 可接受。此即 AttnRes。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="sequence-depth duality">sequence-depth duality</span><span class="term" data-term="AttnRes">AttnRes</span></div>
+</article>
+
+<article class="card para" data-idx="19" data-blob="full attention residuals. weights α_{i→l} = ϕ(q_l, k_i) / σ_j ϕ(q_l, k_j) with ϕ(q,k)=exp(qᵀ rmsnorm(k)). for each layer: q_l = w_l (learned), and for sources: k_i = v_i = h_1 (i=0) or f_i(h_i) (i≥1). then h_l = σ α_{i→l} v_i. rmsnorm inside ϕ stops large-magnitude layers from dominating softmax. cost: o(l²d) arithmetic, o(ld) memory per token—modest because depth ≪ sequence length. full attnres：α 为带 rmsnorm 的 softmax。查询 q_l 是每层可学习向量 w_l；键/值来自嵌入或各层输出。rmsnorm 防止大幅度层垄断注意力。每 token 算术 o(l²d)、显存 o(ld)，因深度远小于序列长度，可接受。 公式要点：伪查询 + rmsnorm(k) + softmax；键值=历史层输出。 full attnres pseudo-query rmsnorm">
+  <div class="summary"><b>小结</b> · 公式要点：伪查询 + RMSNorm(k) + softmax；键值=历史层输出。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Full Attention Residuals. Weights α_{i→l} = ϕ(q_l, k_i) / Σ_j ϕ(q_l, k_j) with ϕ(q,k)=exp(qᵀ RMSNorm(k)). For each layer: q_l = w_l (learned), and for sources: k_i = v_i = h_1 (i=0) or f_i(h_i) (i≥1). Then h_l = Σ α_{i→l} v_i. RMSNorm inside ϕ stops large-magnitude layers from dominating softmax. Cost: O(L²d) arithmetic, O(Ld) memory per token—modest because depth ≪ sequence length.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">Full AttnRes：α 为带 RMSNorm 的 softmax。查询 q_l 是每层可学习向量 w_l；键/值来自嵌入或各层输出。RMSNorm 防止大幅度层垄断注意力。每 token 算术 O(L²d)、显存 O(Ld)，因深度远小于序列长度，可接受。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="Full AttnRes">Full AttnRes</span><span class="term" data-term="pseudo-query">pseudo-query</span><span class="term" data-term="RMSNorm">RMSNorm</span></div>
+</article>
+
+<article class="card para" data-idx="20" data-blob="overhead. o(ld) memory overlaps activations already kept for backprop in vanilla training—no extra memory. at scale with recomputation and pipeline parallelism, those outputs must stay alive and cross stages, so memory and communication grow as o(ld). 开销：普通训练中 o(ld) 与反传激活重合，无额外显存；大规模重计算/流水线下必须跨 stage 保活并传输，于是显存与通信都变成 o(ld)。 小规模几乎免费；大规模通信成瓶颈。 activation recomputation">
+  <div class="summary"><b>小结</b> · 小规模几乎免费；大规模通信成瓶颈。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Overhead. O(Ld) memory overlaps activations already kept for backprop in vanilla training—no extra memory. At scale with recomputation and pipeline parallelism, those outputs must stay alive and cross stages, so memory and communication grow as O(Ld).</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">开销：普通训练中 O(Ld) 与反传激活重合，无额外显存；大规模重计算/流水线下必须跨 stage 保活并传输，于是显存与通信都变成 O(Ld)。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="activation recomputation">activation recomputation</span></div>
+</article>
+
+<article class="card para" data-idx="21" data-blob="a deliberate design choice: the pseudo-query w_l is a learned parameter decoupled from the layer&#x27;s forward computation. thus attention weights for a group of layers can be computed in parallel without waiting for sequential outputs—enabling block batching. but under pipeline parallelism, o(ld) cross-stage communication cannot be fixed by local batching alone, motivating block attnres. 刻意设计：伪查询 w_l 与前向计算解耦，故一组层的注意力可并行算，便于块内批处理。但流水线跨 stage 的 o(ld) 通信无法仅靠本地批处理消除，因而需要 block attnres。 w_l 解耦 → 可批处理；通信仍需减源数量（l→n）。 pseudo-query">
+  <div class="summary"><b>小结</b> · w_l 解耦 → 可批处理；通信仍需减源数量（L→N）。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">A deliberate design choice: the pseudo-query w_l is a learned parameter decoupled from the layer&#x27;s forward computation. Thus attention weights for a group of layers can be computed in parallel without waiting for sequential outputs—enabling block batching. But under pipeline parallelism, O(Ld) cross-stage communication cannot be fixed by local batching alone, motivating Block AttnRes.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">刻意设计：伪查询 w_l 与前向计算解耦，故一组层的注意力可并行算，便于块内批处理。但流水线跨 stage 的 O(Ld) 通信无法仅靠本地批处理消除，因而需要 Block AttnRes。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="pseudo-query">pseudo-query</span></div>
+</article>
+</section>
+<section class="section" id="block"><h3>3.2 Block AttnRes 块注意力残差 <span>3 段</span></h3>
+
+<article class="card para" data-idx="22" data-blob="block attnres partitions l layers into n blocks. within a block, outputs are reduced to one representation by summation; across blocks, full attention runs over only n block-level representations plus the embedding. memory and communication fall from o(ld) to o(nd). block attnres 把 l 层分成 n 块：块内用求和压成一个表示；块间只对 n 个块表示（外加嵌入）做全注意力。显存/通信从 o(ld) 降到 o(nd)。 块内求和压缩，块间注意力；n≈8 往往够用。 block attnres">
+  <div class="summary"><b>小结</b> · 块内求和压缩，块间注意力；N≈8 往往够用。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Block AttnRes partitions L layers into N blocks. Within a block, outputs are reduced to one representation by summation; across blocks, full attention runs over only N block-level representations plus the embedding. Memory and communication fall from O(Ld) to O(Nd).</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">Block AttnRes 把 L 层分成 N 块：块内用求和压成一个表示；块间只对 N 个块表示（外加嵌入）做全注意力。显存/通信从 O(Ld) 降到 O(Nd)。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="Block AttnRes">Block AttnRes</span></div>
+</article>
+
+<article class="card para" data-idx="23" data-blob="intra-block: for block n with layers b_n, b_n = σ_{j∈b_n} f_j(h_j); partial sums b_n^{(i)} cover the first i layers in the block. inter-block: the first layer of a block attends to [b_0,…,b_{n-1}]; subsequent layers also attend to the current partial sum b_n^{(i-1)}. b_0 = h_1 always. 块内：b_n 为块内层输出之和，并维护部分和。块间：块内第一层看历史块表示；后续层额外看当前块部分和。嵌入始终作为 b_0。 值矩阵随「是否块首层」切换：历史块 ± 当前部分和。 partial sum">
+  <div class="summary"><b>小结</b> · 值矩阵随「是否块首层」切换：历史块 ± 当前部分和。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Intra-block: for block n with layers B_n, b_n = Σ_{j∈B_n} f_j(h_j); partial sums b_n^{(i)} cover the first i layers in the block. Inter-block: the first layer of a block attends to [b_0,…,b_{n-1}]; subsequent layers also attend to the current partial sum b_n^{(i-1)}. b_0 = h_1 always.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">块内：b_n 为块内层输出之和，并维护部分和。块间：块内第一层看历史块表示；后续层额外看当前块部分和。嵌入始终作为 b_0。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="partial sum">partial sum</span></div>
+</article>
+
+<article class="card para" data-idx="24" data-blob="efficiency. attending over n instead of l reduces memory o(l)→o(n) and compute o(l²)→o(n²). n interpolates extremes: n=l recovers full attnres; n=1 reduces to standard residuals with embedding isolated as b_0. empirically n≈8 recovers most benefits across scales. 效率：源数量 l→n。n=l 回到 full；n=1 近似标准残差（嵌入单独为 b_0）。经验上 n≈8 即可拿回大部分收益。 工程甜点：大约 8 个块。 block attnres">
+  <div class="summary"><b>小结</b> · 工程甜点：大约 8 个块。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Efficiency. Attending over N instead of L reduces memory O(L)→O(N) and compute O(L²)→O(N²). N interpolates extremes: N=L recovers Full AttnRes; N=1 reduces to standard residuals with embedding isolated as b_0. Empirically N≈8 recovers most benefits across scales.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">效率：源数量 L→N。N=L 回到 Full；N=1 近似标准残差（嵌入单独为 b_0）。经验上 N≈8 即可拿回大部分收益。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="Block AttnRes">Block AttnRes</span></div>
+</article>
+</section>
+<section class="section" id="infra"><h3>4 Infrastructure 系统实现 <span>3 段</span></h3>
+
+<article class="card para" data-idx="25" data-blob="training / pipeline communication. naïvely sending the full block history at every pipeline transition incurs quadratic communication in the number of chunks. cross-stage caching keeps previously received blocks in local memory so later virtual stages only transmit incremental blocks—reducing peak per-transition cost by about v× and enabling overlap with 1f1b steady state. measured end-to-end training overhead under pipeline parallelism is &lt; 4%. 训练/流水线：朴素地每次传输完整块历史会导致通信随 chunk 数二次增长。跨 stage 缓存让后续 virtual stage 只传增量块，峰值成本约降 v 倍，并可与 1f1b 稳态重叠。测得端到端训练开销 &lt; 4%。 关键优化：缓存历史块，只传增量。 cross-stage caching pipeline parallelism">
+  <div class="summary"><b>小结</b> · 关键优化：缓存历史块，只传增量。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Training / Pipeline communication. Naïvely sending the full block history at every pipeline transition incurs quadratic communication in the number of chunks. Cross-stage caching keeps previously received blocks in local memory so later virtual stages only transmit incremental blocks—reducing peak per-transition cost by about V× and enabling overlap with 1F1B steady state. Measured end-to-end training overhead under pipeline parallelism is &lt; 4%.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">训练/流水线：朴素地每次传输完整块历史会导致通信随 chunk 数二次增长。跨 stage 缓存让后续 virtual stage 只传增量块，峰值成本约降 V 倍，并可与 1F1B 稳态重叠。测得端到端训练开销 &lt; 4%。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="cross-stage caching">cross-stage caching</span><span class="term" data-term="pipeline parallelism">pipeline parallelism</span></div>
+</article>
+
+<article class="card para" data-idx="26" data-blob="inference / two-phase strategy. phase 1 batches all s queries in a block against cached block k/v once, returning outputs and softmax stats (max, lse). phase 2 sequentially attends to evolving intra-block partial sums and merges with phase 1 via online softmax—exactly equivalent, i/o friendly, and fusable. end-to-end inference latency overhead &lt; 2% on typical workloads. 推理/两阶段：phase 1 把块内全部伪查询一次性对历史块 k/v 批处理；phase 2 再对块内演化部分和顺序计算，并用 online softmax 与 phase 1 精确合并。i/o 友好、可融合；典型推理延迟开销 &lt; 2%。 批处理块间 + 顺序块内 + online softmax 合并 = 又对又快。 two-phase computation online softmax">
+  <div class="summary"><b>小结</b> · 批处理块间 + 顺序块内 + online softmax 合并 = 又对又快。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Inference / Two-phase strategy. Phase 1 batches all S queries in a block against cached block K/V once, returning outputs and softmax stats (max, LSE). Phase 2 sequentially attends to evolving intra-block partial sums and merges with Phase 1 via online softmax—exactly equivalent, I/O friendly, and fusable. End-to-end inference latency overhead &lt; 2% on typical workloads.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">推理/两阶段：Phase 1 把块内全部伪查询一次性对历史块 K/V 批处理；Phase 2 再对块内演化部分和顺序计算，并用 online softmax 与 Phase 1 精确合并。I/O 友好、可融合；典型推理延迟开销 &lt; 2%。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="two-phase computation">two-phase computation</span><span class="term" data-term="online softmax">online softmax</span></div>
+</article>
+
+<article class="card para" data-idx="27" data-blob="memory-efficient prefilling. caching n·t·d block states for long context is costly (e.g. ~15gb at 128k with 8 blocks). sharding along sequence across tp devices plus chunked prefill drops per-device overhead dramatically (example: to ~1.9gb, further &lt;0.3gb with 16k chunks). 预填充省显存：长上下文缓存块状态很贵。沿序列维做张量并行分片，再配合分块 prefill，可大幅降低每卡占用。 长上下文靠 tp 分片 + chunked prefill。 prefilling">
+  <div class="summary"><b>小结</b> · 长上下文靠 TP 分片 + chunked prefill。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Memory-efficient prefilling. Caching N·T·d block states for long context is costly (e.g. ~15GB at 128K with 8 blocks). Sharding along sequence across TP devices plus chunked prefill drops per-device overhead dramatically (example: to ~1.9GB, further &lt;0.3GB with 16K chunks).</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">预填充省显存：长上下文缓存块状态很贵。沿序列维做张量并行分片，再配合分块 prefill，可大幅降低每卡占用。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="prefilling">prefilling</span></div>
+</article>
+</section>
+<section class="section" id="exp"><h3>5 Experiments 实验 <span>4 段</span></h3>
+
+<article class="card para" data-idx="28" data-blob="architecture. identical to kimi linear: moe transformer interleaving kda and mla at 3:1, each followed by moe ffn. only change: attnres on residual paths. extra params: one rmsnorm + one w_l per layer (negligible). crucially, all pseudo-queries must be initialized to zero so initial α are uniform—equal-weight average at start, avoiding volatility. 架构同 kimi linear（kda:mla=3:1 + moe）。唯一改动是残差换成 attnres。额外参数可忽略。重要：伪查询必须零初始化，使初始注意力均匀，训练起步更稳。 即插即用；w_l←0 初始化是稳定训练的关键。 kimi linear kda mla pseudo-query">
+  <div class="summary"><b>小结</b> · 即插即用；w_l←0 初始化是稳定训练的关键。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Architecture. Identical to Kimi Linear: MoE Transformer interleaving KDA and MLA at 3:1, each followed by MoE FFN. Only change: AttnRes on residual paths. Extra params: one RMSNorm + one w_l per layer (negligible). Crucially, all pseudo-queries must be initialized to zero so initial α are uniform—equal-weight average at start, avoiding volatility.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">架构同 Kimi Linear（KDA:MLA=3:1 + MoE）。唯一改动是残差换成 AttnRes。额外参数可忽略。重要：伪查询必须零初始化，使初始注意力均匀，训练起步更稳。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="Kimi Linear">Kimi Linear</span><span class="term" data-term="KDA">KDA</span><span class="term" data-term="MLA">MLA</span><span class="term" data-term="pseudo-query">pseudo-query</span></div>
+</article>
+
+<article class="card para" data-idx="29" data-blob="scaling laws. five sizes × {baseline, full, block≈8}. same hparams chosen under baseline (conservative vs attnres). fitted curves: attnres lower loss across compute; at 5.6 pflop/s-days, block 1.692 vs baseline 1.714 ≈ 1.25× compute advantage. full vs block gap shrinks with scale (0.001 at largest). full beats mhc; block matches mhc with far less residual i/o (5.5d vs 34d for m=4). 缩放律：五档规模对比。attnres 全程更低 loss；block 约等于基线 1.25× 算力。规模越大 full/block 越接近。full 优于 mhc；block 性能接近 mhc 但残差 i/o 低得多。 主结论：稳定胜基线；block 性价比极高。 mhc scaling law">
+  <div class="summary"><b>小结</b> · 主结论：稳定胜基线；Block 性价比极高。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Scaling laws. Five sizes × {Baseline, Full, Block≈8}. Same hparams chosen under baseline (conservative vs AttnRes). Fitted curves: AttnRes lower loss across compute; at 5.6 PFLOP/s-days, Block 1.692 vs Baseline 1.714 ≈ 1.25× compute advantage. Full vs Block gap shrinks with scale (0.001 at largest). Full beats mHC; Block matches mHC with far less residual I/O (5.5d vs 34d for m=4).</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">缩放律：五档规模对比。AttnRes 全程更低 loss；Block 约等于基线 1.25× 算力。规模越大 Full/Block 越接近。Full 优于 mHC；Block 性能接近 mHC 但残差 I/O 低得多。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="mHC">mHC</span><span class="term" data-term="scaling law">scaling law</span></div>
+</article>
+
+<article class="card para" data-idx="30" data-blob="main 48b run. block attnres with 6 layers/block → 9 blocks + embedding = 10 depth sources. same 1.4t recipe as kimi linear (muon, wsd, then mid-training, then 32k extension). dynamics: lower val loss; output magnitudes become bounded periodic within blocks (vs monotonic growth); gradients more uniform via softmax competition. 48b 主实验：每块 6 层→9 块+嵌入共 10 个深度源。训练动力学：验证 loss 更低；块边界选择性聚合「重置」累加，输出幅度呈有界周期；softmax 竞争使梯度更均匀。 动力学证据直接对准 prenorm dilution。 prenorm dilution muon">
+  <div class="summary"><b>小结</b> · 动力学证据直接对准 PreNorm dilution。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Main 48B run. Block AttnRes with 6 layers/block → 9 blocks + embedding = 10 depth sources. Same 1.4T recipe as Kimi Linear (Muon, WSD, then mid-training, then 32K extension). Dynamics: lower val loss; output magnitudes become bounded periodic within blocks (vs monotonic growth); gradients more uniform via softmax competition.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">48B 主实验：每块 6 层→9 块+嵌入共 10 个深度源。训练动力学：验证 loss 更低；块边界选择性聚合「重置」累加，输出幅度呈有界周期；softmax 竞争使梯度更均匀。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="PreNorm dilution">PreNorm dilution</span><span class="term" data-term="Muon">Muon</span></div>
+</article>
+
+<article class="card para" data-idx="31" data-blob="downstream. block attnres matches or beats baseline on all tasks. larger gains on multi-step reasoning (gpqa-diamond +7.5, math +3.6) and code (humaneval +3.1); solid gains on knowledge (mmlu +1.1, triviaqa +1.9)—consistent with better depth-wise information flow helping compositional tasks. 下游：全任务持平或更好。多步推理与代码提升更明显，知识类也有扎实增益——符合「更好的深度信息流有助组合式任务」的假设。 推理/代码收益最大，知识类也涨。 ">
+  <div class="summary"><b>小结</b> · 推理/代码收益最大，知识类也涨。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Downstream. Block AttnRes matches or beats baseline on all tasks. Larger gains on multi-step reasoning (GPQA-Diamond +7.5, Math +3.6) and code (HumanEval +3.1); solid gains on knowledge (MMLU +1.1, TriviaQA +1.9)—consistent with better depth-wise information flow helping compositional tasks.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">下游：全任务持平或更好。多步推理与代码提升更明显，知识类也有扎实增益——符合「更好的深度信息流有助组合式任务」的假设。</div></div>
+  </div>
+  <div class="terms"></div>
+</article>
+</section>
+<section class="section" id="ablation"><h3>5.3 Ablation 消融 <span>3 段</span></h3>
+
+<article class="card para" data-idx="32" data-blob="vs priors (16-head model). baseline 1.766; denseformer (fixed scalars) 1.767—no gain, so input-dependent weighting matters. mhc 1.747. full attnres 1.737; block 1.746—better or matched with only one query vector per layer. 对比先验：denseformer 固定标量几乎无收益；mhc 有提升；full/block attnres 更好或持平，且每层只需一个查询向量。 输入依赖权重是关键；softmax 选择强于固定系数。 denseformer mhc">
+  <div class="summary"><b>小结</b> · 输入依赖权重是关键；softmax 选择强于固定系数。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Vs priors (16-head model). Baseline 1.766; DenseFormer (fixed scalars) 1.767—no gain, so input-dependent weighting matters. mHC 1.747. Full AttnRes 1.737; Block 1.746—better or matched with only one query vector per layer.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">对比先验：DenseFormer 固定标量几乎无收益；mHC 有提升；Full/Block AttnRes 更好或持平，且每层只需一个查询向量。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="DenseFormer">DenseFormer</span><span class="term" data-term="mHC">mHC</span></div>
+</article>
+
+<article class="card para" data-idx="33" data-blob="cross-layer granularity. full best (1.737). sliding window w=8 only 1.764—distant selective access beats many nearby layers. block s=4 → 1.746. loss degrades gracefully as s grows; practice fixes ≈8 blocks for infra reasons. 跨层粒度：full 最好；滑窗远弱于 block/full，说明「够得到远层」比「盯着近邻很多层」更重要。块变粗 loss 温和变差。 远距可选择性访问 &gt; 局部窗口。 sliding-window aggregation">
+  <div class="summary"><b>小结</b> · 远距可选择性访问 &gt; 局部窗口。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Cross-layer granularity. Full best (1.737). Sliding window W=8 only 1.764—distant selective access beats many nearby layers. Block S=4 → 1.746. Loss degrades gracefully as S grows; practice fixes ≈8 blocks for infra reasons.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">跨层粒度：Full 最好；滑窗远弱于 Block/Full，说明「够得到远层」比「盯着近邻很多层」更重要。块变粗 loss 温和变差。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="sliding-window aggregation">sliding-window aggregation</span></div>
+</article>
+
+<article class="card para" data-idx="34" data-blob="components. input-dependent query (project from hidden) → 1.731 but costly for decode, so default learned w_l. input-independent scalars hurt (1.749). sigmoid worse than softmax (1.741)—competition helps. multihead depth attn hurts (1.752)—depth mixture is largely shared across channels. removing rmsnorm hurts, especially block (magnitude gaps between blocks). 组件：输入依赖查询更强但解码贵；去掉内容依赖会伤；sigmoid 不如 softmax；深度多头有害；去掉 rmsnorm 尤其伤 block。 默认设计件件有据：学得的 w_l + softmax + rmsnorm(k)。 rmsnorm">
+  <div class="summary"><b>小结</b> · 默认设计件件有据：学得的 w_l + softmax + RMSNorm(k)。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Components. Input-dependent query (project from hidden) → 1.731 but costly for decode, so default learned w_l. Input-independent scalars hurt (1.749). Sigmoid worse than softmax (1.741)—competition helps. Multihead depth attn hurts (1.752)—depth mixture is largely shared across channels. Removing RMSNorm hurts, especially Block (magnitude gaps between blocks).</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">组件：输入依赖查询更强但解码贵；去掉内容依赖会伤；sigmoid 不如 softmax；深度多头有害；去掉 RMSNorm 尤其伤 Block。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="RMSNorm">RMSNorm</span></div>
+</article>
+</section>
+<section class="section" id="analysis"><h3>5.4–6 分析与理论 <span>3 段</span></h3>
+
+<article class="card para" data-idx="35" data-blob="learned patterns. layers attend most to immediate predecessors (locality), yet learn skip connections (off-diagonal). embedding keeps nontrivial weight, especially pre-attention. pre-mlp is sharper/local; pre-attention has broader receptive field. block attnres preserves these structures with sharper weights—block compression acts like regularization. 学到的模式：主对角局部性仍在，但出现跨层捷径；嵌入权重持续存在；attention 前更宽、mlp 前更局部。block 版保留结构且权重更果断，块压缩类似正则。 可视化：既保留残差局部性，又学会深度跳连。 attention sink">
+  <div class="summary"><b>小结</b> · 可视化：既保留残差局部性，又学会深度跳连。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Learned patterns. Layers attend most to immediate predecessors (locality), yet learn skip connections (off-diagonal). Embedding keeps nontrivial weight, especially pre-attention. Pre-MLP is sharper/local; pre-attention has broader receptive field. Block AttnRes preserves these structures with sharper weights—block compression acts like regularization.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">学到的模式：主对角局部性仍在，但出现跨层捷径；嵌入权重持续存在；Attention 前更宽、MLP 前更局部。Block 版保留结构且权重更果断，块压缩类似正则。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="attention sink">attention sink</span></div>
+</article>
+
+<article class="card para" data-idx="36" data-blob="sequence–depth duality. residuals over depth mirror rnns over time; ttt/fast weights cast sequence recurrence as online learning, reducing to linear attention when linear. data-dependent gates ↔ highway; delta rule ↔ ddl; etc. attnres goes further: replace depth recurrence with direct cross-layer attention, as transformers replaced temporal recurrence. 序列—深度对偶把多种残差变体与序列侧方法一一对应。attnres 更进一步：直接用跨层注意力取代深度递推。 理论主线：把「transformer 对 rnn 做的事」对残差再做一遍。 sequence-depth duality ddl delta rule">
+  <div class="summary"><b>小结</b> · 理论主线：把「Transformer 对 RNN 做的事」对残差再做一遍。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Sequence–Depth Duality. Residuals over depth mirror RNNs over time; TTT/fast weights cast sequence recurrence as online learning, reducing to linear attention when linear. Data-dependent gates ↔ Highway; delta rule ↔ DDL; etc. AttnRes goes further: replace depth recurrence with direct cross-layer attention, as Transformers replaced temporal recurrence.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">序列—深度对偶把多种残差变体与序列侧方法一一对应。AttnRes 更进一步：直接用跨层注意力取代深度递推。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="sequence-depth duality">sequence-depth duality</span><span class="term" data-term="DDL">DDL</span><span class="term" data-term="delta rule">delta rule</span></div>
+</article>
+
+<article class="card para" data-idx="37" data-blob="residuals as structured matrices. define depth mixing matrix m where m_{i→l} weights layer i&#x27;s output into layer l. standard residual → all-ones lower-triangular (1-semiseparable). highway → input-dependent 1-semiseparable. (m)hc → m-semiseparable. full attnres → dense rank-l. block → rank between n and n+s. prior residuals ≈ depth-wise linear attention; attnres ≈ depth-wise softmax attention. 深度混合矩阵 m 统一视角：标准残差/highway/(m)hc/attnres 对应不同约束与秩。既往方法≈深度线性注意力；attnres≈深度 softmax 注意力。 一张 m 矩阵看懂所有残差变体的表达力与结构。 depth mixing matrix semiseparable mhc">
+  <div class="summary"><b>小结</b> · 一张 M 矩阵看懂所有残差变体的表达力与结构。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Residuals as structured matrices. Define depth mixing matrix M where M_{i→l} weights layer i&#x27;s output into layer l. Standard residual → all-ones lower-triangular (1-semiseparable). Highway → input-dependent 1-semiseparable. (m)HC → m-semiseparable. Full AttnRes → dense rank-L. Block → rank between N and N+S. Prior residuals ≈ depth-wise linear attention; AttnRes ≈ depth-wise softmax attention.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">深度混合矩阵 M 统一视角：标准残差/Highway/(m)HC/AttnRes 对应不同约束与秩。既往方法≈深度线性注意力；AttnRes≈深度 softmax 注意力。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="depth mixing matrix">depth mixing matrix</span><span class="term" data-term="semiseparable">semiseparable</span><span class="term" data-term="mHC">mHC</span></div>
+</article>
+</section>
+<section class="section" id="related"><h3>7 Related Work &amp; Conclusion 相关工作与结论 <span>2 段</span></h3>
+
+<article class="card para" data-idx="38" data-blob="related themes: (1) norm/scaling/depth stability—prenorm growth vs postnorm gradient issues; attnres avoids both by selective aggregation. (2) multi-state recurrence—(m)hc, ddl, siamesenorm widen state but still condition on immediate predecessor; attnres is orthogonal. (3) cross-layer connectivity—denseformer/elmo static mixes; muddformer/mrla dynamic but different; attnres uses softmax + single pseudo-query + block scaling. 相关三条线：归一化与深度稳定性；多状态递推；跨层连接。attnres 用 softmax + 单伪查询 + 分块扩展，与多状态方法正交，并补上可扩展跨层选择。 定位：正交于多流递推，补齐可扩展的深度维 softmax 选择。 hyper-connections denseformer mrla">
+  <div class="summary"><b>小结</b> · 定位：正交于多流递推，补齐可扩展的深度维 softmax 选择。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Related themes: (1) Norm/scaling/depth stability—PreNorm growth vs PostNorm gradient issues; AttnRes avoids both by selective aggregation. (2) Multi-state recurrence—(m)HC, DDL, SiameseNorm widen state but still condition on immediate predecessor; AttnRes is orthogonal. (3) Cross-layer connectivity—DenseFormer/ELMo static mixes; MUDDFormer/MRLA dynamic but different; AttnRes uses softmax + single pseudo-query + block scaling.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">相关三条线：归一化与深度稳定性；多状态递推；跨层连接。AttnRes 用 softmax + 单伪查询 + 分块扩展，与多状态方法正交，并补上可扩展跨层选择。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="Hyper-Connections">Hyper-Connections</span><span class="term" data-term="DenseFormer">DenseFormer</span><span class="term" data-term="MRLA">MRLA</span></div>
+</article>
+
+<article class="card para" data-idx="39" data-blob="conclusion. inspired by sequence–depth duality, attnres replaces fixed residual accumulation with learned depth-wise attention. full attnres is strong but o(ld) memory is heavy at scale; block attnres with ~8 blocks recovers most gains. with caching and two-phase compute, it is practical: marginal training cost, minimal inference overhead. finer blocks / full attnres remain promising as hardware improves. 结论：attnres 把固定残差累加换成可学习深度注意力；约 8 块的 block 版在现有硬件上最实用；硬件放宽后可走向更细粒度甚至 full。 可落地的深度维注意力残差；block≈8 是当前工程甜点。 block attnres">
+  <div class="summary"><b>小结</b> · 可落地的深度维注意力残差；Block≈8 是当前工程甜点。</div>
+  <div class="pair lang">
+    <div class="en-block"><div class="label">Original</div><div class="en">Conclusion. Inspired by sequence–depth duality, AttnRes replaces fixed residual accumulation with learned depth-wise attention. Full AttnRes is strong but O(Ld) memory is heavy at scale; Block AttnRes with ~8 blocks recovers most gains. With caching and two-phase compute, it is practical: marginal training cost, minimal inference overhead. Finer blocks / Full AttnRes remain promising as hardware improves.</div></div>
+    <div class="zh-block"><div class="label">译文</div><div class="zh">结论：AttnRes 把固定残差累加换成可学习深度注意力；约 8 块的 Block 版在现有硬件上最实用；硬件放宽后可走向更细粒度甚至 Full。</div></div>
+  </div>
+  <div class="terms"><span class="term" data-term="Block AttnRes">Block AttnRes</span></div>
+</article>
+</section>
+<section class="section" id="glossary"><h3>名词重点解释 <span>点击芯片或下方条目</span></h3><div class="refgrid">
+<div class="gitem" id="term-AttnRes" data-blob="attnres attention residuals，注意力残差：用沿深度维的 softmax 注意力替换固定残差累加。"><b>AttnRes</b><p>Attention Residuals，注意力残差：用沿深度维的 softmax 注意力替换固定残差累加。</p></div>
+<div class="gitem" id="term-Full AttnRes" data-blob="full attnres 对每一个先前层输出分别做注意力；表达力最强，大规模下通信/显存为 o(ld)。"><b>Full AttnRes</b><p>对每一个先前层输出分别做注意力；表达力最强，大规模下通信/显存为 O(Ld)。</p></div>
+<div class="gitem" id="term-Block AttnRes" data-blob="block attnres 先把层聚成 n 个块，再对块表示做注意力；成本 o(nd)，n≈8 常可逼近 full。"><b>Block AttnRes</b><p>先把层聚成 N 个块，再对块表示做注意力；成本 O(Nd)，N≈8 常可逼近 Full。</p></div>
+<div class="gitem" id="term-PreNorm" data-blob="prenorm 先归一化再算子层，再加回残差。提供干净恒等梯度路径，但隐藏状态幅度易随深度增长。"><b>PreNorm</b><p>先归一化再算子层，再加回残差。提供干净恒等梯度路径，但隐藏状态幅度易随深度增长。</p></div>
+<div class="gitem" id="term-PreNorm dilution" data-blob="prenorm dilution 无权重累加使 ||h||~o(l)，每层相对贡献被稀释；深层被迫输出更大才能「出头」。"><b>PreNorm dilution</b><p>无权重累加使 ||h||~O(L)，每层相对贡献被稀释；深层被迫输出更大才能「出头」。</p></div>
+<div class="gitem" id="term-pseudo-query" data-blob="pseudo-query 伪查询 w_l：每层一个可学习 d 维向量，不依赖当前前向激活，因而可批处理。"><b>pseudo-query</b><p>伪查询 w_l：每层一个可学习 d 维向量，不依赖当前前向激活，因而可批处理。</p></div>
+<div class="gitem" id="term-RMSNorm" data-blob="rmsnorm 均方根归一化。此处用于键，避免大幅度层/块垄断 softmax。"><b>RMSNorm</b><p>均方根归一化。此处用于键，避免大幅度层/块垄断 softmax。</p></div>
+<div class="gitem" id="term-depth-wise aggregation" data-blob="depth-wise aggregation 沿网络深度（层间）聚合信息，而非沿序列时间步。"><b>depth-wise aggregation</b><p>沿网络深度（层间）聚合信息，而非沿序列时间步。</p></div>
+<div class="gitem" id="term-sequence-depth duality" data-blob="sequence-depth duality 序列递推 ↔ 深度残差递推的形式对偶；启发把注意力从时间维搬到深度维。"><b>sequence-depth duality</b><p>序列递推 ↔ 深度残差递推的形式对偶；启发把注意力从时间维搬到深度维。</p></div>
+<div class="gitem" id="term-depth mixing matrix" data-blob="depth mixing matrix 矩阵 m，m_{i→l} 表示第 l 层对第 i 层输出的混合权重；统一比较各类残差。"><b>depth mixing matrix</b><p>矩阵 M，M_{i→l} 表示第 l 层对第 i 层输出的混合权重；统一比较各类残差。</p></div>
+<div class="gitem" id="term-semiseparable" data-blob="semiseparable 半可分结构：刻画递推型混合矩阵的低秩/结构化程度；秩越高表达越灵活。"><b>semiseparable</b><p>半可分结构：刻画递推型混合矩阵的低秩/结构化程度；秩越高表达越灵活。</p></div>
+<div class="gitem" id="term-Highway networks" data-blob="highway networks 用门控在恒等路径与变换间插值的残差推广，仍只看上一状态。"><b>Highway networks</b><p>用门控在恒等路径与变换间插值的残差推广，仍只看上一状态。</p></div>
+<div class="gitem" id="term-gradient highway" data-blob="gradient highway 残差展开中恒等项提供的、不随深度消失的梯度直达通路。"><b>gradient highway</b><p>残差展开中恒等项提供的、不随深度消失的梯度直达通路。</p></div>
+<div class="gitem" id="term-identity mapping" data-blob="identity mapping 恒等映射：信息/梯度可原样穿过层。"><b>identity mapping</b><p>恒等映射：信息/梯度可原样穿过层。</p></div>
+<div class="gitem" id="term-cross-layer access" data-blob="cross-layer access 层可以直接访问更早层的个体输出，而不是只看压缩后的 h_{l-1}。"><b>cross-layer access</b><p>层可以直接访问更早层的个体输出，而不是只看压缩后的 h_{l-1}。</p></div>
+<div class="gitem" id="term-pipeline parallelism" data-blob="pipeline parallelism 把模型按层切到多个设备流水执行；跨 stage 要传输激活。"><b>pipeline parallelism</b><p>把模型按层切到多个设备流水执行；跨 stage 要传输激活。</p></div>
+<div class="gitem" id="term-cross-stage caching" data-blob="cross-stage caching 在流水线物理 stage 上缓存已接收块表示，后续只传增量，避免重复通信。"><b>cross-stage caching</b><p>在流水线物理 stage 上缓存已接收块表示，后续只传增量，避免重复通信。</p></div>
+<div class="gitem" id="term-two-phase computation" data-blob="two-phase computation phase1 批处理块间注意力；phase2 顺序块内部分和并用 online softmax 合并。"><b>two-phase computation</b><p>Phase1 批处理块间注意力；Phase2 顺序块内部分和并用 online softmax 合并。</p></div>
+<div class="gitem" id="term-online softmax" data-blob="online softmax 可增量合并两组 softmax 统计量的技巧，保证两阶段结果与一次性计算等价。"><b>online softmax</b><p>可增量合并两组 softmax 统计量的技巧，保证两阶段结果与一次性计算等价。</p></div>
+<div class="gitem" id="term-activation recomputation" data-blob="activation recomputation 反向时重算前向激活以省显存；与「必须保活层输出给 attnres」冲突，故大规模要额外策略。"><b>activation recomputation</b><p>反向时重算前向激活以省显存；与「必须保活层输出给 AttnRes」冲突，故大规模要额外策略。</p></div>
+<div class="gitem" id="term-partial sum" data-blob="partial sum 块内前 i 层输出的累计和，供块内后续层作为额外注意力源。"><b>partial sum</b><p>块内前 i 层输出的累计和，供块内后续层作为额外注意力源。</p></div>
+<div class="gitem" id="term-Kimi Linear" data-blob="kimi linear moonshot 的混合线性注意力架构（kda+mla，3:1），本文 48b 实验载体。"><b>Kimi Linear</b><p>Moonshot 的混合线性注意力架构（KDA+MLA，3:1），本文 48B 实验载体。</p></div>
+<div class="gitem" id="term-KDA" data-blob="kda kimi delta attention，通道级门控的线性注意力模块。"><b>KDA</b><p>Kimi Delta Attention，通道级门控的线性注意力模块。</p></div>
+<div class="gitem" id="term-MLA" data-blob="mla multi-head latent attention，多头潜在注意力（deepseek 系）。"><b>MLA</b><p>Multi-Head Latent Attention，多头潜在注意力（DeepSeek 系）。</p></div>
+<div class="gitem" id="term-mHC" data-blob="mhc manifold-constrained hyper-connections：多流残差并约束转移矩阵，深度维线性注意力代表。"><b>mHC</b><p>Manifold-Constrained Hyper-Connections：多流残差并约束转移矩阵，深度维线性注意力代表。</p></div>
+<div class="gitem" id="term-DenseFormer" data-blob="denseformer 用固定（训练后静态）标量系数混合历史层；消融显示无增益。"><b>DenseFormer</b><p>用固定（训练后静态）标量系数混合历史层；消融显示无增益。</p></div>
+<div class="gitem" id="term-Hyper-Connections" data-blob="hyper-connections 维护多条并行残差流并用学习矩阵混合。"><b>Hyper-Connections</b><p>维护多条并行残差流并用学习矩阵混合。</p></div>
+<div class="gitem" id="term-MRLA" data-blob="mrla 对历史层做逐元素 sigmoid 门控的跨层方法，更接近线性注意力而非 softmax 检索。"><b>MRLA</b><p>对历史层做逐元素 sigmoid 门控的跨层方法，更接近线性注意力而非 softmax 检索。</p></div>
+<div class="gitem" id="term-DDL" data-blob="ddl deep delta learning：深度侧的 delta-rule 状态更新，对偶于序列侧 deltanet。"><b>DDL</b><p>Deep Delta Learning：深度侧的 delta-rule 状态更新，对偶于序列侧 DeltaNet。</p></div>
+<div class="gitem" id="term-delta rule" data-blob="delta rule 先按 key 擦除再写入的关联记忆更新规则。"><b>delta rule</b><p>先按 key 擦除再写入的关联记忆更新规则。</p></div>
+<div class="gitem" id="term-scaling law" data-blob="scaling law 验证 loss 随算力的幂律关系；用来比较方法在不同规模的效率。"><b>scaling law</b><p>验证 loss 随算力的幂律关系；用来比较方法在不同规模的效率。</p></div>
+<div class="gitem" id="term-Muon" data-blob="muon 一种用于 llm 训练的优化器（moonlight/kimi 配方中使用）。"><b>Muon</b><p>一种用于 LLM 训练的优化器（Moonlight/Kimi 配方中使用）。</p></div>
+<div class="gitem" id="term-attention sink" data-blob="attention sink 某些位置/层稳定吸引高注意力质量的现象；深度维也可出现。"><b>attention sink</b><p>某些位置/层稳定吸引高注意力质量的现象；深度维也可出现。</p></div>
+<div class="gitem" id="term-prefilling" data-blob="prefilling 推理时先处理长提示并缓存状态的阶段；块表示缓存是显存热点。"><b>prefilling</b><p>推理时先处理长提示并缓存状态的阶段；块表示缓存是显存热点。</p></div>
+<div class="gitem" id="term-sliding-window aggregation" data-blob="sliding-window aggregation 只保留最近 w 个层输出的近似；消融弱于可访问远层的 block/full。"><b>sliding-window aggregation</b><p>只保留最近 W 个层输出的近似；消融弱于可访问远层的 Block/Full。</p></div>
+<div class="gitem" id="term-layer" data-blob="layer 本文特指单个 attention 或 mlp，而不是整个 transformer block。"><b>layer</b><p>本文特指单个 Attention 或 MLP，而不是整个 Transformer block。</p></div>
+<div class="gitem" id="term-depth-wise linear attention" data-blob="depth-wise linear attention 用结构化/核特征递推实现的深度混合，对应标准残差、highway、(m)hc 等。"><b>depth-wise linear attention</b><p>用结构化/核特征递推实现的深度混合，对应标准残差、Highway、(m)HC 等。</p></div>
+<div class="gitem" id="term-depth-wise softmax attention" data-blob="depth-wise softmax attention 对历史层输出做显式 softmax 检索；即 attnres。"><b>depth-wise softmax attention</b><p>对历史层输出做显式 softmax 检索；即 AttnRes。</p></div>
+<div class="gitem" id="term-selective access" data-blob="selective access 按内容需要强调或抑制某些历史层，而不是均匀加权。"><b>selective access</b><p>按内容需要强调或抑制某些历史层，而不是均匀加权。</p></div>
+</div></section>
+<section class="section" id="refs"><h3>重点引用论文 <span>按优先级排列</span></h3><div class="refgrid">
+
+<div class="ref" data-blob="deep residual learning for image recognition 残差学习原点：恒等映射与梯度高速公路。全文对照的「标准残差」定义来源。 [12]">
+  <span class="lv must">必读 · [12]</span>
+  <h4>Deep Residual Learning for Image Recognition</h4>
+  <p>残差学习原点：恒等映射与梯度高速公路。全文对照的「标准残差」定义来源。</p>
+  <a href="https://arxiv.org/abs/1512.03385" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="on layer normalization in the transformer architecture (prenorm) 阐明 prenorm/postnorm 权衡；本文批评的 prenorm 幅度增长问题自此脉络展开。 [60]">
+  <span class="lv must">必读 · [60]</span>
+  <h4>On Layer Normalization in the Transformer Architecture (PreNorm)</h4>
+  <p>阐明 PreNorm/PostNorm 权衡；本文批评的 PreNorm 幅度增长问题自此脉络展开。</p>
+  <a href="https://arxiv.org/abs/2002.04745" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="siamesenorm: breaking the barrier to reconciling pre/post-norm 直接讨论 prenorm dilution / 有效深度受限；attnres 的问题动机高度依赖此观察。 [27]">
+  <span class="lv must">必读 · [27]</span>
+  <h4>SiameseNorm: Breaking the Barrier to Reconciling Pre/Post-Norm</h4>
+  <p>直接讨论 PreNorm dilution / 有效深度受限；AttnRes 的问题动机高度依赖此观察。</p>
+  <a href="https://arxiv.org/abs/2602.08064" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="kimi linear: an expressive, efficient attention architecture 48b 实验底座；kda/mla 3:1 混合架构。与本仓库另一篇论文文件夹对应。 [69]">
+  <span class="lv must">必读 · [69]</span>
+  <h4>Kimi Linear: An Expressive, Efficient Attention Architecture</h4>
+  <p>48B 实验底座；KDA/MLA 3:1 混合架构。与本仓库另一篇论文文件夹对应。</p>
+  <a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="hyper-connections / mhc: manifold-constrained hyper-connections 多流残差代表；理论部分把它们解释为深度维线性注意力，是 attnres 的最强对照。 [72]/[59]">
+  <span class="lv imp">重点 · [72]/[59]</span>
+  <h4>Hyper-Connections / mHC: Manifold-Constrained Hyper-Connections</h4>
+  <p>多流残差代表；理论部分把它们解释为深度维线性注意力，是 AttnRes 的最强对照。</p>
+  <a href="https://arxiv.org/abs/2512.24880" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="denseformer: enhancing information flow via depth weighted averaging 跨层但系数固定；消融证明「没有输入依赖几乎没涨点」。 [36]">
+  <span class="lv imp">重点 · [36]</span>
+  <h4>DenseFormer: Enhancing Information Flow via Depth Weighted Averaging</h4>
+  <p>跨层但系数固定；消融证明「没有输入依赖几乎没涨点」。</p>
+  <a href="https://arxiv.org/abs/2402.02622" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="highway networks 门控残差经典；对偶表中对应序列侧数据依赖门控。 [45]">
+  <span class="lv imp">重点 · [45]</span>
+  <h4>Highway Networks</h4>
+  <p>门控残差经典；对偶表中对应序列侧数据依赖门控。</p>
+  <a href="https://arxiv.org/abs/1505.00387" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="attention is all you need / neural machine translation by jointly learning to align and translate 序列注意力源头；本文「把注意力搬到深度维」的类比基础。 [52]/[3]">
+  <span class="lv imp">重点 · [52]/[3]</span>
+  <h4>Attention Is All You Need / Neural Machine Translation by Jointly Learning to Align and Translate</h4>
+  <p>序列注意力源头；本文「把注意力搬到深度维」的类比基础。</p>
+  <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="online normalizer calculation for softmax 两阶段推理精确合并的数值基础。 [31]">
+  <span class="lv ">扩展 · [31]</span>
+  <h4>Online normalizer calculation for softmax</h4>
+  <p>两阶段推理精确合并的数值基础。</p>
+  <a href="https://arxiv.org/abs/1805.02867" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="deep delta learning (ddl) 深度侧 delta rule，对偶于序列 deltanet/kda 家族。 [67]">
+  <span class="lv ">扩展 · [67]</span>
+  <h4>Deep Delta Learning (DDL)</h4>
+  <p>深度侧 delta rule，对偶于序列 DeltaNet/KDA 家族。</p>
+  <a href="https://arxiv.org/abs/2601.00417" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="mrla: cross-layer retrospective retrieving via layer attention 动态跨层，但更接近线性门控而非 softmax 检索。 [10]">
+  <span class="lv ">扩展 · [10]</span>
+  <h4>MRLA: Cross-Layer Retrospective Retrieving via Layer Attention</h4>
+  <p>动态跨层，但更接近线性门控而非 softmax 检索。</p>
+  <a href="https://arxiv.org/abs/2302.03985" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+
+<div class="ref" data-blob="the unreasonable ineffectiveness of the deeper layers 深层可剪：佐证均匀累加下许多层贡献微弱。 [11]">
+  <span class="lv ">扩展 · [11]</span>
+  <h4>The Unreasonable Ineffectiveness of the Deeper Layers</h4>
+  <p>深层可剪：佐证均匀累加下许多层贡献微弱。</p>
+  <a href="https://arxiv.org/abs/2403.17887" target="_blank" rel="noopener">打开论文 →</a>
+</div>
+</div></section>
+
+  <p style="margin-top:28px;color:var(--faint);font-family:var(--sans);font-size:12px;line-height:1.6">
+    原文 PDF：<a href="./paper.pdf">paper.pdf</a> ·
+    源码仓库：<a href="https://github.com/MoonshotAI/Attention-Residuals" target="_blank" rel="noopener">MoonshotAI/Attention-Residuals</a> ·
+    本页为学习用双语精读整理，公式排版以 PDF 为准。
+  </p>
+</main>
+</div>
+
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <button class="btn close" id="closeDrawer">关闭</button>
+  <h2>名词速查</h2>
+  <p style="color:var(--muted);font-family:var(--sans);font-size:13px;margin-top:0">点击正文金色芯片，或在此浏览全部术语。</p>
+  <div id="drawerBody"></div>
+</aside>
+
+<script>
+const body = document.body;
+const cards = [...document.querySelectorAll('.para')];
+let idx = 0;
+const glossary = {
+"AttnRes":"Attention Residuals\uff0c\u6ce8\u610f\u529b\u6b8b\u5dee\uff1a\u7528\u6cbf\u6df1\u5ea6\u7ef4\u7684 softmax \u6ce8\u610f\u529b\u66ff\u6362\u56fa\u5b9a\u6b8b\u5dee\u7d2f\u52a0\u3002",
+"Full AttnRes":"\u5bf9\u6bcf\u4e00\u4e2a\u5148\u524d\u5c42\u8f93\u51fa\u5206\u522b\u505a\u6ce8\u610f\u529b\uff1b\u8868\u8fbe\u529b\u6700\u5f3a\uff0c\u5927\u89c4\u6a21\u4e0b\u901a\u4fe1/\u663e\u5b58\u4e3a O(Ld)\u3002",
+"Block AttnRes":"\u5148\u628a\u5c42\u805a\u6210 N \u4e2a\u5757\uff0c\u518d\u5bf9\u5757\u8868\u793a\u505a\u6ce8\u610f\u529b\uff1b\u6210\u672c O(Nd)\uff0cN\u22488 \u5e38\u53ef\u903c\u8fd1 Full\u3002",
+"PreNorm":"\u5148\u5f52\u4e00\u5316\u518d\u7b97\u5b50\u5c42\uff0c\u518d\u52a0\u56de\u6b8b\u5dee\u3002\u63d0\u4f9b\u5e72\u51c0\u6052\u7b49\u68af\u5ea6\u8def\u5f84\uff0c\u4f46\u9690\u85cf\u72b6\u6001\u5e45\u5ea6\u6613\u968f\u6df1\u5ea6\u589e\u957f\u3002",
+"PreNorm dilution":"\u65e0\u6743\u91cd\u7d2f\u52a0\u4f7f ||h||~O(L)\uff0c\u6bcf\u5c42\u76f8\u5bf9\u8d21\u732e\u88ab\u7a00\u91ca\uff1b\u6df1\u5c42\u88ab\u8feb\u8f93\u51fa\u66f4\u5927\u624d\u80fd\u300c\u51fa\u5934\u300d\u3002",
+"pseudo-query":"\u4f2a\u67e5\u8be2 w_l\uff1a\u6bcf\u5c42\u4e00\u4e2a\u53ef\u5b66\u4e60 d \u7ef4\u5411\u91cf\uff0c\u4e0d\u4f9d\u8d56\u5f53\u524d\u524d\u5411\u6fc0\u6d3b\uff0c\u56e0\u800c\u53ef\u6279\u5904\u7406\u3002",
+"RMSNorm":"\u5747\u65b9\u6839\u5f52\u4e00\u5316\u3002\u6b64\u5904\u7528\u4e8e\u952e\uff0c\u907f\u514d\u5927\u5e45\u5ea6\u5c42/\u5757\u5784\u65ad softmax\u3002",
+"depth-wise aggregation":"\u6cbf\u7f51\u7edc\u6df1\u5ea6\uff08\u5c42\u95f4\uff09\u805a\u5408\u4fe1\u606f\uff0c\u800c\u975e\u6cbf\u5e8f\u5217\u65f6\u95f4\u6b65\u3002",
+"sequence-depth duality":"\u5e8f\u5217\u9012\u63a8 \u2194 \u6df1\u5ea6\u6b8b\u5dee\u9012\u63a8\u7684\u5f62\u5f0f\u5bf9\u5076\uff1b\u542f\u53d1\u628a\u6ce8\u610f\u529b\u4ece\u65f6\u95f4\u7ef4\u642c\u5230\u6df1\u5ea6\u7ef4\u3002",
+"depth mixing matrix":"\u77e9\u9635 M\uff0cM_{i\u2192l} \u8868\u793a\u7b2c l \u5c42\u5bf9\u7b2c i \u5c42\u8f93\u51fa\u7684\u6df7\u5408\u6743\u91cd\uff1b\u7edf\u4e00\u6bd4\u8f83\u5404\u7c7b\u6b8b\u5dee\u3002",
+"semiseparable":"\u534a\u53ef\u5206\u7ed3\u6784\uff1a\u523b\u753b\u9012\u63a8\u578b\u6df7\u5408\u77e9\u9635\u7684\u4f4e\u79e9/\u7ed3\u6784\u5316\u7a0b\u5ea6\uff1b\u79e9\u8d8a\u9ad8\u8868\u8fbe\u8d8a\u7075\u6d3b\u3002",
+"Highway networks":"\u7528\u95e8\u63a7\u5728\u6052\u7b49\u8def\u5f84\u4e0e\u53d8\u6362\u95f4\u63d2\u503c\u7684\u6b8b\u5dee\u63a8\u5e7f\uff0c\u4ecd\u53ea\u770b\u4e0a\u4e00\u72b6\u6001\u3002",
+"gradient highway":"\u6b8b\u5dee\u5c55\u5f00\u4e2d\u6052\u7b49\u9879\u63d0\u4f9b\u7684\u3001\u4e0d\u968f\u6df1\u5ea6\u6d88\u5931\u7684\u68af\u5ea6\u76f4\u8fbe\u901a\u8def\u3002",
+"identity mapping":"\u6052\u7b49\u6620\u5c04\uff1a\u4fe1\u606f/\u68af\u5ea6\u53ef\u539f\u6837\u7a7f\u8fc7\u5c42\u3002",
+"cross-layer access":"\u5c42\u53ef\u4ee5\u76f4\u63a5\u8bbf\u95ee\u66f4\u65e9\u5c42\u7684\u4e2a\u4f53\u8f93\u51fa\uff0c\u800c\u4e0d\u662f\u53ea\u770b\u538b\u7f29\u540e\u7684 h_{l-1}\u3002",
+"pipeline parallelism":"\u628a\u6a21\u578b\u6309\u5c42\u5207\u5230\u591a\u4e2a\u8bbe\u5907\u6d41\u6c34\u6267\u884c\uff1b\u8de8 stage \u8981\u4f20\u8f93\u6fc0\u6d3b\u3002",
+"cross-stage caching":"\u5728\u6d41\u6c34\u7ebf\u7269\u7406 stage \u4e0a\u7f13\u5b58\u5df2\u63a5\u6536\u5757\u8868\u793a\uff0c\u540e\u7eed\u53ea\u4f20\u589e\u91cf\uff0c\u907f\u514d\u91cd\u590d\u901a\u4fe1\u3002",
+"two-phase computation":"Phase1 \u6279\u5904\u7406\u5757\u95f4\u6ce8\u610f\u529b\uff1bPhase2 \u987a\u5e8f\u5757\u5185\u90e8\u5206\u548c\u5e76\u7528 online softmax \u5408\u5e76\u3002",
+"online softmax":"\u53ef\u589e\u91cf\u5408\u5e76\u4e24\u7ec4 softmax \u7edf\u8ba1\u91cf\u7684\u6280\u5de7\uff0c\u4fdd\u8bc1\u4e24\u9636\u6bb5\u7ed3\u679c\u4e0e\u4e00\u6b21\u6027\u8ba1\u7b97\u7b49\u4ef7\u3002",
+"activation recomputation":"\u53cd\u5411\u65f6\u91cd\u7b97\u524d\u5411\u6fc0\u6d3b\u4ee5\u7701\u663e\u5b58\uff1b\u4e0e\u300c\u5fc5\u987b\u4fdd\u6d3b\u5c42\u8f93\u51fa\u7ed9 AttnRes\u300d\u51b2\u7a81\uff0c\u6545\u5927\u89c4\u6a21\u8981\u989d\u5916\u7b56\u7565\u3002",
+"partial sum":"\u5757\u5185\u524d i \u5c42\u8f93\u51fa\u7684\u7d2f\u8ba1\u548c\uff0c\u4f9b\u5757\u5185\u540e\u7eed\u5c42\u4f5c\u4e3a\u989d\u5916\u6ce8\u610f\u529b\u6e90\u3002",
+"Kimi Linear":"Moonshot \u7684\u6df7\u5408\u7ebf\u6027\u6ce8\u610f\u529b\u67b6\u6784\uff08KDA+MLA\uff0c3:1\uff09\uff0c\u672c\u6587 48B \u5b9e\u9a8c\u8f7d\u4f53\u3002",
+"KDA":"Kimi Delta Attention\uff0c\u901a\u9053\u7ea7\u95e8\u63a7\u7684\u7ebf\u6027\u6ce8\u610f\u529b\u6a21\u5757\u3002",
+"MLA":"Multi-Head Latent Attention\uff0c\u591a\u5934\u6f5c\u5728\u6ce8\u610f\u529b\uff08DeepSeek \u7cfb\uff09\u3002",
+"mHC":"Manifold-Constrained Hyper-Connections\uff1a\u591a\u6d41\u6b8b\u5dee\u5e76\u7ea6\u675f\u8f6c\u79fb\u77e9\u9635\uff0c\u6df1\u5ea6\u7ef4\u7ebf\u6027\u6ce8\u610f\u529b\u4ee3\u8868\u3002",
+"DenseFormer":"\u7528\u56fa\u5b9a\uff08\u8bad\u7ec3\u540e\u9759\u6001\uff09\u6807\u91cf\u7cfb\u6570\u6df7\u5408\u5386\u53f2\u5c42\uff1b\u6d88\u878d\u663e\u793a\u65e0\u589e\u76ca\u3002",
+"Hyper-Connections":"\u7ef4\u62a4\u591a\u6761\u5e76\u884c\u6b8b\u5dee\u6d41\u5e76\u7528\u5b66\u4e60\u77e9\u9635\u6df7\u5408\u3002",
+"MRLA":"\u5bf9\u5386\u53f2\u5c42\u505a\u9010\u5143\u7d20 sigmoid \u95e8\u63a7\u7684\u8de8\u5c42\u65b9\u6cd5\uff0c\u66f4\u63a5\u8fd1\u7ebf\u6027\u6ce8\u610f\u529b\u800c\u975e softmax \u68c0\u7d22\u3002",
+"DDL":"Deep Delta Learning\uff1a\u6df1\u5ea6\u4fa7\u7684 delta-rule \u72b6\u6001\u66f4\u65b0\uff0c\u5bf9\u5076\u4e8e\u5e8f\u5217\u4fa7 DeltaNet\u3002",
+"delta rule":"\u5148\u6309 key \u64e6\u9664\u518d\u5199\u5165\u7684\u5173\u8054\u8bb0\u5fc6\u66f4\u65b0\u89c4\u5219\u3002",
+"scaling law":"\u9a8c\u8bc1 loss \u968f\u7b97\u529b\u7684\u5e42\u5f8b\u5173\u7cfb\uff1b\u7528\u6765\u6bd4\u8f83\u65b9\u6cd5\u5728\u4e0d\u540c\u89c4\u6a21\u7684\u6548\u7387\u3002",
+"Muon":"\u4e00\u79cd\u7528\u4e8e LLM \u8bad\u7ec3\u7684\u4f18\u5316\u5668\uff08Moonlight/Kimi \u914d\u65b9\u4e2d\u4f7f\u7528\uff09\u3002",
+"attention sink":"\u67d0\u4e9b\u4f4d\u7f6e/\u5c42\u7a33\u5b9a\u5438\u5f15\u9ad8\u6ce8\u610f\u529b\u8d28\u91cf\u7684\u73b0\u8c61\uff1b\u6df1\u5ea6\u7ef4\u4e5f\u53ef\u51fa\u73b0\u3002",
+"prefilling":"\u63a8\u7406\u65f6\u5148\u5904\u7406\u957f\u63d0\u793a\u5e76\u7f13\u5b58\u72b6\u6001\u7684\u9636\u6bb5\uff1b\u5757\u8868\u793a\u7f13\u5b58\u662f\u663e\u5b58\u70ed\u70b9\u3002",
+"sliding-window aggregation":"\u53ea\u4fdd\u7559\u6700\u8fd1 W \u4e2a\u5c42\u8f93\u51fa\u7684\u8fd1\u4f3c\uff1b\u6d88\u878d\u5f31\u4e8e\u53ef\u8bbf\u95ee\u8fdc\u5c42\u7684 Block/Full\u3002",
+"layer":"\u672c\u6587\u7279\u6307\u5355\u4e2a Attention \u6216 MLP\uff0c\u800c\u4e0d\u662f\u6574\u4e2a Transformer block\u3002",
+"depth-wise linear attention":"\u7528\u7ed3\u6784\u5316/\u6838\u7279\u5f81\u9012\u63a8\u5b9e\u73b0\u7684\u6df1\u5ea6\u6df7\u5408\uff0c\u5bf9\u5e94\u6807\u51c6\u6b8b\u5dee\u3001Highway\u3001(m)HC \u7b49\u3002",
+"depth-wise softmax attention":"\u5bf9\u5386\u53f2\u5c42\u8f93\u51fa\u505a\u663e\u5f0f softmax \u68c0\u7d22\uff1b\u5373 AttnRes\u3002",
+"selective access":"\u6309\u5185\u5bb9\u9700\u8981\u5f3a\u8c03\u6216\u6291\u5236\u67d0\u4e9b\u5386\u53f2\u5c42\uff0c\u800c\u4e0d\u662f\u5747\u5300\u52a0\u6743\u3002"
+};
+
+function setMode(mode){
+  body.classList.remove('mode-both','mode-zh','mode-en');
+  body.classList.add('mode-'+mode);
+  document.querySelectorAll('#modeSeg button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.mode===mode);
+  });
+}
+document.getElementById('modeSeg').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return; setMode(b.dataset.mode);
+});
+
+function focusCard(i){
+  if(!cards.length) return;
+  idx = (i+cards.length)%cards.length;
+  cards.forEach(c=>c.classList.remove('active'));
+  const c = cards[idx];
+  c.classList.add('active');
+  c.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+const q = document.getElementById('q');
+q.addEventListener('input', ()=>{
+  const s = q.value.trim().toLowerCase();
+  document.querySelectorAll('[data-blob]').forEach(el=>{
+    const hit = !s || (el.dataset.blob||'').includes(s);
+    el.classList.toggle('hidden-by-search', !hit);
+  });
+});
+
+const drawer = document.getElementById('drawer');
+const drawerBody = document.getElementById('drawerBody');
+function openTerm(term){
+  const desc = glossary[term] || '（暂无词条）';
+  drawerBody.innerHTML = `<div class="gitem"><b>${term}</b><p>${desc}</p></div>
+    <p style="font-family:var(--sans);font-size:12px;color:var(--faint)">也可在左侧「名词重点解释」查看完整列表。</p>`;
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden','false');
+  const anchor = document.getElementById('term-'+CSS.escape(term));
+  // keep page position; drawer shows definition
+}
+document.getElementById('btnGlossary').onclick = ()=>{
+  drawerBody.innerHTML = Object.entries(glossary).map(([k,v])=>`<div class="gitem"><b>${k}</b><p>${v}</p></div>`).join('');
+  drawer.classList.toggle('open');
+};
+document.getElementById('closeDrawer').onclick = ()=>{
+  drawer.classList.remove('open'); drawer.setAttribute('aria-hidden','true');
+};
+document.body.addEventListener('click', e=>{
+  const t = e.target.closest('.term'); if(!t) return;
+  openTerm(t.dataset.term);
+});
+
+// TOC active state
+const tocLinks = [...document.querySelectorAll('#toc a')];
+const sections = tocLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(en=>{
+    if(!en.isIntersecting) return;
+    const id = '#'+en.target.id;
+    tocLinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href')===id));
+  });
+},{rootMargin:'-20% 0px -65% 0px', threshold:0.01});
+sections.forEach(s=>io.observe(s));
+
+document.addEventListener('keydown', e=>{
+  if(e.target.matches('input,textarea')) return;
+  if(e.key==='1') setMode('both');
+  if(e.key==='2') setMode('zh');
+  if(e.key==='3') setMode('en');
+  if(e.key==='j' || e.key==='J') { e.preventDefault(); focusCard(idx+1); }
+  if(e.key==='k' || e.key==='K') { e.preventDefault(); focusCard(idx-1); }
+  if(e.key==='g' || e.key==='G') document.getElementById('btnGlossary').click();
+  if(e.key==='/') { e.preventDefault(); q.focus(); }
+});
+
+// staggered animation delays
+cards.forEach((c,i)=> c.style.animationDelay = Math.min(i*0.03, .6)+'s');
+</script>
+</body>
+</html>
