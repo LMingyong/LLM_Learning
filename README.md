@@ -1,30 +1,33 @@
 # LLM Learning
 
-用于存放 LLM 学习笔记与可运行教学代码的仓库。
+用于存放 LLM 学习笔记、论文精读与可运行教学代码。
 
-当前已落地模块：
+## 论文精读（每篇一个文件夹）
+
+入口：[`papers/`](./papers/)
+
+| 论文 | 精读入口 |
+|------|----------|
+| **Attention Residuals** | [`papers/attention-residuals/index.html`](./papers/attention-residuals/index.html) |
+| Kimi Linear / Delta Attention | [`papers/kimi-linear-delta-attention/`](./papers/kimi-linear-delta-attention/) |
+
+约定：之后每篇论文都放在 `papers/<slug>/`，优先提供 **原文 PDF + HTML 精读**（对照翻译、段末小结、名词解释、重点引用）。
+
+## 代码模块
 
 | 模块 | 说明 |
 |------|------|
-| [notes/delta-attention](notes/delta-attention/README.md) | Kimi Delta Attention（KDA）原理笔记 |
-| [src/delta_attention](src/delta_attention) | 教学向 PyTorch 实现（可读优先，非生产 kernel） |
-
-## 快速开始
+| [`src/delta_attention`](./src/delta_attention) | Kimi Delta Attention 教学向 PyTorch 实现 |
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-
-# 跑通核心示例
-python examples/delta_attention_demo.py
-
-# 单元测试
+python3 examples/delta_attention_demo.py
 pytest -q
 ```
 
 ## 参考
 
-- 论文：[Kimi Linear: An Expressive, Efficient Attention Architecture](https://arxiv.org/abs/2510.26692)
-- 官方 kernel：[fla-org/flash-linear-attention](https://github.com/fla-org/flash-linear-attention)
-- 模型权重：[moonshotai/Kimi-Linear-48B-A3B-Instruct](https://huggingface.co/moonshotai/Kimi-Linear-48B-A3B-Instruct)
+- [Attention Residuals](https://arxiv.org/abs/2603.15031)
+- [Kimi Linear](https://arxiv.org/abs/2510.26692)
+- [FLA / Flash Linear Attention](https://github.com/fla-org/flash-linear-attention)

@@ -45,3 +45,7 @@ htmlcov/
 data/
 outputs/
 wandb/
+
+# Paper text extracts
+papers/**/_raw.txt
+.pytest_cache/
