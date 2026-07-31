@@ -13,5 +13,6 @@ papers/<paper-slug>/
 
 | 文件夹 | 论文 |
 |--------|------|
-| [attention-residuals](./attention-residuals/) | Attention Residuals (arXiv:2603.15031) — **HTML 精读已就绪** |
+| [longformer](./longformer/) | Longformer (arXiv:2004.05150) — **局部+全局详解 HTML** |
+| [attention-residuals](./attention-residuals/) | Attention Residuals (arXiv:2603.15031) |
 | [kimi-linear-delta-attention](./kimi-linear-delta-attention/) | Kimi Linear / KDA (arXiv:2510.26692) |
