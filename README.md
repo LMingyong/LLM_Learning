@@ -9,6 +9,7 @@
 | 论文 | 精读入口 |
 |------|----------|
 | **Longformer**（局部+全局） | [`papers/longformer/index.html`](./papers/longformer/index.html) |
+| **BigBird**（局部+全局+随机） | [`papers/bigbird/index.html`](./papers/bigbird/index.html) |
 | Attention Residuals | [`papers/attention-residuals/index.html`](./papers/attention-residuals/index.html) |
 | Kimi Linear / Delta Attention | [`papers/kimi-linear-delta-attention/`](./papers/kimi-linear-delta-attention/) |
 

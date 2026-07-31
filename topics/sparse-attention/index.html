@@ -204,6 +204,7 @@ o_t = Σ_{i∈S(t)} α_t,i · v_i</div>
 
   <h4>3.3 BigBird：局部 + 全局 + 随机块</h4>
   <p>BigBird（Zaheer et al., 2020）在窗口与全局之外，再加 <strong>随机稀疏边</strong>（常以块为单位）。随机边缩短了图上的平均路径长度，理论性质更漂亮。工程上它推动了「块稀疏」表示：不是每个 token 各选邻居，而是按 block 决定整块是否参与，方便用块矩阵核。</p>
+  <div class="callout">展开读：<a href="../../papers/bigbird/index.html"><strong>BigBird 详解专页</strong></a>（三块积木图、小世界路径、ITC/ETC、块稀疏、与 Longformer 对照）。</div>
 
   <h4>3.4 Sparse Transformer：固定步长 / 跨步图案</h4>
   <p>Sparse Transformer（Child et al., 2019）更早提出用固定 stride、局部块等模式把自注意力变稀疏，让生成模型能吃更长序列。今天纯 LLM 预训练里「手写 stride」已不如窗口+全局流行，但「用固定图案换线性复杂度」的思路一脉相承。</p>

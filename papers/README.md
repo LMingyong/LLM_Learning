@@ -13,6 +13,7 @@ papers/<paper-slug>/
 
 | 文件夹 | 论文 |
 |--------|------|
-| [longformer](./longformer/) | Longformer (arXiv:2004.05150) — **局部+全局详解 HTML** |
+| [longformer](./longformer/) | Longformer (arXiv:2004.05150) — 局部+全局 |
+| [bigbird](./bigbird/) | BigBird (arXiv:2007.14062) — **局部+全局+随机块** |
 | [attention-residuals](./attention-residuals/) | Attention Residuals (arXiv:2603.15031) |
 | [kimi-linear-delta-attention](./kimi-linear-delta-attention/) | Kimi Linear / KDA (arXiv:2510.26692) |
