@@ -8,7 +8,8 @@
 
 | 论文 | 精读入口 |
 |------|----------|
-| **Attention Residuals** | [`papers/attention-residuals/index.html`](./papers/attention-residuals/index.html) |
+| **Longformer**（局部+全局） | [`papers/longformer/index.html`](./papers/longformer/index.html) |
+| Attention Residuals | [`papers/attention-residuals/index.html`](./papers/attention-residuals/index.html) |
 | Kimi Linear / Delta Attention | [`papers/kimi-linear-delta-attention/`](./papers/kimi-linear-delta-attention/) |
 
 ## 技术专题（两个文件夹，各一篇 HTML）

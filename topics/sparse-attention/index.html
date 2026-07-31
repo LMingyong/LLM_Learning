@@ -200,6 +200,7 @@ o_t = Σ_{i∈S(t)} α_t,i · v_i</div>
     <li>再选少量 <strong>global tokens</strong>（如 [CLS]、任务相关位置），它们可以 attend 全序列，也被全序列 attend。</li>
   </ul>
   <p>直觉：把文档里的「枢纽车站」设成全局站，普通站只连邻近站——全网仍可达，边数却近似线性。这是今天「工业长文本」最常见的骨架之一：<strong>90% 局部 + 少量全局</strong>。</p>
+  <div class="callout">想把这一段吃透？看专页详解：<a href="../../papers/longformer/index.html"><strong>Longformer 局部 + 全局注意力</strong></a>（含四种图案图、对称全局、两套 QKV、任务怎么设全局位）。</div>
 
   <h4>3.3 BigBird：局部 + 全局 + 随机块</h4>
   <p>BigBird（Zaheer et al., 2020）在窗口与全局之外，再加 <strong>随机稀疏边</strong>（常以块为单位）。随机边缩短了图上的平均路径长度，理论性质更漂亮。工程上它推动了「块稀疏」表示：不是每个 token 各选邻居，而是按 block 决定整块是否参与，方便用块矩阵核。</p>
