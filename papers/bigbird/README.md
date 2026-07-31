@@ -9,19 +9,23 @@
 
 ## 怎么读
 
-**[`index.html`](./index.html)**
+**[`index.html`](./index.html)** — 浅色**逐段精读**：
 
-覆盖：三块积木图解、图稀疏化 / 小世界直觉、ITC vs ETC、块稀疏工程意义、与 Longformer 对照。
+- 每段：中文小结 → Original → 译文
+- 支持对照 / 仅译文 / 仅原文；`J`/`K` 跳段；名词表与搜索
+- 覆盖 Abstract → Intro → Related → §2 架构 → §3 理论 → NLP/基因组实验 → 块稀疏工程要点
 
 ## 文件
 
 | 文件 | 说明 |
 |------|------|
-| `index.html` | 浅色长文详解 |
+| `index.html` | 逐段精读页（由脚本生成） |
 | `paper.pdf` | 原文 PDF |
 
 ```bash
 python3 tools/build_bigbird_page.py
 ```
+
+内容数据：`tools/bigbird_paragraphs.py`
 
 相关：[Longformer](../longformer/) · [稀疏注意力专题](../../topics/sparse-attention/)
