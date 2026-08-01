@@ -278,11 +278,9 @@ if(e.key==='/'){{e.preventDefault();q.focus();}};}};
 
 
 if __name__ == "__main__":
-    from topic_content import FLASH_ATTENTION, SPARSE_ATTENTION
+    from topic_content import FLASH_ATTENTION
 
-    out_sparse = ROOT / "topics/sparse-attention/index.html"
-    out_flash = ROOT / "topics/flash-attention/index.html"
-    out_sparse.write_text(build_page(SPARSE_ATTENTION), encoding="utf-8")
+    # Sparse survey uses the light long-form page from build_sparse_readable.py.
+    out_flash = ROOT / "papers/flash-attention/index.html"
     out_flash.write_text(build_page(FLASH_ATTENTION), encoding="utf-8")
-    print(f"Wrote {out_sparse} ({out_sparse.stat().st_size} bytes)")
     print(f"Wrote {out_flash} ({out_flash.stat().st_size} bytes)")

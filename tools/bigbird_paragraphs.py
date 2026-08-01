@@ -575,7 +575,7 @@ REFS = [
         "level": "专题",
         "title": "稀疏注意力专题页",
         "why": "把 BigBird 放回稀疏注意力谱系里对照。",
-        "url": "../../topics/sparse-attention/index.html",
+        "url": "../sparse-attention/index.html",
         "ext": "",
     },
 ]

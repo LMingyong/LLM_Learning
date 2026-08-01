@@ -286,7 +286,7 @@ def build() -> str:
 <a class="btn" href="./example.html">全流程：设计→硬件 →</a>
 <a class="btn" href="../watts-strogatz/index.html">Watts–Strogatz →</a>
 <a class="btn" href="../longformer/index.html">Longformer →</a>
-<a class="btn" href="../../topics/sparse-attention/index.html">稀疏专题 →</a>
+<a class="btn" href="../sparse-attention/index.html">稀疏专题 →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">

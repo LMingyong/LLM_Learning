@@ -28,4 +28,4 @@
 python3 tools/build_longformer_page.py
 ```
 
-相关专题：[稀疏注意力](../../topics/sparse-attention/)
+相关专题：[稀疏注意力](../sparse-attention/)

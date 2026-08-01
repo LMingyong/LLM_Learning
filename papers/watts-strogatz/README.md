@@ -29,4 +29,4 @@ python3 tools/build_watts_strogatz_page.py
 
 内容数据：`tools/watts_strogatz_paragraphs.py`
 
-相关：[BigBird 精读](../bigbird/) · [BigBird 全流程](../bigbird/example.html) · [稀疏注意力专题](../../topics/sparse-attention/)
+相关：[BigBird 精读](../bigbird/) · [BigBird 全流程](../bigbird/example.html) · [稀疏注意力专题](../sparse-attention/)
