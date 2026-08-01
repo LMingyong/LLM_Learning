@@ -11,7 +11,8 @@
 | **Longformer**（局部+全局） | [`papers/longformer/index.html`](./papers/longformer/index.html) |
 | **BigBird**（局部+全局+随机） | [`papers/bigbird/index.html`](./papers/bigbird/index.html) |
 | Attention Residuals | [`papers/attention-residuals/index.html`](./papers/attention-residuals/index.html) |
-| Kimi Linear / Delta Attention | [`papers/kimi-linear-delta-attention/`](./papers/kimi-linear-delta-attention/) |
+| **Kimi Linear / Delta Attention** | [`papers/kimi-linear-delta-attention/index.html`](./papers/kimi-linear-delta-attention/index.html) |
+| Watts–Strogatz（小世界） | [`papers/watts-strogatz/index.html`](./papers/watts-strogatz/index.html) |
 
 ## 技术专题（两个文件夹，各一篇 HTML）
 
