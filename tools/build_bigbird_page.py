@@ -283,6 +283,7 @@ def build() -> str:
 </div>
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+<a class="btn" href="./example.html">全流程：设计→硬件 →</a>
 <a class="btn" href="../longformer/index.html">Longformer →</a>
 <a class="btn" href="../../topics/sparse-attention/index.html">稀疏专题 →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>

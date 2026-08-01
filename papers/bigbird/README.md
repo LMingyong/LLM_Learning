@@ -9,23 +9,24 @@
 
 ## 怎么读
 
-**[`index.html`](./index.html)** — 浅色**逐段精读**：
-
-- 每段：中文小结 → Original → 译文
-- 支持对照 / 仅译文 / 仅原文；`J`/`K` 跳段；名词表与搜索
-- 覆盖 Abstract → Intro → Related → §2 架构 → §3 理论 → NLP/基因组实验 → 块稀疏工程要点
+1. **[`example.html`](./example.html)** — **全流程讲解**（推荐先读）  
+   注意力设计 → 具体算法（含伪代码）→ 硬件优化（块稀疏 / GPU）→ 工程落地清单
+2. **[`index.html`](./index.html)** — 浅色**逐段精读**  
+   每段：中文小结 → Original → 译文；对照/搜索/名词表
 
 ## 文件
 
 | 文件 | 说明 |
 |------|------|
-| `index.html` | 逐段精读页（由脚本生成） |
+| `example.html` | 设计→算法→硬件→工程全流程 |
+| `index.html` | 逐段精读页 |
 | `paper.pdf` | 原文 PDF |
 
 ```bash
-python3 tools/build_bigbird_page.py
+python3 tools/build_bigbird_example.py   # 全流程页
+python3 tools/build_bigbird_page.py      # 逐段精读
 ```
 
-内容数据：`tools/bigbird_paragraphs.py`
+内容数据：`tools/bigbird_paragraphs.py`（精读页）
 
 相关：[Longformer](../longformer/) · [稀疏注意力专题](../../topics/sparse-attention/)
