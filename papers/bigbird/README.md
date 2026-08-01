@@ -29,4 +29,4 @@ python3 tools/build_bigbird_page.py      # 逐段精读
 
 内容数据：`tools/bigbird_paragraphs.py`（精读页）
 
-相关：[Longformer](../longformer/) · [稀疏注意力专题](../../topics/sparse-attention/)
+相关：[Watts–Strogatz](../watts-strogatz/) · [Longformer](../longformer/) · [稀疏注意力专题](../../topics/sparse-attention/)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build fine-grained BigBird study page: original + zh + paragraph summary."""
+"""Build fine-grained Watts–Strogatz study page: original + zh + paragraph summary."""
 
 from __future__ import annotations
 
@@ -7,133 +7,90 @@ import html
 import json
 from pathlib import Path
 
-from bigbird_paragraphs import GLOSSARY, REFS, SECTIONS
+from watts_strogatz_paragraphs import GLOSSARY, REFS, SECTIONS
 
-OUT = Path(__file__).resolve().parents[1] / "papers/bigbird/index.html"
+OUT = Path(__file__).resolve().parents[1] / "papers/watts-strogatz/index.html"
 
 
 def esc(s: str) -> str:
     return html.escape(s)
 
 
-def pattern_cells(kind: str, n: int = 14, cell: int = 11) -> tuple[str, int]:
-    gap = 1
-    size = n * (cell + gap)
-    rects = []
-    rnd = set()
-    for i in range(n):
-        for k in range(2):
-            j = (i * 5 + k * 7 + 3) % n
-            if j != i:
-                rnd.add((i, j))
-                rnd.add((j, i))
-    globals_ = {0, 1}
-    for i in range(n):
-        for j in range(n):
-            x = j * (cell + gap)
-            y = i * (cell + gap)
-            dist = abs(i - j)
-            color = "#e7e1d4"
-            on = False
-            if kind == "random":
-                on = (i, j) in rnd
-                color = "#1f4e79" if on else color
-            elif kind == "window":
-                on = dist <= 2
-                color = "#0f6e56" if on else color
-            elif kind == "global":
-                on = i in globals_ or j in globals_
-                color = "#b85c38" if on else color
-            elif kind == "bigbird":
-                on = dist <= 2 or i in globals_ or j in globals_ or (i, j) in rnd
-                if i in globals_ or j in globals_:
-                    color = "#b85c38"
-                elif (i, j) in rnd and dist > 2:
-                    color = "#1f4e79"
-                elif dist <= 2:
-                    color = "#0f6e56"
-            op = "0.92" if on else "0.5"
-            rects.append(
-                f'<rect x="{x}" y="{y}" width="{cell}" height="{cell}" rx="2" '
-                f'fill="{color}" opacity="{op}"/>'
-            )
-    return "".join(rects), size
-
-
-def fig_four() -> str:
-    items = [
-        ("random", "(a) Random"),
-        ("window", "(b) Window"),
-        ("global", "(c) Global"),
-        ("bigbird", "(d) BIGBIRD"),
-    ]
-    parts = [
-        '<svg viewBox="0 0 760 230" xmlns="http://www.w3.org/2000/svg" role="img" '
-        'aria-label="BigBird Figure 1 building blocks">'
-        '<rect width="760" height="230" fill="#fffcf5"/>'
-    ]
-    x = 22
-    for kind, title in items:
-        g, size = pattern_cells(kind)
-        parts.append(f'<g transform="translate({x},40)">{g}</g>')
-        parts.append(
-            f'<text x="{x + size/2}" y="28" text-anchor="middle" '
-            f'font-family="Manrope,sans-serif" font-size="12" font-weight="700" '
-            f'fill="#1c2420">{title}</text>'
-        )
-        x += size + 30
-    parts.append(
-        '<g transform="translate(70,210)" font-family="Manrope,sans-serif" font-size="11" fill="#5a6a62">'
-        '<rect width="10" height="10" rx="2" fill="#0f6e56"/><text x="14" y="9">局部窗口</text>'
-        '<rect x="90" width="10" height="10" rx="2" fill="#b85c38"/><text x="104" y="9">全局</text>'
-        '<rect x="160" width="10" height="10" rx="2" fill="#1f4e79"/><text x="174" y="9">随机边</text>'
-        '<rect x="250" width="10" height="10" rx="2" fill="#e7e1d4"/><text x="264" y="9">不计算</text>'
-        "</g></svg>"
-    )
-    return "\n".join(parts)
-
-
-def fig_block() -> str:
-    messy = "".join(
-        f'<rect x="{(j % 12) * 14}" y="{(j // 12) * 14}" width="12" height="12" rx="2" '
-        f'fill="{"#1f4e79" if (j * 3 + 1) % 5 == 0 else "#e7e1d4"}"/>'
-        for j in range(48)
-    )
-    blocks = []
-    for bi in range(4):
-        for bj in range(4):
-            on = bi == bj or bi == 0 or bj == 0 or (bi + bj) % 3 == 0
-            color = "#0f6e56" if bi == bj else ("#b85c38" if bi == 0 or bj == 0 else "#1f4e79")
-            if not on:
-                color = "#e7e1d4"
-            blocks.append(
-                f'<rect x="{bj * 42}" y="{bi * 42}" width="38" height="38" rx="4" '
-                f'fill="{color}" opacity="{"0.9" if on else "0.45"}"/>'
-            )
-    return f"""
-<svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="block sparse">
-  <rect width="720" height="250" fill="#fffcf5"/>
+def fig_rewire() -> str:
+    return """
+<svg viewBox="0 0 780 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Watts-Strogatz rewiring">
+  <rect width="780" height="220" fill="#fffcf5"/>
   <g font-family="Manrope,sans-serif">
-    <text x="360" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">块稀疏：按 block 决定整块是否参与（利于 GPU 块矩阵核）</text>
-    <text x="170" y="55" text-anchor="middle" font-size="12" fill="#5a6a62">token 级稀疏（散点，难加速）</text>
-    <g transform="translate(60,70)">{messy}</g>
-    <text x="520" y="55" text-anchor="middle" font-size="12" fill="#5a6a62">block 级稀疏（整块 GEMM）</text>
-    <g transform="translate(430,70)">{"".join(blocks)}</g>
-    <text x="360" y="235" text-anchor="middle" font-size="12" fill="#7d8c84">BigBird 工程实现：随机 / 窗口 / 全局都落在块掩码上</text>
+    <text x="390" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Fig.1 教学重绘：环格子随机重连（p 从小到大）</text>
+    <!-- p=0 -->
+    <text x="130" y="52" text-anchor="middle" font-size="12" font-weight="700" fill="#0f6e56">p = 0 规则</text>
+    <circle cx="130" cy="120" r="48" fill="none" stroke="#d8d0c0" stroke-width="2"/>
+    <g fill="#0f6e56">
+      <circle cx="130" cy="72" r="7"/><circle cx="178" cy="100" r="7"/><circle cx="162" cy="155" r="7"/>
+      <circle cx="98" cy="155" r="7"/><circle cx="82" cy="100" r="7"/><circle cx="130" cy="168" r="0"/>
+    </g>
+    <path d="M130 79 L178 100 L162 148 L98 148 L82 100 Z" fill="none" stroke="#0f6e56" stroke-width="2"/>
+    <path d="M130 79 L162 148 M178 100 L98 148 M82 100 L130 79" fill="none" stroke="#0f6e56" stroke-width="1.2" opacity=".55"/>
+    <!-- p mid -->
+    <text x="390" y="52" text-anchor="middle" font-size="12" font-weight="700" fill="#1f4e79">0 &lt; p &lt; 1 小世界</text>
+    <circle cx="390" cy="120" r="48" fill="none" stroke="#d8d0c0" stroke-width="2"/>
+    <g fill="#0f6e56">
+      <circle cx="390" cy="72" r="7"/><circle cx="438" cy="100" r="7"/><circle cx="422" cy="155" r="7"/>
+      <circle cx="358" cy="155" r="7"/><circle cx="342" cy="100" r="7"/>
+    </g>
+    <path d="M390 79 L438 100 L422 148 L358 148 L342 100 Z" fill="none" stroke="#0f6e56" stroke-width="2"/>
+    <path d="M390 79 Q430 40 438 100" fill="none" stroke="#1f4e79" stroke-width="2.5" stroke-dasharray="5 3"/>
+    <path d="M342 100 Q300 160 422 148" fill="none" stroke="#1f4e79" stroke-width="2" stroke-dasharray="5 3"/>
+    <!-- p=1 -->
+    <text x="650" y="52" text-anchor="middle" font-size="12" font-weight="700" fill="#b85c38">p = 1 随机</text>
+    <circle cx="650" cy="120" r="48" fill="none" stroke="#d8d0c0" stroke-width="2"/>
+    <g fill="#b85c38">
+      <circle cx="650" cy="72" r="7"/><circle cx="698" cy="100" r="7"/><circle cx="682" cy="155" r="7"/>
+      <circle cx="618" cy="155" r="7"/><circle cx="602" cy="100" r="7"/>
+    </g>
+    <path d="M650 79 L682 155 M698 100 L618 155 M602 100 L682 155 M650 79 L618 155 M698 100 L602 100"
+          fill="none" stroke="#b85c38" stroke-width="2"/>
+    <text x="390" y="205" text-anchor="middle" font-size="12" fill="#7d8c84">绿=局部边 · 蓝虚线=捷径 · 橙=高度随机化后的长程连接</text>
+  </g>
+</svg>
+"""
+
+
+def fig_lc() -> str:
+    return """
+<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="L and C vs p">
+  <rect width="760" height="260" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="380" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Fig.2 示意：L(p) 先陡降，C(p) 后下降 → 中间小世界带</text>
+    <!-- axes -->
+    <line x1="80" y1="210" x2="700" y2="210" stroke="#5a6a62" stroke-width="1.5"/>
+    <line x1="80" y1="210" x2="80" y2="50" stroke="#5a6a62" stroke-width="1.5"/>
+    <text x="390" y="245" text-anchor="middle" font-size="12" fill="#5a6a62">p（对数轴示意）→</text>
+    <text x="40" y="130" text-anchor="middle" font-size="12" fill="#5a6a62" transform="rotate(-90 40 130)">归一化 L,C</text>
+    <!-- L curve -->
+    <path d="M90 70 C140 72, 180 75, 220 140 S320 195, 420 200 S600 205, 680 206"
+          fill="none" stroke="#1f4e79" stroke-width="3"/>
+    <!-- C curve -->
+    <path d="M90 78 C200 78, 280 80, 360 95 S520 150, 620 190 S680 200, 690 202"
+          fill="none" stroke="#0f6e56" stroke-width="3"/>
+    <!-- small-world band -->
+    <rect x="210" y="55" width="220" height="145" fill="#1f4e79" opacity="0.06" rx="8"/>
+    <text x="320" y="48" text-anchor="middle" font-size="12" font-weight="700" fill="#1f4e79">小世界区间</text>
+    <text x="320" y="175" text-anchor="middle" font-size="11" fill="#5a6a62">L≈L_random · C≫C_random</text>
+    <g font-size="12">
+      <rect x="560" y="60" width="14" height="4" fill="#1f4e79"/><text x="580" y="65" fill="#1f4e79">L(p)/L(0)</text>
+      <rect x="560" y="82" width="14" height="4" fill="#0f6e56"/><text x="580" y="87" fill="#0f6e56">C(p)/C(0)</text>
+    </g>
+    <text x="100" y="225" font-size="11" fill="#7d8c84">p→0</text>
+    <text x="660" y="225" font-size="11" fill="#7d8c84">p→1</text>
   </g>
 </svg>
 """
 
 
 FIGURES = {
-    "pattern": (
-        "教学重绘 · 对应论文 Fig. 1（白色=不算注意力）",
-        fig_four(),
-    ),
-    "block": (
-        "教学示意 · 块稀疏 vs token 级散点",
-        fig_block(),
-    ),
+    "rewire": ("教学重绘 · 对应论文 Fig. 1 随机重连程序", fig_rewire()),
+    "lc_curve": ("教学示意 · 对应论文 Fig. 2：L 先降、C 后降", fig_lc()),
 }
 
 
@@ -201,7 +158,6 @@ box-shadow:0 1px 0 rgba(255,255,255,.6) inset;transition:border-color .2s,transf
 .pidx{font-family:var(--sans);font-size:11px;color:var(--faint);float:right;margin-left:8px}
 .summary{font-family:var(--sans);font-size:13px;color:#0b3d30;background:var(--accent-soft);
 border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 10px 10px 0;margin:0 0 12px;line-height:1.55}
-.summary b{font-weight:700}
 .lang{font-size:15.5px;line-height:1.8}
 .lang .en{color:#24312c}
 .lang .zh{color:#1c2420}
@@ -252,7 +208,7 @@ def build() -> str:
 <html lang="zh-CN"><head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>BigBird 逐段精读 · 原文 / 译文 / 段末小结</title>
+<title>Watts–Strogatz 逐段精读 · 小世界网络</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
@@ -260,8 +216,8 @@ def build() -> str:
 <body class="mode-both"><div class="app">
 <aside class="side">
 <div class="brand">LLM Learning · Paper Reader</div>
-<h1>BigBird 逐段精读</h1>
-<div class="meta">Zaheer et al. · arXiv:2007.14062<br/>每段 = 小结 + Original + 译文<br/>Longformer 专页未改动</div>
+<h1>Watts–Strogatz 逐段精读</h1>
+<div class="meta">Nature 393, 440–442 (1998)<br/>每段 = 小结 + Original + 译文<br/>BigBird 随机边的图论前驱</div>
 <nav id="toc">"""
     )
     for sec in SECTIONS:
@@ -283,24 +239,22 @@ def build() -> str:
 </div>
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
-<a class="btn" href="./example.html">全流程：设计→硬件 →</a>
-<a class="btn" href="../watts-strogatz/index.html">Watts–Strogatz →</a>
-<a class="btn" href="../longformer/index.html">Longformer →</a>
-<a class="btn" href="../../topics/sparse-attention/index.html">稀疏专题 →</a>
+<a class="btn" href="../bigbird/example.html">BigBird 全流程 →</a>
+<a class="btn" href="../bigbird/index.html">BigBird 精读 →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">
-<h2>Big Bird: Transformers for Longer Sequences</h2>
-<p>浅色逐段精读：严格按论文脉络拆段，段首给中文小结，段内左右对照 Original / 译文。核心记住三件套——全局 g、窗口 w、随机 r——以及「含星形全局结构 ⇒ 万能近似」。</p>
+<h2>Collective dynamics of ‘small-world’ networks</h2>
+<p>浅色逐段精读 Watts &amp; Strogatz（1998）。抓住两件事：<strong>L 因少量捷径陡降</strong>，而<strong>C 在小 p 下几乎不动</strong>——于是出现「高聚类 + 短路径」的小世界带。末节桥接到 BigBird：窗口≈局部边，随机注意力≈捷径，但工程上选择「不删窗、只加边」。</p>
 <div class="chips">
-<span class="chip">图案：<em>global + window + random</em></span>
-<span class="chip">复杂度：<em>O(n)</em></span>
-<span class="chip">理论：<em>万能近似 + 图灵完备</em></span>
-<span class="chip">工程：<em>块稀疏</em></span>
-<span class="chip">长度：<em>~8×</em></span>
+<span class="chip">旋钮：<em>p 重连概率</em></span>
+<span class="chip">全局：<em>L(p)</em></span>
+<span class="chip">局部：<em>C(p)</em></span>
+<span class="chip">机制：<em>short cuts</em></span>
+<span class="chip">下游：<em>BigBird 随机边</em></span>
 </div>
 </section>
-<p class="note">英文尽量贴近原文；PDF 断行/连字处做了可读性规范化。Table / Figure 数字以 <a href="./paper.pdf">paper.pdf</a> 为准。段末小结是学习用导读，不是论文原文。</p>
+<p class="note">英文贴近 Nature 原文；图注/表 1 做了可读性整理。段末小结为学习导读。公式与表号以 <a href="./paper.pdf">paper.pdf</a> 为准。</p>
 """
     )
 
@@ -353,17 +307,17 @@ def build() -> str:
 
     parts.append('<section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">\n')
     for r in REFS:
-        lv = "must" if r["level"] == "本篇" else ("imp" if r["level"] in ("对照", "近亲") else "")
+        lv = "must" if r["level"] == "本篇" else ("imp" if r["level"] in ("对照", "前驱") else "")
         links = f'<a href="{esc(r["url"])}" target="_blank" rel="noopener">打开 →</a>'
         if r.get("ext"):
-            links += f' · <a href="{esc(r["ext"])}" target="_blank" rel="noopener">arXiv</a>'
+            links += f' · <a href="{esc(r["ext"])}" target="_blank" rel="noopener">外链</a>'
         parts.append(
             f'<div class="ref" data-blob="{esc((r["title"] + " " + r["why"]).lower())}">'
             f'<span class="lv {lv}">{esc(r["level"])}</span>'
             f"<h4>{esc(r['title'])}</h4><p>{esc(r['why'])}</p>{links}</div>\n"
         )
     parts.append(
-        '</div><p class="note" style="margin-top:28px">本页为学习用逐段精读整理；公式、表号与实验数字以 PDF 原文为准。示意图为教学重绘。</p>'
+        '</div><p class="note" style="margin-top:28px">本页为学习用逐段精读；数字与图以 PDF 为准。示意图为教学重绘。</p>'
         "</section></main></div>\n"
     )
 
@@ -405,6 +359,7 @@ if(e.key==='/'){{e.preventDefault();q.focus();}};}};
 
 
 if __name__ == "__main__":
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(build(), encoding="utf-8")
     n = sum(len(s["paras"]) for s in SECTIONS)
     print(f"Wrote {OUT} ({n} paragraphs, {OUT.stat().st_size} bytes)")

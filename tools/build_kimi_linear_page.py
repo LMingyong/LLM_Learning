@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build fine-grained BigBird study page: original + zh + paragraph summary."""
+"""Build fine-grained Kimi Linear / KDA study page."""
 
 from __future__ import annotations
 
@@ -7,133 +7,105 @@ import html
 import json
 from pathlib import Path
 
-from bigbird_paragraphs import GLOSSARY, REFS, SECTIONS
+from kimi_linear_paragraphs import GLOSSARY, REFS, SECTIONS
 
-OUT = Path(__file__).resolve().parents[1] / "papers/bigbird/index.html"
+OUT = Path(__file__).resolve().parents[1] / "papers/kimi-linear-delta-attention/index.html"
 
 
 def esc(s: str) -> str:
     return html.escape(s)
 
 
-def pattern_cells(kind: str, n: int = 14, cell: int = 11) -> tuple[str, int]:
-    gap = 1
-    size = n * (cell + gap)
-    rects = []
-    rnd = set()
-    for i in range(n):
-        for k in range(2):
-            j = (i * 5 + k * 7 + 3) % n
-            if j != i:
-                rnd.add((i, j))
-                rnd.add((j, i))
-    globals_ = {0, 1}
-    for i in range(n):
-        for j in range(n):
-            x = j * (cell + gap)
-            y = i * (cell + gap)
-            dist = abs(i - j)
-            color = "#e7e1d4"
-            on = False
-            if kind == "random":
-                on = (i, j) in rnd
-                color = "#1f4e79" if on else color
-            elif kind == "window":
-                on = dist <= 2
-                color = "#0f6e56" if on else color
-            elif kind == "global":
-                on = i in globals_ or j in globals_
-                color = "#b85c38" if on else color
-            elif kind == "bigbird":
-                on = dist <= 2 or i in globals_ or j in globals_ or (i, j) in rnd
-                if i in globals_ or j in globals_:
-                    color = "#b85c38"
-                elif (i, j) in rnd and dist > 2:
-                    color = "#1f4e79"
-                elif dist <= 2:
-                    color = "#0f6e56"
-            op = "0.92" if on else "0.5"
-            rects.append(
-                f'<rect x="{x}" y="{y}" width="{cell}" height="{cell}" rx="2" '
-                f'fill="{color}" opacity="{op}"/>'
-            )
-    return "".join(rects), size
-
-
-def fig_four() -> str:
-    items = [
-        ("random", "(a) Random"),
-        ("window", "(b) Window"),
-        ("global", "(c) Global"),
-        ("bigbird", "(d) BIGBIRD"),
-    ]
-    parts = [
-        '<svg viewBox="0 0 760 230" xmlns="http://www.w3.org/2000/svg" role="img" '
-        'aria-label="BigBird Figure 1 building blocks">'
-        '<rect width="760" height="230" fill="#fffcf5"/>'
-    ]
-    x = 22
-    for kind, title in items:
-        g, size = pattern_cells(kind)
-        parts.append(f'<g transform="translate({x},40)">{g}</g>')
-        parts.append(
-            f'<text x="{x + size/2}" y="28" text-anchor="middle" '
-            f'font-family="Manrope,sans-serif" font-size="12" font-weight="700" '
-            f'fill="#1c2420">{title}</text>'
-        )
-        x += size + 30
-    parts.append(
-        '<g transform="translate(70,210)" font-family="Manrope,sans-serif" font-size="11" fill="#5a6a62">'
-        '<rect width="10" height="10" rx="2" fill="#0f6e56"/><text x="14" y="9">局部窗口</text>'
-        '<rect x="90" width="10" height="10" rx="2" fill="#b85c38"/><text x="104" y="9">全局</text>'
-        '<rect x="160" width="10" height="10" rx="2" fill="#1f4e79"/><text x="174" y="9">随机边</text>'
-        '<rect x="250" width="10" height="10" rx="2" fill="#e7e1d4"/><text x="264" y="9">不计算</text>'
-        "</g></svg>"
-    )
-    return "\n".join(parts)
-
-
-def fig_block() -> str:
-    messy = "".join(
-        f'<rect x="{(j % 12) * 14}" y="{(j // 12) * 14}" width="12" height="12" rx="2" '
-        f'fill="{"#1f4e79" if (j * 3 + 1) % 5 == 0 else "#e7e1d4"}"/>'
-        for j in range(48)
-    )
-    blocks = []
-    for bi in range(4):
-        for bj in range(4):
-            on = bi == bj or bi == 0 or bj == 0 or (bi + bj) % 3 == 0
-            color = "#0f6e56" if bi == bj else ("#b85c38" if bi == 0 or bj == 0 else "#1f4e79")
-            if not on:
-                color = "#e7e1d4"
-            blocks.append(
-                f'<rect x="{bj * 42}" y="{bi * 42}" width="38" height="38" rx="4" '
-                f'fill="{color}" opacity="{"0.9" if on else "0.45"}"/>'
-            )
-    return f"""
-<svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="block sparse">
-  <rect width="720" height="250" fill="#fffcf5"/>
+def fig_pipeline() -> str:
+    return """
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="lineage">
+  <rect width="820" height="200" fill="#fffcf5"/>
   <g font-family="Manrope,sans-serif">
-    <text x="360" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">块稀疏：按 block 决定整块是否参与（利于 GPU 块矩阵核）</text>
-    <text x="170" y="55" text-anchor="middle" font-size="12" fill="#5a6a62">token 级稀疏（散点，难加速）</text>
-    <g transform="translate(60,70)">{messy}</g>
-    <text x="520" y="55" text-anchor="middle" font-size="12" fill="#5a6a62">block 级稀疏（整块 GEMM）</text>
-    <g transform="translate(430,70)">{"".join(blocks)}</g>
-    <text x="360" y="235" text-anchor="middle" font-size="12" fill="#7d8c84">BigBird 工程实现：随机 / 窗口 / 全局都落在块掩码上</text>
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">谱系：Linear → DeltaNet → GDN → KDA</text>
+    <rect x="30" y="60" width="160" height="70" rx="12" fill="#efe9dc" stroke="#5a6a62"/>
+    <text x="110" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Linear Attn</text>
+    <text x="110" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">S+=kvᵀ · 只加不改</text>
+    <path d="M195 95 H225" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="230" y="60" width="160" height="70" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="310" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#1f4e79">DeltaNet</text>
+    <text x="310" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">delta 擦写纠错</text>
+    <path d="M395 95 H425" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="430" y="60" width="160" height="70" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="510" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">GDN</text>
+    <text x="510" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">标量门 α</text>
+    <path d="M595 95 H625" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="630" y="60" width="160" height="70" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="710" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#b85c38">KDA</text>
+    <text x="710" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">Diag(α) 通道门</text>
+    <text x="410" y="170" text-anchor="middle" font-size="12" fill="#7d8c84">每一步都保留前一步能力，只把「遗忘」做得更细</text>
+  </g>
+</svg>
+"""
+
+
+def fig_kda_steps() -> str:
+    return """
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KDA four steps">
+  <rect width="820" height="210" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">KDA 逐步递推（与 recurrent_kda 对齐）</text>
+    <rect x="20" y="55" width="170" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="105" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">1. 遗忘</text>
+    <text x="105" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">S ← Diag(e^{g}) S</text>
+    <text x="105" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">逐通道 α</text>
+    <rect x="220" y="55" width="170" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="305" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">2. 预测</text>
+    <text x="305" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v̂ ← kᵀ S</text>
+    <text x="305" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">按地址读出</text>
+    <rect x="420" y="55" width="180" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="510" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 纠错写入</text>
+    <text x="510" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">S += β k (v−v̂)ᵀ</text>
+    <text x="510" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">delta rule</text>
+    <rect x="630" y="55" width="170" height="90" rx="12" fill="#1c2420"/>
+    <text x="715" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">4. 查询</text>
+    <text x="715" y="108" text-anchor="middle" font-size="12" fill="#cfd8d3">o ← (q/√d)ᵀ S</text>
+    <text x="715" y="128" text-anchor="middle" font-size="11" fill="#9bb4ae">固定大小状态</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">状态 S ∈ R^{d×d}/head，不随序列长度增长</text>
+  </g>
+</svg>
+"""
+
+
+def fig_hybrid() -> str:
+    boxes = []
+    labels = ["KDA", "KDA", "KDA", "MLA", "KDA", "KDA", "KDA", "MLA"]
+    x = 40
+    for i, lab in enumerate(labels):
+        if lab == "KDA":
+            fill, stroke, tc = "#d8efe6", "#0f6e56", "#0f6e56"
+        else:
+            fill, stroke, tc = "#f3e0d6", "#b85c38", "#b85c38"
+        boxes.append(
+            f'<rect x="{x}" y="70" width="80" height="56" rx="10" fill="{fill}" stroke="{stroke}"/>'
+            f'<text x="{x+40}" y="103" text-anchor="middle" font-size="13" font-weight="700" fill="{tc}">{lab}</text>'
+        )
+        if i < len(labels) - 1:
+            boxes.append(
+                f'<path d="M{x+82} 98 H{x+95}" stroke="#5a6a62" stroke-width="2"/>'
+            )
+        x += 95
+    return f"""
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="hybrid 3:1">
+  <rect width="820" height="200" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">层间混合 3:1 · 每层后接 MoE FFN（示意）</text>
+    {''.join(boxes)}
+    <text x="410" y="165" text-anchor="middle" font-size="12" fill="#5a6a62">绿 = KDA 线性层（压 cache） · 橙 = MLA 全注意力（补检索） · MLA 用 NoPE</text>
+    <text x="410" y="188" text-anchor="middle" font-size="12" fill="#7d8c84">长生成时 KV cache 约只剩全注意力层的 1/4</text>
   </g>
 </svg>
 """
 
 
 FIGURES = {
-    "pattern": (
-        "教学重绘 · 对应论文 Fig. 1（白色=不算注意力）",
-        fig_four(),
-    ),
-    "block": (
-        "教学示意 · 块稀疏 vs token 级散点",
-        fig_block(),
-    ),
+    "pipeline": ("教学示意 · 从线性注意力到 KDA", fig_pipeline()),
+    "kda_steps": ("教学示意 · 与 src/delta_attention/recurrent.py 对齐", fig_kda_steps()),
+    "hybrid": ("教学示意 · 对应论文 Fig.3 的 3:1 交织", fig_hybrid()),
 }
 
 
@@ -185,7 +157,7 @@ color:var(--ink);padding:9px 14px;font-family:var(--sans);font-size:13px;outline
 .hero{border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:22px;
 background:linear-gradient(135deg,rgba(15,110,86,.08),transparent 45%),var(--paper);
 box-shadow:var(--shadow)}
-.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:28px}
+.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:26px}
 .hero p{margin:0;color:var(--muted);font-family:var(--sans);font-size:14px;line-height:1.65}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .chip{font-family:var(--sans);font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
@@ -195,13 +167,12 @@ box-shadow:var(--shadow)}
 border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:10px}
 .section h3 span{font-size:12px;color:var(--faint);font-weight:500}
 .card{border:1px solid var(--line);background:var(--paper);border-radius:16px;padding:14px 16px;margin:0 0 12px;
-box-shadow:0 1px 0 rgba(255,255,255,.6) inset;transition:border-color .2s,transform .2s,box-shadow .2s}
+transition:border-color .2s,transform .2s,box-shadow .2s}
 .card:hover{border-color:rgba(15,110,86,.35);transform:translateY(-1px);box-shadow:var(--shadow)}
 .card.active{border-color:var(--accent);box-shadow:0 0 0 1px rgba(15,110,86,.2),var(--shadow)}
 .pidx{font-family:var(--sans);font-size:11px;color:var(--faint);float:right;margin-left:8px}
 .summary{font-family:var(--sans);font-size:13px;color:#0b3d30;background:var(--accent-soft);
 border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 10px 10px 0;margin:0 0 12px;line-height:1.55}
-.summary b{font-weight:700}
 .lang{font-size:15.5px;line-height:1.8}
 .lang .en{color:#24312c}
 .lang .zh{color:#1c2420}
@@ -252,7 +223,7 @@ def build() -> str:
 <html lang="zh-CN"><head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>BigBird 逐段精读 · 原文 / 译文 / 段末小结</title>
+<title>Kimi Linear / KDA 逐段精读 · Delta Attention</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
@@ -260,8 +231,8 @@ def build() -> str:
 <body class="mode-both"><div class="app">
 <aside class="side">
 <div class="brand">LLM Learning · Paper Reader</div>
-<h1>BigBird 逐段精读</h1>
-<div class="meta">Zaheer et al. · arXiv:2007.14062<br/>每段 = 小结 + Original + 译文<br/>Longformer 专页未改动</div>
+<h1>Kimi Linear / KDA</h1>
+<div class="meta">arXiv:2510.26692<br/>每段 = 小结 + Original + 译文<br/>对照 src/delta_attention</div>
 <nav id="toc">"""
     )
     for sec in SECTIONS:
@@ -283,24 +254,22 @@ def build() -> str:
 </div>
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
-<a class="btn" href="./example.html">全流程：设计→硬件 →</a>
-<a class="btn" href="../watts-strogatz/index.html">Watts–Strogatz →</a>
-<a class="btn" href="../longformer/index.html">Longformer →</a>
-<a class="btn" href="../../topics/sparse-attention/index.html">稀疏专题 →</a>
+<a class="btn" href="./notes.md">公式笔记 →</a>
+<a class="btn" href="../../examples/delta_attention_demo.py">demo.py →</a>
+<a class="btn" href="../attention-residuals/index.html">AttnRes →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">
-<h2>Big Bird: Transformers for Longer Sequences</h2>
-<p>浅色逐段精读：严格按论文脉络拆段，段首给中文小结，段内左右对照 Original / 译文。核心记住三件套——全局 g、窗口 w、随机 r——以及「含星形全局结构 ⇒ 万能近似」。</p>
+<h2>Kimi Linear · Kimi Delta Attention</h2>
+<p>仓库里原先已有 PDF、粗笔记与教学代码，但缺少逐段精读页。本页按 BigBird 同款精细度整理：从 Linear→DeltaNet→GDN→KDA 谱系，到式 (1) 四步递推、3:1 混合与实验数字，并桥接到 <code>src/delta_attention</code>。</p>
 <div class="chips">
-<span class="chip">图案：<em>global + window + random</em></span>
-<span class="chip">复杂度：<em>O(n)</em></span>
-<span class="chip">理论：<em>万能近似 + 图灵完备</em></span>
-<span class="chip">工程：<em>块稀疏</em></span>
-<span class="chip">长度：<em>~8×</em></span>
+<span class="chip">核心：<em>KDA = GDN + Diag(α)</em></span>
+<span class="chip">架构：<em>KDA:MLA = 3:1</em></span>
+<span class="chip">收益：<em>−75% cache · ~6× 解码</em></span>
+<span class="chip">代码：<em>recurrent_kda</em></span>
 </div>
 </section>
-<p class="note">英文尽量贴近原文；PDF 断行/连字处做了可读性规范化。Table / Figure 数字以 <a href="./paper.pdf">paper.pdf</a> 为准。段末小结是学习用导读，不是论文原文。</p>
+<p class="note">英文贴近技术报告；分块 WY/UT 细节以 PDF §3.1 为准。段末小结是学习导读。建议先读本页式 (1)，再打开 <a href="./notes.md">notes.md</a> 与 <a href="../../src/delta_attention/recurrent.py">recurrent.py</a>。</p>
 """
     )
 
@@ -353,17 +322,17 @@ def build() -> str:
 
     parts.append('<section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">\n')
     for r in REFS:
-        lv = "must" if r["level"] == "本篇" else ("imp" if r["level"] in ("对照", "近亲") else "")
+        lv = "must" if r["level"] == "本篇" else ("imp" if r["level"] in ("代码", "前驱", "笔记") else "")
         links = f'<a href="{esc(r["url"])}" target="_blank" rel="noopener">打开 →</a>'
         if r.get("ext"):
-            links += f' · <a href="{esc(r["ext"])}" target="_blank" rel="noopener">arXiv</a>'
+            links += f' · <a href="{esc(r["ext"])}" target="_blank" rel="noopener">外链</a>'
         parts.append(
             f'<div class="ref" data-blob="{esc((r["title"] + " " + r["why"]).lower())}">'
             f'<span class="lv {lv}">{esc(r["level"])}</span>'
             f"<h4>{esc(r['title'])}</h4><p>{esc(r['why'])}</p>{links}</div>\n"
         )
     parts.append(
-        '</div><p class="note" style="margin-top:28px">本页为学习用逐段精读整理；公式、表号与实验数字以 PDF 原文为准。示意图为教学重绘。</p>'
+        '</div><p class="note" style="margin-top:28px">本页为学习用逐段精读；数字与公式以 PDF 为准。示意图为教学重绘。</p>'
         "</section></main></div>\n"
     )
 
@@ -405,6 +374,7 @@ if(e.key==='/'){{e.preventDefault();q.focus();}};}};
 
 
 if __name__ == "__main__":
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(build(), encoding="utf-8")
     n = sum(len(s["paras"]) for s in SECTIONS)
     print(f"Wrote {OUT} ({n} paragraphs, {OUT.stat().st_size} bytes)")
