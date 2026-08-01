@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Watts–Strogatz 逐段精读 · 小世界网络</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#f6f3ec; --bg2:#efe9dc; --paper:#fffcf5; --ink:#1c2420; --muted:#5a6a62;
+  --faint:#7d8c84; --line:#d8d0c0; --accent:#0f6e56; --accent-soft:#d8efe6;
+  --warm:#b85c38; --warm-soft:#f3e0d6; --blue:#1f4e79; --blue-soft:#dce8f3;
+  --shadow:0 12px 40px rgba(40,50,40,.08);
+  --serif:"Literata",Georgia,"Noto Serif SC",serif;
+  --sans:"Manrope",system-ui,"Noto Sans SC",sans-serif;
+  --mono:ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.75;
+background:radial-gradient(900px 500px at 0% 0%,rgba(15,110,86,.07),transparent 55%),
+radial-gradient(700px 400px at 100% 8%,rgba(184,92,56,.06),transparent 50%),
+linear-gradient(180deg,var(--bg),var(--bg2));min-height:100vh}
+a{color:var(--accent);text-underline-offset:3px}
+a:hover{color:var(--warm)}
+.app{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow:auto;padding:22px 16px 28px;
+border-right:1px solid var(--line);background:rgba(255,252,245,.85);backdrop-filter:blur(10px)}
+.brand{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--accent);letter-spacing:.04em;margin:0 0 8px}
+.side h1{font-family:var(--sans);font-size:20px;line-height:1.25;margin:0 0 8px}
+.side .meta{font-family:var(--sans);font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+.side nav a{display:block;padding:8px 10px;border-radius:10px;color:var(--muted);
+font-family:var(--sans);font-size:13px;text-decoration:none;margin-bottom:2px}
+.side nav a:hover,.side nav a.active{background:var(--accent-soft);color:var(--ink)}
+.side .hint{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:12px;
+font-family:var(--sans);font-size:12px;color:var(--faint);line-height:1.55;background:var(--paper)}
+.main{padding:22px 28px 80px;max-width:1080px}
+.topbar{position:sticky;top:0;z-index:20;margin:0 -28px 22px;padding:14px 28px;
+display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+background:rgba(246,243,236,.9);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.seg{display:inline-flex;padding:4px;border-radius:999px;background:var(--paper);border:1px solid var(--line)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;
+font-family:var(--sans);font-size:12px;padding:8px 12px;border-radius:999px}
+.seg button.on{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.btn{font-family:var(--sans);font-size:12px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);border-radius:999px;padding:8px 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.search{flex:1;min-width:180px}
+.search input{width:100%;border-radius:999px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);padding:9px 14px;font-family:var(--sans);font-size:13px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.hero{border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:22px;
+background:linear-gradient(135deg,rgba(15,110,86,.08),transparent 45%),var(--paper);
+box-shadow:var(--shadow)}
+.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:28px}
+.hero p{margin:0;color:var(--muted);font-family:var(--sans);font-size:14px;line-height:1.65}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-family:var(--sans);font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.chip em{color:var(--warm);font-style:normal;font-weight:600}
+.section{margin:28px 0 10px;scroll-margin-top:78px}
+.section h3{font-family:var(--sans);font-size:18px;margin:0 0 12px;padding-bottom:8px;
+border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:10px}
+.section h3 span{font-size:12px;color:var(--faint);font-weight:500}
+.card{border:1px solid var(--line);background:var(--paper);border-radius:16px;padding:14px 16px;margin:0 0 12px;
+box-shadow:0 1px 0 rgba(255,255,255,.6) inset;transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover{border-color:rgba(15,110,86,.35);transform:translateY(-1px);box-shadow:var(--shadow)}
+.card.active{border-color:var(--accent);box-shadow:0 0 0 1px rgba(15,110,86,.2),var(--shadow)}
+.pidx{font-family:var(--sans);font-size:11px;color:var(--faint);float:right;margin-left:8px}
+.summary{font-family:var(--sans);font-size:13px;color:#0b3d30;background:var(--accent-soft);
+border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 10px 10px 0;margin:0 0 12px;line-height:1.55}
+.lang{font-size:15.5px;line-height:1.8}
+.lang .en{color:#24312c}
+.lang .zh{color:#1c2420}
+.lang .label{font-family:var(--sans);font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+body.mode-zh .en-block,body.mode-en .zh-block{display:none}
+body.mode-zh .pair,body.mode-en .pair{grid-template-columns:1fr}
+.terms{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;clear:both}
+.term{font-family:var(--sans);font-size:11px;padding:4px 8px;border-radius:999px;cursor:pointer;
+background:var(--warm-soft);color:#6a2f18;border:1px solid rgba(184,92,56,.25)}
+.term:hover{background:#efd2c2}
+.figure{margin:12px 0 4px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fffcf5}
+.figure .cap{font-family:var(--sans);font-size:12px;color:var(--faint);padding:8px 12px;border-top:1px solid var(--line)}
+.figure svg{display:block;width:100%;height:auto}
+.hidden-by-search{display:none !important}
+.drawer{position:fixed;top:0;right:0;width:min(420px,100%);height:100vh;overflow:auto;z-index:40;
+background:var(--paper);border-left:1px solid var(--line);
+transform:translateX(100%);transition:transform .28s ease;padding:18px 16px 40px;box-shadow:var(--shadow)}
+.drawer.open{transform:none}
+.drawer h2{font-family:var(--sans);margin:8px 0 6px;font-size:18px}
+.gitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff}
+.gitem b{font-family:var(--sans);color:var(--warm)}
+.gitem p{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.55}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ref{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--paper);
+display:flex;flex-direction:column;gap:8px;min-height:140px}
+.ref .lv{font-family:var(--sans);font-size:11px;align-self:start;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.ref .lv.must{color:#fff;background:var(--accent);border-color:transparent;font-weight:700}
+.ref .lv.imp{color:#fff;background:var(--warm);border-color:transparent;font-weight:700}
+.ref h4{margin:0;font-family:var(--sans);font-size:15px;line-height:1.35}
+.ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint);background:#fff}
+.note{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .pair{grid-template-columns:1fr}
+  .main{padding:16px 14px 70px}
+  .topbar{margin:0 -14px 16px;padding:12px 14px}
+}
+</style></head>
+<body class="mode-both"><div class="app">
+<aside class="side">
+<div class="brand">LLM Learning · Paper Reader</div>
+<h1>Watts–Strogatz 逐段精读</h1>
+<div class="meta">Nature 393, 440–442 (1998)<br/>每段 = 小结 + Original + 译文<br/>BigBird 随机边的图论前驱</div>
+<nav id="toc"><a href="#opening">开篇动机：介于规则与随机之间</a>
+<a href="#construction">模型构造：随机重连程序（Fig. 1）</a>
+<a href="#metrics">两个度量：L(p) 与 C(p)</a>
+<a href="#smallworld">小世界区间：捷径如何压低 L（Fig. 2）</a>
+<a href="#empirical">实证：演员网 / 电网 / C. elegans（Table 1）</a>
+<a href="#dynamics">动力学：疾病传播与其他系统（Fig. 3）</a>
+<a href="#closing">结语</a>
+<a href="#bigbird">桥接到 BigBird：注意力里的小世界</a>
+<a href="#glossary">名词重点解释</a>
+<a href="#refs">重点引用</a>
+</nav>
+<div class="hint">
+<div><span class="kbd">1</span>对照 <span class="kbd">2</span>译文 <span class="kbd">3</span>原文</div>
+<div style="margin-top:6px"><span class="kbd">J</span>/<span class="kbd">K</span>跳段 <span class="kbd">G</span>名词 <span class="kbd">/</span>搜索</div>
+</div></aside>
+<main class="main">
+<div class="topbar">
+<div class="seg" id="modeSeg">
+<button data-mode="both" class="on">对照</button>
+<button data-mode="zh">仅译文</button>
+<button data-mode="en">仅原文</button>
+</div>
+<button class="btn" id="btnGlossary">名词表</button>
+<a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+<a class="btn" href="../bigbird/example.html">BigBird 全流程 →</a>
+<a class="btn" href="../bigbird/index.html">BigBird 精读 →</a>
+<div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
+</div>
+<section class="hero">
+<h2>Collective dynamics of ‘small-world’ networks</h2>
+<p>浅色逐段精读 Watts &amp; Strogatz（1998）。抓住两件事：<strong>L 因少量捷径陡降</strong>，而<strong>C 在小 p 下几乎不动</strong>——于是出现「高聚类 + 短路径」的小世界带。末节桥接到 BigBird：窗口≈局部边，随机注意力≈捷径，但工程上选择「不删窗、只加边」。</p>
+<div class="chips">
+<span class="chip">旋钮：<em>p 重连概率</em></span>
+<span class="chip">全局：<em>L(p)</em></span>
+<span class="chip">局部：<em>C(p)</em></span>
+<span class="chip">机制：<em>short cuts</em></span>
+<span class="chip">下游：<em>BigBird 随机边</em></span>
+</div>
+</section>
+<p class="note">英文贴近 Nature 原文；图注/表 1 做了可读性整理。段末小结为学习导读。公式与表号以 <a href="./paper.pdf">paper.pdf</a> 为准。</p>
+<section class="section" id="opening"><h3>开篇动机：介于规则与随机之间 <span>6 段</span></h3>
+<article class="card para" data-idx="1" data-blob="networks of coupled dynamical systems have been used to model biological oscillators, josephson junction arrays, excitable media, neural networks, spatial games, genetic control networks and many other self-organizing systems. 耦合动力系统网络已被用来建模生物振荡器、约瑟夫森结阵列、可激发介质、神经网络、空间博弈、基因调控网络，以及许多其他自组织系统。 开场：网络耦合动力学早已是各领域的标准建模语言。 coupled dynamical systems">
+<span class="pidx">§1</span>
+<div class="summary"><b>小结</b> · 开场：网络耦合动力学早已是各领域的标准建模语言。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Networks of coupled dynamical systems have been used to model biological oscillators, Josephson junction arrays, excitable media, neural networks, spatial games, genetic control networks and many other self-organizing systems.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">耦合动力系统网络已被用来建模生物振荡器、约瑟夫森结阵列、可激发介质、神经网络、空间博弈、基因调控网络，以及许多其他自组织系统。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="coupled dynamical systems">coupled dynamical systems</span></div></article>
+<article class="card para" data-idx="2" data-blob="ordinarily, the connection topology is assumed to be either completely regular or completely random. but many biological, technological and social networks lie somewhere between these two extremes. 通常，连接拓扑被假定为要么完全规则，要么完全随机。但许多生物、技术与社会网络其实落在这两极之间。 痛点：真实世界既不是纯格子，也不是纯随机图。 regular lattice random graph">
+<span class="pidx">§2</span>
+<div class="summary"><b>小结</b> · 痛点：真实世界既不是纯格子，也不是纯随机图。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Ordinarily, the connection topology is assumed to be either completely regular or completely random. But many biological, technological and social networks lie somewhere between these two extremes.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">通常，连接拓扑被假定为要么完全规则，要么完全随机。但许多生物、技术与社会网络其实落在这两极之间。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="regular lattice">regular lattice</span><span class="term" data-term="random graph">random graph</span></div></article>
+<article class="card para" data-idx="3" data-blob="here we explore simple models of networks that can be tuned through this middle ground: regular networks ‘rewired’ to introduce increasing amounts of disorder. 本文探索可在这一中间地带连续调节的简单网络模型：对规则网络做「重连（rewire）」，以引入越来越多的无序。 方法预告：从规则环出发，用概率 p 随机重连。 rewiring p">
+<span class="pidx">§3</span>
+<div class="summary"><b>小结</b> · 方法预告：从规则环出发，用概率 p 随机重连。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Here we explore simple models of networks that can be tuned through this middle ground: regular networks ‘rewired’ to introduce increasing amounts of disorder.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本文探索可在这一中间地带连续调节的简单网络模型：对规则网络做「重连（rewire）」，以引入越来越多的无序。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="rewiring">rewiring</span><span class="term" data-term="p">p</span></div></article>
+<article class="card para" data-idx="4" data-blob="we find that these systems can be highly clustered, like regular lattices, yet have small characteristic path lengths, like random graphs. we call them ‘small-world’ networks, by analogy with the small-world phenomenon (popularly known as six degrees of separation). 我们发现：这些系统可以像规则格子一样高度聚类，同时又像随机图一样具有很短的特征路径长度。我们称之为「小世界」网络，类比于小世界现象（通俗说法即六度分隔）。 定义一句话：高聚类 c + 短平均路径 l = small-world。 small-world networks clustering coefficient characteristic path length">
+<span class="pidx">§4</span>
+<div class="summary"><b>小结</b> · 定义一句话：高聚类 C + 短平均路径 L = small-world。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We find that these systems can be highly clustered, like regular lattices, yet have small characteristic path lengths, like random graphs. We call them ‘small-world’ networks, by analogy with the small-world phenomenon (popularly known as six degrees of separation).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们发现：这些系统可以像规则格子一样高度聚类，同时又像随机图一样具有很短的特征路径长度。我们称之为「小世界」网络，类比于小世界现象（通俗说法即六度分隔）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="small-world networks">small-world networks</span><span class="term" data-term="clustering coefficient">clustering coefficient</span><span class="term" data-term="characteristic path length">characteristic path length</span></div></article>
+<article class="card para" data-idx="5" data-blob="the neural network of the worm caenorhabditis elegans, the power grid of the western united states, and the collaboration graph of film actors are shown to be small-world networks. 秀丽隐杆线虫（c. elegans）的神经网络、美国西部电网，以及电影演员合作图，都被证明是小世界网络。 三个实证例子：脑网络、电网、演员合作网。 c. elegans power grid film actors">
+<span class="pidx">§5</span>
+<div class="summary"><b>小结</b> · 三个实证例子：脑网络、电网、演员合作网。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The neural network of the worm Caenorhabditis elegans, the power grid of the western United States, and the collaboration graph of film actors are shown to be small-world networks.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">秀丽隐杆线虫（C. elegans）的神经网络、美国西部电网，以及电影演员合作图，都被证明是小世界网络。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="C. elegans">C. elegans</span><span class="term" data-term="power grid">power grid</span><span class="term" data-term="film actors">film actors</span></div></article>
+<article class="card para" data-idx="6" data-blob="models of dynamical systems with small-world coupling display enhanced signal-propagation speed, computational power, and synchronizability. in particular, infectious diseases spread more easily in small-world networks than in regular lattices. 具有小世界耦合的动力系统模型表现出更快的信号传播、更强的计算能力与更好的同步性。尤其是，传染病在小世界网络中比在规则格子上更容易传播。 动力学后果：传播更快、更易同步；疾病传播是主测试用例。 synchronizability">
+<span class="pidx">§6</span>
+<div class="summary"><b>小结</b> · 动力学后果：传播更快、更易同步；疾病传播是主测试用例。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Models of dynamical systems with small-world coupling display enhanced signal-propagation speed, computational power, and synchronizability. In particular, infectious diseases spread more easily in small-world networks than in regular lattices.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">具有小世界耦合的动力系统模型表现出更快的信号传播、更强的计算能力与更好的同步性。尤其是，传染病在小世界网络中比在规则格子上更容易传播。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="synchronizability">synchronizability</span></div></article>
+</section>
+<section class="section" id="construction"><h3>模型构造：随机重连程序（Fig. 1） <span>4 段</span></h3>
+<article class="card para" data-idx="7" data-blob="to interpolate between regular and random networks, we consider the following random rewiring procedure (fig. 1). starting from a ring lattice with n vertices and k edges per vertex, we rewire each edge at random with probability p. 为在规则网络与随机网络之间插值，我们考虑如下随机重连程序（图 1）。从具有 n 个顶点、每个顶点 k 条边的环格子出发，以概率 p 把每条边随机重连。 三参数：n（点数）、k（度数）、p（重连概率）。 ring lattice n k p">
+<span class="pidx">§7</span>
+<div class="summary"><b>小结</b> · 三参数：n（点数）、k（度数）、p（重连概率）。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">To interpolate between regular and random networks, we consider the following random rewiring procedure (Fig. 1). Starting from a ring lattice with n vertices and k edges per vertex, we rewire each edge at random with probability p.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">为在规则网络与随机网络之间插值，我们考虑如下随机重连程序（图 1）。从具有 n 个顶点、每个顶点 k 条边的环格子出发，以概率 p 把每条边随机重连。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 780 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Watts-Strogatz rewiring">
+  <rect width="780" height="220" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="390" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Fig.1 教学重绘：环格子随机重连（p 从小到大）</text>
+    <!-- p=0 -->
+    <text x="130" y="52" text-anchor="middle" font-size="12" font-weight="700" fill="#0f6e56">p = 0 规则</text>
+    <circle cx="130" cy="120" r="48" fill="none" stroke="#d8d0c0" stroke-width="2"/>
+    <g fill="#0f6e56">
+      <circle cx="130" cy="72" r="7"/><circle cx="178" cy="100" r="7"/><circle cx="162" cy="155" r="7"/>
+      <circle cx="98" cy="155" r="7"/><circle cx="82" cy="100" r="7"/><circle cx="130" cy="168" r="0"/>
+    </g>
+    <path d="M130 79 L178 100 L162 148 L98 148 L82 100 Z" fill="none" stroke="#0f6e56" stroke-width="2"/>
+    <path d="M130 79 L162 148 M178 100 L98 148 M82 100 L130 79" fill="none" stroke="#0f6e56" stroke-width="1.2" opacity=".55"/>
+    <!-- p mid -->
+    <text x="390" y="52" text-anchor="middle" font-size="12" font-weight="700" fill="#1f4e79">0 &lt; p &lt; 1 小世界</text>
+    <circle cx="390" cy="120" r="48" fill="none" stroke="#d8d0c0" stroke-width="2"/>
+    <g fill="#0f6e56">
+      <circle cx="390" cy="72" r="7"/><circle cx="438" cy="100" r="7"/><circle cx="422" cy="155" r="7"/>
+      <circle cx="358" cy="155" r="7"/><circle cx="342" cy="100" r="7"/>
+    </g>
+    <path d="M390 79 L438 100 L422 148 L358 148 L342 100 Z" fill="none" stroke="#0f6e56" stroke-width="2"/>
+    <path d="M390 79 Q430 40 438 100" fill="none" stroke="#1f4e79" stroke-width="2.5" stroke-dasharray="5 3"/>
+    <path d="M342 100 Q300 160 422 148" fill="none" stroke="#1f4e79" stroke-width="2" stroke-dasharray="5 3"/>
+    <!-- p=1 -->
+    <text x="650" y="52" text-anchor="middle" font-size="12" font-weight="700" fill="#b85c38">p = 1 随机</text>
+    <circle cx="650" cy="120" r="48" fill="none" stroke="#d8d0c0" stroke-width="2"/>
+    <g fill="#b85c38">
+      <circle cx="650" cy="72" r="7"/><circle cx="698" cy="100" r="7"/><circle cx="682" cy="155" r="7"/>
+      <circle cx="618" cy="155" r="7"/><circle cx="602" cy="100" r="7"/>
+    </g>
+    <path d="M650 79 L682 155 M698 100 L618 155 M602 100 L682 155 M650 79 L618 155 M698 100 L602 100"
+          fill="none" stroke="#b85c38" stroke-width="2"/>
+    <text x="390" y="205" text-anchor="middle" font-size="12" fill="#7d8c84">绿=局部边 · 蓝虚线=捷径 · 橙=高度随机化后的长程连接</text>
+  </g>
+</svg>
+<div class="cap">教学重绘 · 对应论文 Fig. 1 随机重连程序</div></div>
+<div class="terms"><span class="term" data-term="ring lattice">ring lattice</span><span class="term" data-term="n">n</span><span class="term" data-term="k">k</span><span class="term" data-term="p">p</span></div></article>
+<article class="card para" data-idx="8" data-blob="this construction allows us to ‘tune’ the graph between regularity (p = 0) and disorder (p = 1), and thereby to probe the intermediate region 0 &lt; p &lt; 1, about which little is known. 该构造使我们能在规则（p=0）与无序（p=1）之间「调谐」图，从而探测此前知之甚少的中间区域 0&lt;p&lt;1。 关键：p 是连续旋钮，重点在中间态，不在两极。 p">
+<span class="pidx">§8</span>
+<div class="summary"><b>小结</b> · 关键：p 是连续旋钮，重点在中间态，不在两极。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">This construction allows us to ‘tune’ the graph between regularity (p = 0) and disorder (p = 1), and thereby to probe the intermediate region 0 &lt; p &lt; 1, about which little is known.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">该构造使我们能在规则（p=0）与无序（p=1）之间「调谐」图，从而探测此前知之甚少的中间区域 0&lt;p&lt;1。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="p">p</span></div></article>
+<article class="card para" data-idx="9" data-blob="figure 1 procedure (caption, condensed): start with a ring of n vertices, each connected to its k nearest neighbours by undirected edges. choose a vertex and the edge that connects it to its nearest neighbour in a clockwise sense. with probability p, reconnect this edge to a vertex chosen uniformly at random over the entire ring (duplicate edges forbidden); otherwise leave the edge in place. repeat clockwise around the ring; then proceed to second-nearest neighbours, and so on, until each original edge has been considered once (nk/2 edges ⇒ k/2 laps). 图 1 程序（题注精炼）：从 n 点环开始，每点连到 k 个最近邻（无向边）。取一点及其顺时针最近邻边：以概率 p 把它重连到环上均匀随机的另一点（禁止重边），否则保持。沿环顺时针重复；再处理次近邻……直到原格子每条边都被考虑一次（共 nk/2 条边，即转 k/2 圈）。 算法细节：按「邻域半径」一圈圈扫，每条边最多被尝试重连一次。 rewiring">
+<span class="pidx">§9</span>
+<div class="summary"><b>小结</b> · 算法细节：按「邻域半径」一圈圈扫，每条边最多被尝试重连一次。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Figure 1 procedure (caption, condensed): Start with a ring of n vertices, each connected to its k nearest neighbours by undirected edges. Choose a vertex and the edge that connects it to its nearest neighbour in a clockwise sense. With probability p, reconnect this edge to a vertex chosen uniformly at random over the entire ring (duplicate edges forbidden); otherwise leave the edge in place. Repeat clockwise around the ring; then proceed to second-nearest neighbours, and so on, until each original edge has been considered once (nk/2 edges ⇒ k/2 laps).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">图 1 程序（题注精炼）：从 n 点环开始，每点连到 k 个最近邻（无向边）。取一点及其顺时针最近邻边：以概率 p 把它重连到环上均匀随机的另一点（禁止重边），否则保持。沿环顺时针重复；再处理次近邻……直到原格子每条边都被考虑一次（共 nk/2 条边，即转 k/2 圈）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="rewiring">rewiring</span></div></article>
+<article class="card para" data-idx="10" data-blob="for p = 0 the original ring is unchanged; as p increases the graph becomes increasingly disordered until for p = 1 all edges are rewired randomly. for intermediate p the graph is a small-world network: highly clustered like a regular graph, yet with small characteristic path length, like a random graph. p=0 时原环不变；随 p 增大图越来越无序，直到 p=1 时所有边都被随机重连。对中间的 p，图即为小世界网络：像规则图一样高度聚类，又像随机图一样特征路径短。 三种相：规则大世界 → 小世界 → 随机小世界（但聚类崩掉）。 small-world networks">
+<span class="pidx">§10</span>
+<div class="summary"><b>小结</b> · 三种相：规则大世界 → 小世界 → 随机小世界（但聚类崩掉）。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">For p = 0 the original ring is unchanged; as p increases the graph becomes increasingly disordered until for p = 1 all edges are rewired randomly. For intermediate p the graph is a small-world network: highly clustered like a regular graph, yet with small characteristic path length, like a random graph.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">p=0 时原环不变；随 p 增大图越来越无序，直到 p=1 时所有边都被随机重连。对中间的 p，图即为小世界网络：像规则图一样高度聚类，又像随机图一样特征路径短。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="small-world networks">small-world networks</span></div></article>
+</section>
+<section class="section" id="metrics"><h3>两个度量：L(p) 与 C(p) <span>7 段</span></h3>
+<article class="card para" data-idx="11" data-blob="we quantify the structural properties of these graphs by their characteristic path length l(p) and clustering coefficient c(p), as defined in fig. 2 legend. here l(p) measures the typical separation between two vertices in the graph (a global property), whereas c(p) measures the cliquishness of a typical neighbourhood (a local property). 我们用特征路径长度 l(p) 与聚类系数 c(p)（定义见图 2 题注）量化这些图的结构性质。l(p) 度量图中两顶点之间的典型分隔（全局性质）；c(p) 度量典型邻域的抱团程度（局部性质）。 记住分工：l 看全局远近，c 看局部抱团。 characteristic path length clustering coefficient">
+<span class="pidx">§11</span>
+<div class="summary"><b>小结</b> · 记住分工：L 看全局远近，C 看局部抱团。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We quantify the structural properties of these graphs by their characteristic path length L(p) and clustering coefficient C(p), as defined in Fig. 2 legend. Here L(p) measures the typical separation between two vertices in the graph (a global property), whereas C(p) measures the cliquishness of a typical neighbourhood (a local property).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们用特征路径长度 L(p) 与聚类系数 C(p)（定义见图 2 题注）量化这些图的结构性质。L(p) 度量图中两顶点之间的典型分隔（全局性质）；C(p) 度量典型邻域的抱团程度（局部性质）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="characteristic path length">characteristic path length</span><span class="term" data-term="clustering coefficient">clustering coefficient</span></div></article>
+<article class="card para" data-idx="12" data-blob="definition of l: the number of edges in the shortest path between two vertices, averaged over all pairs of vertices. l 的定义：两顶点最短路径上的边数，再对所有顶点对取平均。 l = 平均最短路径长度。 characteristic path length">
+<span class="pidx">§12</span>
+<div class="summary"><b>小结</b> · L = 平均最短路径长度。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Definition of L: the number of edges in the shortest path between two vertices, averaged over all pairs of vertices.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">L 的定义：两顶点最短路径上的边数，再对所有顶点对取平均。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="characteristic path length">characteristic path length</span></div></article>
+<article class="card para" data-idx="13" data-blob="definition of c: suppose that a vertex v has k_v neighbours; then at most k_v(k_v − 1)/2 edges can exist between them (when every neighbour of v is connected to every other neighbour of v). let c_v denote the fraction of these allowable edges that actually exist. define c as the average of c_v over all v. c 的定义：设顶点 v 有 k_v 个邻居，则邻居之间最多可有 k_v(k_v−1)/2 条边（当邻居两两相连时）。令 c_v 为这些「允许边」中实际存在的比例；再对所有 v 平均得到 c。 c_v = 实际三角形边数 / 可能三角形边数；c 是平均局部密度。 clustering coefficient">
+<span class="pidx">§13</span>
+<div class="summary"><b>小结</b> · C_v = 实际三角形边数 / 可能三角形边数；C 是平均局部密度。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Definition of C: Suppose that a vertex v has k_v neighbours; then at most k_v(k_v − 1)/2 edges can exist between them (when every neighbour of v is connected to every other neighbour of v). Let C_v denote the fraction of these allowable edges that actually exist. Define C as the average of C_v over all v.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">C 的定义：设顶点 v 有 k_v 个邻居，则邻居之间最多可有 k_v(k_v−1)/2 条边（当邻居两两相连时）。令 C_v 为这些「允许边」中实际存在的比例；再对所有 v 平均得到 C。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="clustering coefficient">clustering coefficient</span></div></article>
+<article class="card para" data-idx="14" data-blob="for friendship networks, these statistics have intuitive meanings: l is the average number of friendships in the shortest chain connecting two people; c_v reflects the extent to which friends of v are also friends of each other; and thus c measures the cliquishness of a typical friendship circle. 对朋友网络，这两个统计量有直观含义：l 是连接两人的最短朋友链上的平均友情步数；c_v 反映「v 的朋友彼此也是朋友」的程度；因而 c 度量典型朋友圈的抱团性。 社交直觉：l≈几度分隔，c≈朋友圈有多封闭。 ">
+<span class="pidx">§14</span>
+<div class="summary"><b>小结</b> · 社交直觉：L≈几度分隔，C≈朋友圈有多封闭。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">For friendship networks, these statistics have intuitive meanings: L is the average number of friendships in the shortest chain connecting two people; C_v reflects the extent to which friends of v are also friends of each other; and thus C measures the cliquishness of a typical friendship circle.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">对朋友网络，这两个统计量有直观含义：L 是连接两人的最短朋友链上的平均友情步数；C_v 反映「v 的朋友彼此也是朋友」的程度；因而 C 度量典型朋友圈的抱团性。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="15" data-blob="the networks of interest to us have many vertices with sparse connections, but not so sparse that the graph is in danger of becoming disconnected. specifically, we require n ≫ k ≫ ln(n) ≫ 1, where k ≫ ln(n) guarantees that a random graph will be connected. 我们关心的网络顶点很多、连接稀疏，但又不至于稀疏到容易不连通。具体要求 n ≫ k ≫ ln(n) ≫ 1，其中 k ≫ ln(n) 保证随机图连通。 参数制度：大而稀疏但仍连通——后面渐近公式都在这套假设下。 n k">
+<span class="pidx">§15</span>
+<div class="summary"><b>小结</b> · 参数制度：大而稀疏但仍连通——后面渐近公式都在这套假设下。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The networks of interest to us have many vertices with sparse connections, but not so sparse that the graph is in danger of becoming disconnected. Specifically, we require n ≫ k ≫ ln(n) ≫ 1, where k ≫ ln(n) guarantees that a random graph will be connected.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们关心的网络顶点很多、连接稀疏，但又不至于稀疏到容易不连通。具体要求 n ≫ k ≫ ln(n) ≫ 1，其中 k ≫ ln(n) 保证随机图连通。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="n">n</span><span class="term" data-term="k">k</span></div></article>
+<article class="card para" data-idx="16" data-blob="in this regime, we find that l ∼ n/(2k) ≫ 1 and c ∼ 3/4 as p → 0, while l ≈ l_random ∼ ln(n)/ln(k) and c ≈ c_random ∼ k/n ≪ 1 as p → 1. 在此制度下：当 p→0 时 l∼n/(2k)≫1 且 c∼3/4；当 p→1 时 l≈l_random∼ln(n)/ln(k)，且 c≈c_random∼k/n≪1。 两极公式：规则世界 l 随 n 线性；随机世界 l 只随 n 对数、c 崩到 ~k/n。 l_random c_random">
+<span class="pidx">§16</span>
+<div class="summary"><b>小结</b> · 两极公式：规则世界 L 随 n 线性；随机世界 L 只随 n 对数、C 崩到 ~k/n。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In this regime, we find that L ∼ n/(2k) ≫ 1 and C ∼ 3/4 as p → 0, while L ≈ L_random ∼ ln(n)/ln(k) and C ≈ C_random ∼ k/n ≪ 1 as p → 1.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">在此制度下：当 p→0 时 L∼n/(2k)≫1 且 C∼3/4；当 p→1 时 L≈L_random∼ln(n)/ln(k)，且 C≈C_random∼k/n≪1。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="L_random">L_random</span><span class="term" data-term="C_random">C_random</span></div></article>
+<article class="card para" data-idx="17" data-blob="thus the regular lattice at p = 0 is a highly clustered, large world where l grows linearly with n, whereas the random network at p = 1 is a poorly clustered, small world where l grows only logarithmically with n. these limiting cases might lead one to suspect that large c is always associated with large l, and small c with small l. 因此 p=0 的规则格子是高度聚类的「大世界」（l 随 n 线性增长）；而 p=1 的随机网络是低聚类的「小世界」（l 仅对数增长）。这两极容易让人误以为：大 c 总伴随大 l，小 c 总伴随小 l。 作者先立靶子：人们会以为 c 与 l 必须同涨同跌。 ">
+<span class="pidx">§17</span>
+<div class="summary"><b>小结</b> · 作者先立靶子：人们会以为 C 与 L 必须同涨同跌。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Thus the regular lattice at p = 0 is a highly clustered, large world where L grows linearly with n, whereas the random network at p = 1 is a poorly clustered, small world where L grows only logarithmically with n. These limiting cases might lead one to suspect that large C is always associated with large L, and small C with small L.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">因此 p=0 的规则格子是高度聚类的「大世界」（L 随 n 线性增长）；而 p=1 的随机网络是低聚类的「小世界」（L 仅对数增长）。这两极容易让人误以为：大 C 总伴随大 L，小 C 总伴随小 L。</div></div>
+</div>
+<div class="terms"></div></article>
+</section>
+<section class="section" id="smallworld"><h3>小世界区间：捷径如何压低 L（Fig. 2） <span>7 段</span></h3>
+<article class="card para" data-idx="18" data-blob="on the contrary, fig. 2 reveals that there is a broad interval of p over which l(p) is almost as small as l_random yet c(p) ≫ c_random. 恰恰相反，图 2 显示存在相当宽的 p 区间：其中 l(p) 几乎已小到接近 l_random，但 c(p) 仍远大于 c_random。 核心发现：存在「又短路径、又高聚类」的宽平台。 small-world networks">
+<span class="pidx">§18</span>
+<div class="summary"><b>小结</b> · 核心发现：存在「又短路径、又高聚类」的宽平台。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">On the contrary, Fig. 2 reveals that there is a broad interval of p over which L(p) is almost as small as L_random yet C(p) ≫ C_random.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">恰恰相反，图 2 显示存在相当宽的 p 区间：其中 L(p) 几乎已小到接近 L_random，但 C(p) 仍远大于 C_random。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="L and C vs p">
+  <rect width="760" height="260" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="380" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Fig.2 示意：L(p) 先陡降，C(p) 后下降 → 中间小世界带</text>
+    <!-- axes -->
+    <line x1="80" y1="210" x2="700" y2="210" stroke="#5a6a62" stroke-width="1.5"/>
+    <line x1="80" y1="210" x2="80" y2="50" stroke="#5a6a62" stroke-width="1.5"/>
+    <text x="390" y="245" text-anchor="middle" font-size="12" fill="#5a6a62">p（对数轴示意）→</text>
+    <text x="40" y="130" text-anchor="middle" font-size="12" fill="#5a6a62" transform="rotate(-90 40 130)">归一化 L,C</text>
+    <!-- L curve -->
+    <path d="M90 70 C140 72, 180 75, 220 140 S320 195, 420 200 S600 205, 680 206"
+          fill="none" stroke="#1f4e79" stroke-width="3"/>
+    <!-- C curve -->
+    <path d="M90 78 C200 78, 280 80, 360 95 S520 150, 620 190 S680 200, 690 202"
+          fill="none" stroke="#0f6e56" stroke-width="3"/>
+    <!-- small-world band -->
+    <rect x="210" y="55" width="220" height="145" fill="#1f4e79" opacity="0.06" rx="8"/>
+    <text x="320" y="48" text-anchor="middle" font-size="12" font-weight="700" fill="#1f4e79">小世界区间</text>
+    <text x="320" y="175" text-anchor="middle" font-size="11" fill="#5a6a62">L≈L_random · C≫C_random</text>
+    <g font-size="12">
+      <rect x="560" y="60" width="14" height="4" fill="#1f4e79"/><text x="580" y="65" fill="#1f4e79">L(p)/L(0)</text>
+      <rect x="560" y="82" width="14" height="4" fill="#0f6e56"/><text x="580" y="87" fill="#0f6e56">C(p)/C(0)</text>
+    </g>
+    <text x="100" y="225" font-size="11" fill="#7d8c84">p→0</text>
+    <text x="660" y="225" font-size="11" fill="#7d8c84">p→1</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应论文 Fig. 2：L 先降、C 后降</div></div>
+<div class="terms"><span class="term" data-term="small-world networks">small-world networks</span></div></article>
+<article class="card para" data-idx="19" data-blob="these small-world networks result from the immediate drop in l(p) caused by the introduction of a few long-range edges. such ‘short cuts’ connect vertices that would otherwise be much farther apart than l_random. 这类小世界网络源于：引入少数长程边后 l(p) 立刻下降。这些「捷径（short cuts）」连接的是原本会远比 l_random 更远的顶点对。 机制：少量长程捷径就够把全局距离打穿。 short cuts">
+<span class="pidx">§19</span>
+<div class="summary"><b>小结</b> · 机制：少量长程捷径就够把全局距离打穿。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">These small-world networks result from the immediate drop in L(p) caused by the introduction of a few long-range edges. Such ‘short cuts’ connect vertices that would otherwise be much farther apart than L_random.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">这类小世界网络源于：引入少数长程边后 L(p) 立刻下降。这些「捷径（short cuts）」连接的是原本会远比 L_random 更远的顶点对。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="short cuts">short cuts</span></div></article>
+<article class="card para" data-idx="20" data-blob="for small p, each short cut has a highly nonlinear effect on l, contracting the distance not just between the pair of vertices that it connects, but between their immediate neighbourhoods, neighbourhoods of neighbourhoods and so on. 当 p 很小时，每条捷径对 l 有高度非线性的影响：它不仅缩短所连两点的距离，还压缩它们的直接邻域、邻域的邻域……之间的距离。 非线性杠杆：一条捷径改写整片「邻域球」的距离。 short cuts">
+<span class="pidx">§20</span>
+<div class="summary"><b>小结</b> · 非线性杠杆：一条捷径改写整片「邻域球」的距离。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">For small p, each short cut has a highly nonlinear effect on L, contracting the distance not just between the pair of vertices that it connects, but between their immediate neighbourhoods, neighbourhoods of neighbourhoods and so on.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">当 p 很小时，每条捷径对 L 有高度非线性的影响：它不仅缩短所连两点的距离，还压缩它们的直接邻域、邻域的邻域……之间的距离。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="short cuts">short cuts</span></div></article>
+<article class="card para" data-idx="21" data-blob="by contrast, an edge removed from a clustered neighbourhood to make a short cut has, at most, a linear effect on c; hence c(p) remains practically unchanged for small p even though l(p) drops rapidly. 相比之下，为制造捷径而从聚类邻域中移走的一条边，对 c 至多只有线性影响；因此在小 p 下，尽管 l(p) 迅速下降，c(p) 几乎不变。 不对称：捷径狠砍 l，却几乎不伤 c。 clustering coefficient">
+<span class="pidx">§21</span>
+<div class="summary"><b>小结</b> · 不对称：捷径狠砍 L，却几乎不伤 C。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">By contrast, an edge removed from a clustered neighbourhood to make a short cut has, at most, a linear effect on C; hence C(p) remains practically unchanged for small p even though L(p) drops rapidly.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">相比之下，为制造捷径而从聚类邻域中移走的一条边，对 C 至多只有线性影响；因此在小 p 下，尽管 L(p) 迅速下降，C(p) 几乎不变。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="clustering coefficient">clustering coefficient</span></div></article>
+<article class="card para" data-idx="22" data-blob="the important implication here is that at the local level (as reflected by c(p)), the transition to a small world is almost undetectable. 重要含义：在局部层面（由 c(p) 反映），向小世界的转变几乎不可察觉。 读图要点：局部看起来还像格子，全局已经「六度」了。 ">
+<span class="pidx">§22</span>
+<div class="summary"><b>小结</b> · 读图要点：局部看起来还像格子，全局已经「六度」了。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The important implication here is that at the local level (as reflected by C(p)), the transition to a small world is almost undetectable.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">重要含义：在局部层面（由 C(p) 反映），向小世界的转变几乎不可察觉。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="23" data-blob="fig. 2 note: data are averages over 20 random realizations, normalized by l(0), c(0) for a regular lattice; n = 1,000 vertices, average degree k = 10. a logarithmic horizontal scale resolves the rapid drop in l(p). during this drop, c(p) remains almost constant at its regular-lattice value. 图 2 说明：数据为 20 次随机重连实现的平均，并用规则格子的 l(0)、c(0) 归一化；n=1000，平均度数 k=10。横轴对数刻度用以分辨 l(p) 的急速下降；下降期间 c(p) 几乎保持规则格子的取值。 实验设定备忘：n=1000, k=10；先盯 l 的陡降区间。 ">
+<span class="pidx">§23</span>
+<div class="summary"><b>小结</b> · 实验设定备忘：n=1000, k=10；先盯 L 的陡降区间。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Fig. 2 note: data are averages over 20 random realizations, normalized by L(0), C(0) for a regular lattice; n = 1,000 vertices, average degree k = 10. A logarithmic horizontal scale resolves the rapid drop in L(p). During this drop, C(p) remains almost constant at its regular-lattice value.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">图 2 说明：数据为 20 次随机重连实现的平均，并用规则格子的 L(0)、C(0) 归一化；n=1000，平均度数 k=10。横轴对数刻度用以分辨 L(p) 的急速下降；下降期间 C(p) 几乎保持规则格子的取值。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="24" data-blob="to check the robustness of these results, we have tested many different types of initial regular graphs, as well as different algorithms for random rewiring, and all give qualitatively similar results. the only requirement is that the rewired edges must typically connect vertices that would otherwise be much farther apart than l_random. 为检验稳健性，作者测试了许多不同的初始规则图以及不同的随机重连算法，结果定性相似。唯一要求是：被重连的边通常应连接那些原本远比 l_random 更远的顶点。 稳健条件：重连必须真的变成「长程」捷径，而不是挪到近处。 rewiring">
+<span class="pidx">§24</span>
+<div class="summary"><b>小结</b> · 稳健条件：重连必须真的变成「长程」捷径，而不是挪到近处。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">To check the robustness of these results, we have tested many different types of initial regular graphs, as well as different algorithms for random rewiring, and all give qualitatively similar results. The only requirement is that the rewired edges must typically connect vertices that would otherwise be much farther apart than L_random.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">为检验稳健性，作者测试了许多不同的初始规则图以及不同的随机重连算法，结果定性相似。唯一要求是：被重连的边通常应连接那些原本远比 L_random 更远的顶点。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="rewiring">rewiring</span></div></article>
+</section>
+<section class="section" id="empirical"><h3>实证：演员网 / 电网 / C. elegans（Table 1） <span>7 段</span></h3>
+<article class="card para" data-idx="25" data-blob="the idealized construction above reveals the key role of short cuts. it suggests that the small-world phenomenon might be common in sparse networks with many vertices, as even a tiny fraction of short cuts would suffice. 上述理想化构造揭示了捷径的关键作用。它暗示：小世界现象在顶点很多的稀疏网络中可能很常见——因为哪怕极少数捷径也足够。 从模型推现实：稀疏大网「天然容易」变小世界。 short cuts">
+<span class="pidx">§25</span>
+<div class="summary"><b>小结</b> · 从模型推现实：稀疏大网「天然容易」变小世界。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The idealized construction above reveals the key role of short cuts. It suggests that the small-world phenomenon might be common in sparse networks with many vertices, as even a tiny fraction of short cuts would suffice.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">上述理想化构造揭示了捷径的关键作用。它暗示：小世界现象在顶点很多的稀疏网络中可能很常见——因为哪怕极少数捷径也足够。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="short cuts">short cuts</span></div></article>
+<article class="card para" data-idx="26" data-blob="to test this idea, we have computed l and c for the collaboration graph of actors in feature films, the electrical power grid of the western united states, and the neural network of the nematode worm c. elegans. all three graphs are of scientific interest. 为检验这一想法，我们计算了故事片演员合作图、美国西部电网，以及线虫 c. elegans 神经网络的 l 与 c。这三张图都具有科学兴趣。 选例原则：有完整接线数据 + 本身重要，不是挑好看的。 film actors power grid c. elegans">
+<span class="pidx">§26</span>
+<div class="summary"><b>小结</b> · 选例原则：有完整接线数据 + 本身重要，不是挑好看的。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">To test this idea, we have computed L and C for the collaboration graph of actors in feature films, the electrical power grid of the western United States, and the neural network of the nematode worm C. elegans. All three graphs are of scientific interest.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">为检验这一想法，我们计算了故事片演员合作图、美国西部电网，以及线虫 C. elegans 神经网络的 L 与 C。这三张图都具有科学兴趣。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="film actors">film actors</span><span class="term" data-term="power grid">power grid</span><span class="term" data-term="C. elegans">C. elegans</span></div></article>
+<article class="card para" data-idx="27" data-blob="the graph of film actors is a surrogate for a social network, with the advantage of being much more easily specified. it is also akin to the graph of mathematical collaborations centred, traditionally, on p. erdős. the graph of the power grid is relevant to the efficiency and robustness of power networks. and c. elegans is the sole example of a completely mapped neural network. 演员合作图可作社会网络的替代，优点是更容易明确指定；也类似于以 erdős 为中心的数学合作图。电网图关系到电力网络的效率与稳健性。而 c. elegans 是当时唯一被完全测绘的神经网络。 三个例子各自代表：社交、基础设施、生物神经。 ">
+<span class="pidx">§27</span>
+<div class="summary"><b>小结</b> · 三个例子各自代表：社交、基础设施、生物神经。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The graph of film actors is a surrogate for a social network, with the advantage of being much more easily specified. It is also akin to the graph of mathematical collaborations centred, traditionally, on P. Erdős. The graph of the power grid is relevant to the efficiency and robustness of power networks. And C. elegans is the sole example of a completely mapped neural network.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">演员合作图可作社会网络的替代，优点是更容易明确指定；也类似于以 Erdős 为中心的数学合作图。电网图关系到电力网络的效率与稳健性。而 C. elegans 是当时唯一被完全测绘的神经网络。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="28" data-blob="table 1 (film actors): n = 225,226, k = 61; l_actual = 3.65 vs l_random = 2.99; c_actual = 0.79 vs c_random = 0.00027. two actors are joined by an edge if they have acted in a film together (giant connected component, ~90% of imdb actors as of april 1997). 表 1（电影演员）：n=225,226，k=61；l_actual=3.65 vs l_random=2.99；c_actual=0.79 vs c_random=0.00027。若两人同演一部电影则连边（取巨连通分量，约占 1997 年 4 月 imdb 演员的 90%）。 演员网：l 已接近随机，c 却比随机高三个数量级。 table 1 film actors">
+<span class="pidx">§28</span>
+<div class="summary"><b>小结</b> · 演员网：L 已接近随机，C 却比随机高三个数量级。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Table 1 (Film actors): n = 225,226, k = 61; L_actual = 3.65 vs L_random = 2.99; C_actual = 0.79 vs C_random = 0.00027. Two actors are joined by an edge if they have acted in a film together (giant connected component, ~90% of IMDb actors as of April 1997).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">表 1（电影演员）：n=225,226，k=61；L_actual=3.65 vs L_random=2.99；C_actual=0.79 vs C_random=0.00027。若两人同演一部电影则连边（取巨连通分量，约占 1997 年 4 月 IMDb 演员的 90%）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Table 1">Table 1</span><span class="term" data-term="film actors">film actors</span></div></article>
+<article class="card para" data-idx="29" data-blob="table 1 (power grid): n = 4,941, k = 2.67; l_actual = 18.7 vs l_random = 12.4; c_actual = 0.080 vs c_random = 0.005. vertices represent generators, transformers and substations; edges are high-voltage transmission lines. 表 1（电网）：n=4,941，k=2.67；l_actual=18.7 vs l_random=12.4；c_actual=0.080 vs c_random=0.005。顶点为发电机、变压器与变电站；边为高压输电线路。 电网：路径略长于随机，但聚类仍明显高于随机。 table 1 power grid">
+<span class="pidx">§29</span>
+<div class="summary"><b>小结</b> · 电网：路径略长于随机，但聚类仍明显高于随机。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Table 1 (Power grid): n = 4,941, k = 2.67; L_actual = 18.7 vs L_random = 12.4; C_actual = 0.080 vs C_random = 0.005. Vertices represent generators, transformers and substations; edges are high-voltage transmission lines.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">表 1（电网）：n=4,941，k=2.67；L_actual=18.7 vs L_random=12.4；C_actual=0.080 vs C_random=0.005。顶点为发电机、变压器与变电站；边为高压输电线路。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Table 1">Table 1</span><span class="term" data-term="power grid">power grid</span></div></article>
+<article class="card para" data-idx="30" data-blob="table 1 (c. elegans): n = 282, k = 14; l_actual = 2.65 vs l_random = 2.25; c_actual = 0.28 vs c_random = 0.05. an edge joins two neurons if they are connected by either a synapse or a gap junction. edges treated as undirected and unweighted. 表 1（c. elegans）：n=282，k=14；l_actual=2.65 vs l_random=2.25；c_actual=0.28 vs c_random=0.05。若两神经元以突触或间隙连接相连则连边；边视为无向无权。 线虫脑：短路径 + 明显高于随机的聚类。 table 1 c. elegans">
+<span class="pidx">§30</span>
+<div class="summary"><b>小结</b> · 线虫脑：短路径 + 明显高于随机的聚类。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Table 1 (C. elegans): n = 282, k = 14; L_actual = 2.65 vs L_random = 2.25; C_actual = 0.28 vs C_random = 0.05. An edge joins two neurons if they are connected by either a synapse or a gap junction. Edges treated as undirected and unweighted.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">表 1（C. elegans）：n=282，k=14；L_actual=2.65 vs L_random=2.25；C_actual=0.28 vs C_random=0.05。若两神经元以突触或间隙连接相连则连边；边视为无向无权。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Table 1">Table 1</span><span class="term" data-term="C. elegans">C. elegans</span></div></article>
+<article class="card para" data-idx="31" data-blob="all three networks show the small-world phenomenon: l ≳ l_random but c ≫ c_random. these examples were not hand-picked; they were chosen because of their inherent interest and because complete wiring diagrams were available. thus the small-world phenomenon is not merely a curiosity of social networks nor an artefact of an idealized model—it is probably generic for many large, sparse networks found in nature. 三张网络都呈现小世界现象：l ≳ l_random 但 c ≫ c_random。这些例子并非刻意挑选，而是因其固有重要性且有完整接线数据。因此小世界现象不只是社交网络的奇闻，也不是理想模型的假象——对自然界许多大型稀疏网络很可能具有普适性。 结论性判断：小世界很可能是大自然的默认架构之一。 small-world networks">
+<span class="pidx">§31</span>
+<div class="summary"><b>小结</b> · 结论性判断：小世界很可能是大自然的默认架构之一。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">All three networks show the small-world phenomenon: L ≳ L_random but C ≫ C_random. These examples were not hand-picked; they were chosen because of their inherent interest and because complete wiring diagrams were available. Thus the small-world phenomenon is not merely a curiosity of social networks nor an artefact of an idealized model—it is probably generic for many large, sparse networks found in nature.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">三张网络都呈现小世界现象：L ≳ L_random 但 C ≫ C_random。这些例子并非刻意挑选，而是因其固有重要性且有完整接线数据。因此小世界现象不只是社交网络的奇闻，也不是理想模型的假象——对自然界许多大型稀疏网络很可能具有普适性。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="small-world networks">small-world networks</span></div></article>
+</section>
+<section class="section" id="dynamics"><h3>动力学：疾病传播与其他系统（Fig. 3） <span>7 段</span></h3>
+<article class="card para" data-idx="32" data-blob="we now investigate the functional significance of small-world connectivity for dynamical systems. our test case is a deliberately simplified model for the spread of an infectious disease. the population structure is modelled by the family of graphs described in fig. 1. 接下来考察小世界连通性对动力系统的功能意义。测试用例是一个刻意简化的传染病传播模型；人群结构由图 1 那一族图给出。 从结构转到功能：先拿传染病当显微镜。 ">
+<span class="pidx">§32</span>
+<div class="summary"><b>小结</b> · 从结构转到功能：先拿传染病当显微镜。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We now investigate the functional significance of small-world connectivity for dynamical systems. Our test case is a deliberately simplified model for the spread of an infectious disease. The population structure is modelled by the family of graphs described in Fig. 1.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">接下来考察小世界连通性对动力系统的功能意义。测试用例是一个刻意简化的传染病传播模型；人群结构由图 1 那一族图给出。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="33" data-blob="at time t = 0, a single infective individual is introduced into an otherwise healthy population. infective individuals are removed permanently (by immunity or death) after a period of sickness that lasts one unit of dimensionless time. during this time, each infective individual can infect each of its healthy neighbours with probability r. 在 t=0 时，向原本健康的人群引入单个感染者。感染者在持续一个无量纲时间单位的病程后被永久移除（免疫或死亡）。在此期间，每个感染者可以以概率 r 感染其每个健康邻居。 sir 味道的简化：病程=1，传染概率=r，沿边传播。 r">
+<span class="pidx">§33</span>
+<div class="summary"><b>小结</b> · SIR 味道的简化：病程=1，传染概率=r，沿边传播。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">At time t = 0, a single infective individual is introduced into an otherwise healthy population. Infective individuals are removed permanently (by immunity or death) after a period of sickness that lasts one unit of dimensionless time. During this time, each infective individual can infect each of its healthy neighbours with probability r.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">在 t=0 时，向原本健康的人群引入单个感染者。感染者在持续一个无量纲时间单位的病程后被永久移除（免疫或死亡）。在此期间，每个感染者可以以概率 r 感染其每个健康邻居。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="r">r</span></div></article>
+<article class="card para" data-idx="34" data-blob="on subsequent time steps, the disease spreads along the edges of the graph until it either infects the entire population, or it dies out, having infected some fraction of the population in the process. 在后续时间步，疾病沿图的边传播，直到感染整个人群，或在感染一部分人后灭绝。 观测终点：全感染 / 自行熄灭，以及过程中的感染规模与时间。 ">
+<span class="pidx">§34</span>
+<div class="summary"><b>小结</b> · 观测终点：全感染 / 自行熄灭，以及过程中的感染规模与时间。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">On subsequent time steps, the disease spreads along the edges of the graph until it either infects the entire population, or it dies out, having infected some fraction of the population in the process.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">在后续时间步，疾病沿图的边传播，直到感染整个人群，或在感染一部分人后灭绝。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="35" data-blob="two results emerge. first, the critical infectiousness r_half, at which the disease infects half the population, decreases rapidly for small p (fig. 3a). second, for a disease that is sufficiently infectious to infect the entire population regardless of its structure, the time t(p) required for global infection resembles the l(p) curve (fig. 3b). 出现两个结果。第一，使疾病感染半数人口的临界传染性 r_half，在小 p 时迅速下降（图 3a）。第二，对足以无论结构如何都能感染全人群的疾病，全球感染所需时间 t(p) 的曲线形态与 l(p) 相似（图 3b）。 捷径一加：阈值更低、传遍更快；t(p) 几乎跟着 l(p) 走。 r_half t(p)">
+<span class="pidx">§35</span>
+<div class="summary"><b>小结</b> · 捷径一加：阈值更低、传遍更快；T(p) 几乎跟着 L(p) 走。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Two results emerge. First, the critical infectiousness r_half, at which the disease infects half the population, decreases rapidly for small p (Fig. 3a). Second, for a disease that is sufficiently infectious to infect the entire population regardless of its structure, the time T(p) required for global infection resembles the L(p) curve (Fig. 3b).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">出现两个结果。第一，使疾病感染半数人口的临界传染性 r_half，在小 p 时迅速下降（图 3a）。第二，对足以无论结构如何都能感染全人群的疾病，全球感染所需时间 T(p) 的曲线形态与 L(p) 相似（图 3b）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="r_half">r_half</span><span class="term" data-term="T(p)">T(p)</span></div></article>
+<article class="card para" data-idx="36" data-blob="thus, infectious diseases are predicted to spread much more easily and quickly in a small world; the alarming and less obvious point is how few short cuts are needed to make the world small. 因此预测：传染病在小世界中传播更容易、更快；更令人警惕且不那么显然的一点是——让世界变「小」只需要极少的捷径。 警句：很少的长程边，就能把传播动力学改写掉。 short cuts">
+<span class="pidx">§36</span>
+<div class="summary"><b>小结</b> · 警句：很少的长程边，就能把传播动力学改写掉。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Thus, infectious diseases are predicted to spread much more easily and quickly in a small world; the alarming and less obvious point is how few short cuts are needed to make the world small.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">因此预测：传染病在小世界中传播更容易、更快；更令人警惕且不那么显然的一点是——让世界变「小」只需要极少的捷径。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="short cuts">short cuts</span></div></article>
+<article class="card para" data-idx="37" data-blob="our model differs from other network epidemic models in illuminating dynamics as an explicit function of structure, rather than for a few particular topologies. compared with kretschmar &amp; morris (who vary concurrency on disconnected graphs with k = 1), all our graphs remain connected; hence changes come from subtler structural features than connectedness. moreover, transitions to a smaller world are not obvious to an individual, unlike increases in concurrent partners. 与其他网络流行病模型不同，本模型把动力学显式写成结构的函数，而不是只看少数特定拓扑。与 kretschmar &amp; morris（在 k=1 的不连通图上改变并发性）相比，本文图始终连通，故变化来自比连通性更细的结构特征；而且「世界变小」对个体并不显而易见，不像并发伴侣数增加那样可被直接察觉。 对照文献：强调「保持连通 + 结构细变化」才是小世界动力学的来源。 ">
+<span class="pidx">§37</span>
+<div class="summary"><b>小结</b> · 对照文献：强调「保持连通 + 结构细变化」才是小世界动力学的来源。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Our model differs from other network epidemic models in illuminating dynamics as an explicit function of structure, rather than for a few particular topologies. Compared with Kretschmar &amp; Morris (who vary concurrency on disconnected graphs with k = 1), all our graphs remain connected; hence changes come from subtler structural features than connectedness. Moreover, transitions to a smaller world are not obvious to an individual, unlike increases in concurrent partners.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">与其他网络流行病模型不同，本模型把动力学显式写成结构的函数，而不是只看少数特定拓扑。与 Kretschmar &amp; Morris（在 k=1 的不连通图上改变并发性）相比，本文图始终连通，故变化来自比连通性更细的结构特征；而且「世界变小」对个体并不显而易见，不像并发伴侣数增加那样可被直接察觉。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="38" data-blob="three other dynamical systems on the same graph family: (1) cellular automata for density classification — a simple majority-rule on a small-world graph can outperform known human and ga-generated rules on a ring lattice. (2) iterated multi-player prisoner&#x27;s dilemma — as short cuts increase, cooperation (generalized tit-for-tat) becomes less likely to emerge. (3) coupled phase oscillators — small-world networks synchronize almost as readily as mean-field models despite orders of magnitude fewer edges; possibly relevant to visual-cortex synchronization if the brain is small-world. 同一图族上的另外三个动力系统：（1）密度分类元胞自动机——小世界上的简单多数规则可超过环格子上已知的人工/遗传算法规则；（2）迭代多人囚徒困境——捷径增多时，广义针锋相对策略更难涌现合作；（3）耦合相位振荡器——小世界几乎像平均场一样容易同步，尽管边少几个数量级；若脑具有小世界结构，或与视皮层远距同步相关。 功能图谱：计算↑、合作↓、同步≈平均场——结构同时改写多种动力学。 synchronizability">
+<span class="pidx">§38</span>
+<div class="summary"><b>小结</b> · 功能图谱：计算↑、合作↓、同步≈平均场——结构同时改写多种动力学。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Three other dynamical systems on the same graph family: (1) Cellular automata for density classification — a simple majority-rule on a small-world graph can outperform known human and GA-generated rules on a ring lattice. (2) Iterated multi-player Prisoner&#x27;s dilemma — as short cuts increase, cooperation (generalized tit-for-tat) becomes less likely to emerge. (3) Coupled phase oscillators — small-world networks synchronize almost as readily as mean-field models despite orders of magnitude fewer edges; possibly relevant to visual-cortex synchronization if the brain is small-world.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">同一图族上的另外三个动力系统：（1）密度分类元胞自动机——小世界上的简单多数规则可超过环格子上已知的人工/遗传算法规则；（2）迭代多人囚徒困境——捷径增多时，广义针锋相对策略更难涌现合作；（3）耦合相位振荡器——小世界几乎像平均场一样容易同步，尽管边少几个数量级；若脑具有小世界结构，或与视皮层远距同步相关。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="synchronizability">synchronizability</span></div></article>
+</section>
+<section class="section" id="closing"><h3>结语 <span>2 段</span></h3>
+<article class="card para" data-idx="39" data-blob="we hope that our work will stimulate further studies of small-world networks. their distinctive combination of high clustering with short characteristic path length cannot be captured by traditional approximations such as those based on regular lattices or random graphs. 我们希望这项工作能激发对小世界网络的进一步研究。其「高聚类 + 短特征路径」的独特组合，无法被基于规则格子或随机图的传统近似所刻画。 学术定位：逼出第三类拓扑近似，两极模型都不够。 small-world networks">
+<span class="pidx">§39</span>
+<div class="summary"><b>小结</b> · 学术定位：逼出第三类拓扑近似，两极模型都不够。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We hope that our work will stimulate further studies of small-world networks. Their distinctive combination of high clustering with short characteristic path length cannot be captured by traditional approximations such as those based on regular lattices or random graphs.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们希望这项工作能激发对小世界网络的进一步研究。其「高聚类 + 短特征路径」的独特组合，无法被基于规则格子或随机图的传统近似所刻画。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="small-world networks">small-world networks</span></div></article>
+<article class="card para" data-idx="40" data-blob="although small-world architecture has not received much attention, we suggest that it will probably turn out to be widespread in biological, social and man-made systems, often with important dynamical consequences. 尽管小世界架构当时尚未受到太多关注，但我们推测它很可能广泛存在于生物、社会与人造系统中，并常常带来重要的动力学后果。 预言式收束：小世界会是默认架构，而不只是数学玩具。 ">
+<span class="pidx">§40</span>
+<div class="summary"><b>小结</b> · 预言式收束：小世界会是默认架构，而不只是数学玩具。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Although small-world architecture has not received much attention, we suggest that it will probably turn out to be widespread in biological, social and man-made systems, often with important dynamical consequences.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">尽管小世界架构当时尚未受到太多关注，但我们推测它很可能广泛存在于生物、社会与人造系统中，并常常带来重要的动力学后果。</div></div>
+</div>
+<div class="terms"></div></article>
+</section>
+<section class="section" id="bigbird"><h3>桥接到 BigBird：注意力里的小世界 <span>3 段</span></h3>
+<article class="card para" data-idx="41" data-blob="bridge (study note, not from the 1998 letter): bigbird cites the watts–strogatz intuition when designing sparse attention. window attention plays the role of the ring-lattice local edges (high clustering / locality of reference). random attention plays the role of short cuts that shrink average path length on the attention graph. global tokens further add a star-like hub that theory needs for universal approximation. 桥接（学习笔记，非 1998 原文）：bigbird 设计稀疏注意力时引用了 watts–strogatz 直觉。窗口注意力对应环格子局部边（高聚类 / 引用局部性）；随机注意力对应缩短注意力图平均路径的捷径；全局 token 再叠加理论所需的星形枢纽。 对照表：ws 的局部边→窗口；捷径→随机边；bigbird 额外加全局星形。 window attention random attention global tokens short cuts">
+<span class="pidx">§41</span>
+<div class="summary"><b>小结</b> · 对照表：WS 的局部边→窗口；捷径→随机边；BigBird 额外加全局星形。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Bridge (study note, not from the 1998 letter): BigBird cites the Watts–Strogatz intuition when designing sparse attention. Window attention plays the role of the ring-lattice local edges (high clustering / locality of reference). Random attention plays the role of short cuts that shrink average path length on the attention graph. Global tokens further add a star-like hub that theory needs for universal approximation.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">桥接（学习笔记，非 1998 原文）：BigBird 设计稀疏注意力时引用了 Watts–Strogatz 直觉。窗口注意力对应环格子局部边（高聚类 / 引用局部性）；随机注意力对应缩短注意力图平均路径的捷径；全局 token 再叠加理论所需的星形枢纽。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="window attention">window attention</span><span class="term" data-term="random attention">random attention</span><span class="term" data-term="global tokens">global tokens</span><span class="term" data-term="short cuts">short cuts</span></div></article>
+<article class="card para" data-idx="42" data-blob="important engineering divergence: classic watts–strogatz rewires by deleting a local edge and replacing it with a random long-range edge. bigbird keeps all local (window) edges and adds extra random edges, because deleting structured local edges is hardware-unfriendly, while adding random (block) edges preserves locality and still shortens paths. 关键工程分歧：经典 watts–strogatz 通过「删除一条局部边并换成随机长程边」来重连。bigbird 保留全部局部（窗口）边，再额外添加随机边——因为删掉结构化局部边对硬件不友好，而追加随机（块）边既保留局部性，又能缩短路径。 和 bigbird example 页同一句话：不删窗，只加随机捷径。 rewiring bigbird">
+<span class="pidx">§42</span>
+<div class="summary"><b>小结</b> · 和 BigBird example 页同一句话：不删窗，只加随机捷径。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Important engineering divergence: classic Watts–Strogatz rewires by deleting a local edge and replacing it with a random long-range edge. BigBird keeps all local (window) edges and adds extra random edges, because deleting structured local edges is hardware-unfriendly, while adding random (block) edges preserves locality and still shortens paths.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">关键工程分歧：经典 Watts–Strogatz 通过「删除一条局部边并换成随机长程边」来重连。BigBird 保留全部局部（窗口）边，再额外添加随机边——因为删掉结构化局部边对硬件不友好，而追加随机（块）边既保留局部性，又能缩短路径。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="rewiring">rewiring</span><span class="term" data-term="BigBird">BigBird</span></div></article>
+<article class="card para" data-idx="43" data-blob="reading checklist for attention design: (1) does your sparse pattern keep high local clustering (window / band)? (2) do you have enough long-range short cuts so information need not hop across o(n/w) layers? (3) if you need bert-like expressivity proofs, do you also have o(1) global hubs? watts–strogatz answers (1)+(2); bigbird adds (3) and block-sparse kernels. 注意力设计核对清单：（1）稀疏图案是否保持高局部聚类（窗口/带状）？（2）是否有足够长程捷径，使信息不必跨 o(n/w) 层接力？（3）若需要类 bert 表达力证明，是否还有 o(1) 全局枢纽？watts–strogatz 回答 (1)+(2)；bigbird 补上 (3) 与块稀疏核。 把 1998 的结构洞见，翻译成 2020 注意力三问。 bigbird block sparse">
+<span class="pidx">§43</span>
+<div class="summary"><b>小结</b> · 把 1998 的结构洞见，翻译成 2020 注意力三问。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Reading checklist for attention design: (1) Does your sparse pattern keep high local clustering (window / band)? (2) Do you have enough long-range short cuts so information need not hop across O(n/w) layers? (3) If you need BERT-like expressivity proofs, do you also have O(1) global hubs? Watts–Strogatz answers (1)+(2); BigBird adds (3) and block-sparse kernels.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">注意力设计核对清单：（1）稀疏图案是否保持高局部聚类（窗口/带状）？（2）是否有足够长程捷径，使信息不必跨 O(n/w) 层接力？（3）若需要类 BERT 表达力证明，是否还有 O(1) 全局枢纽？Watts–Strogatz 回答 (1)+(2)；BigBird 补上 (3) 与块稀疏核。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="BigBird">BigBird</span><span class="term" data-term="block sparse">block sparse</span></div></article>
+</section>
+<section class="section" id="glossary"><h3>名词重点解释 <span>27 条</span></h3><div class="refgrid">
+<div class="gitem" id="term-small-world networks" data-blob="small-world networks 同时具备高聚类系数与短特征路径长度的网络；介于规则格子与随机图之间。"><b>small-world networks</b><p>同时具备高聚类系数与短特征路径长度的网络；介于规则格子与随机图之间。</p></div>
+<div class="gitem" id="term-rewiring" data-blob="rewiring 以概率 p 把原有边的一端改接到随机顶点，用于从规则图过渡到随机图。"><b>rewiring</b><p>以概率 p 把原有边的一端改接到随机顶点，用于从规则图过渡到随机图。</p></div>
+<div class="gitem" id="term-ring lattice" data-blob="ring lattice 把顶点排成环，每个点连接左右各 k/2 个最近邻的规则图。"><b>ring lattice</b><p>把顶点排成环，每个点连接左右各 k/2 个最近邻的规则图。</p></div>
+<div class="gitem" id="term-characteristic path length" data-blob="characteristic path length 所有顶点对最短路径长度的平均值，记 l；度量全局分隔。"><b>characteristic path length</b><p>所有顶点对最短路径长度的平均值，记 L；度量全局分隔。</p></div>
+<div class="gitem" id="term-clustering coefficient" data-blob="clustering coefficient 度量局部抱团：邻居之间实际边数占可能边数的比例，再对点平均，记 c。"><b>clustering coefficient</b><p>度量局部抱团：邻居之间实际边数占可能边数的比例，再对点平均，记 C。</p></div>
+<div class="gitem" id="term-short cuts" data-blob="short cuts 连接原本很远顶点的长程边；少量即可非线性地压缩 l。"><b>short cuts</b><p>连接原本很远顶点的长程边；少量即可非线性地压缩 L。</p></div>
+<div class="gitem" id="term-p" data-blob="p 每条边被随机重连的概率；p=0 规则，p=1 全随机，中间出现小世界。"><b>p</b><p>每条边被随机重连的概率；p=0 规则，p=1 全随机，中间出现小世界。</p></div>
+<div class="gitem" id="term-n" data-blob="n 顶点数。"><b>n</b><p>顶点数。</p></div>
+<div class="gitem" id="term-k" data-blob="k 每个顶点的边数（度数）。"><b>k</b><p>每个顶点的边数（度数）。</p></div>
+<div class="gitem" id="term-L_random" data-blob="l_random 同 n、k 的随机图上的特征路径长度，约 ln(n)/ln(k)。"><b>L_random</b><p>同 n、k 的随机图上的特征路径长度，约 ln(n)/ln(k)。</p></div>
+<div class="gitem" id="term-C_random" data-blob="c_random 同 n、k 的随机图聚类系数，约 k/n。"><b>C_random</b><p>同 n、k 的随机图聚类系数，约 k/n。</p></div>
+<div class="gitem" id="term-regular lattice" data-blob="regular lattice 高度规则、局部连接占主导的格子网络。"><b>regular lattice</b><p>高度规则、局部连接占主导的格子网络。</p></div>
+<div class="gitem" id="term-random graph" data-blob="random graph 边随机放置的图（如 erdős–rényi）；短路径但低聚类。"><b>random graph</b><p>边随机放置的图（如 Erdős–Rényi）；短路径但低聚类。</p></div>
+<div class="gitem" id="term-coupled dynamical systems" data-blob="coupled dynamical systems 单元按网络边相互作用的动力学系统族。"><b>coupled dynamical systems</b><p>单元按网络边相互作用的动力学系统族。</p></div>
+<div class="gitem" id="term-synchronizability" data-blob="synchronizability 耦合系统达成同步的难易程度。"><b>synchronizability</b><p>耦合系统达成同步的难易程度。</p></div>
+<div class="gitem" id="term-C. elegans" data-blob="c. elegans 秀丽隐杆线虫；其神经网络被完整测绘，是本文实证之一。"><b>C. elegans</b><p>秀丽隐杆线虫；其神经网络被完整测绘，是本文实证之一。</p></div>
+<div class="gitem" id="term-power grid" data-blob="power grid 美国西部电网图：电站/变电站为点，高压线为边。"><b>power grid</b><p>美国西部电网图：电站/变电站为点，高压线为边。</p></div>
+<div class="gitem" id="term-film actors" data-blob="film actors 电影演员合作图：同片合作则连边。"><b>film actors</b><p>电影演员合作图：同片合作则连边。</p></div>
+<div class="gitem" id="term-Table 1" data-blob="table 1 三个真实网络的 l、c 与对应随机基线对照表。"><b>Table 1</b><p>三个真实网络的 L、C 与对应随机基线对照表。</p></div>
+<div class="gitem" id="term-r" data-blob="r 疾病模型中，感染者在一个病程内传染每个健康邻居的概率。"><b>r</b><p>疾病模型中，感染者在一个病程内传染每个健康邻居的概率。</p></div>
+<div class="gitem" id="term-r_half" data-blob="r_half 使最终感染人数达到人口一半的临界传染性。"><b>r_half</b><p>使最终感染人数达到人口一半的临界传染性。</p></div>
+<div class="gitem" id="term-T(p)" data-blob="t(p) 在足够强传染下，疾病传遍全图所需时间；形态接近 l(p)。"><b>T(p)</b><p>在足够强传染下，疾病传遍全图所需时间；形态接近 L(p)。</p></div>
+<div class="gitem" id="term-BigBird" data-blob="bigbird 稀疏 transformer：窗口+随机+全局；随机边灵感来自小世界捷径。"><b>BigBird</b><p>稀疏 Transformer：窗口+随机+全局；随机边灵感来自小世界捷径。</p></div>
+<div class="gitem" id="term-window attention" data-blob="window attention 注意力中的局部窗口连接，对应 ws 的环格子局部边。"><b>window attention</b><p>注意力中的局部窗口连接，对应 WS 的环格子局部边。</p></div>
+<div class="gitem" id="term-random attention" data-blob="random attention 注意力中的随机连接，对应 ws 的短程/长程捷径。"><b>random attention</b><p>注意力中的随机连接，对应 WS 的短程/长程捷径。</p></div>
+<div class="gitem" id="term-global tokens" data-blob="global tokens 与全序列相连的枢纽 token；bigbird 在 ws 直觉之外追加的星形结构。"><b>global tokens</b><p>与全序列相连的枢纽 token；BigBird 在 WS 直觉之外追加的星形结构。</p></div>
+<div class="gitem" id="term-block sparse" data-blob="block sparse 以块为单位的稀疏实现，使 gpu 能对选中块做稠密 gemm。"><b>block sparse</b><p>以块为单位的稀疏实现，使 GPU 能对选中块做稠密 GEMM。</p></div>
+</div></section>
+<section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">
+<div class="ref" data-blob="collective dynamics of ‘small-world’ networks watts &amp; strogatz, nature 1998；逐段精读对象。"><span class="lv must">本篇</span><h4>Collective dynamics of ‘small-world’ networks</h4><p>Watts &amp; Strogatz, Nature 1998；逐段精读对象。</p><a href="./paper.pdf" target="_blank" rel="noopener">打开 →</a> · <a href="https://doi.org/10.1038/30918" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="bigbird 逐段精读 把 ws 的窗口+捷径直觉写进稀疏注意力。"><span class="lv imp">对照</span><h4>BigBird 逐段精读</h4><p>把 WS 的窗口+捷径直觉写进稀疏注意力。</p><a href="../bigbird/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2007.14062" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="bigbird 全流程（设计→硬件） 工程上为何「不删窗口、只加随机边」。"><span class="lv imp">对照</span><h4>BigBird 全流程（设计→硬件）</h4><p>工程上为何「不删窗口、只加随机边」。</p><a href="../bigbird/example.html" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="milgram — the small world problem 社会小世界 / 六度分隔实验传统。"><span class="lv imp">前驱</span><h4>Milgram — The small world problem</h4><p>社会小世界 / 六度分隔实验传统。</p><a href="https://doi.org/10.1037/e400002009-005" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="稀疏注意力专题 把小世界图直觉放回现代注意力谱系。"><span class="lv ">专题</span><h4>稀疏注意力专题</h4><p>把小世界图直觉放回现代注意力谱系。</p><a href="../../topics/sparse-attention/index.html" target="_blank" rel="noopener">打开 →</a></div>
+</div><p class="note" style="margin-top:28px">本页为学习用逐段精读；数字与图以 PDF 为准。示意图为教学重绘。</p></section></main></div>
+
+<aside class="drawer" id="drawer"><button class="btn" id="closeDrawer">关闭</button>
+<h2>名词速查</h2><div id="drawerBody"></div></aside>
+<script>
+const body=document.body;const cards=[...document.querySelectorAll('.para')];let idx=0;
+const glossary={"small-world networks":"\u540c\u65f6\u5177\u5907\u9ad8\u805a\u7c7b\u7cfb\u6570\u4e0e\u77ed\u7279\u5f81\u8def\u5f84\u957f\u5ea6\u7684\u7f51\u7edc\uff1b\u4ecb\u4e8e\u89c4\u5219\u683c\u5b50\u4e0e\u968f\u673a\u56fe\u4e4b\u95f4\u3002",
+"rewiring":"\u4ee5\u6982\u7387 p \u628a\u539f\u6709\u8fb9\u7684\u4e00\u7aef\u6539\u63a5\u5230\u968f\u673a\u9876\u70b9\uff0c\u7528\u4e8e\u4ece\u89c4\u5219\u56fe\u8fc7\u6e21\u5230\u968f\u673a\u56fe\u3002",
+"ring lattice":"\u628a\u9876\u70b9\u6392\u6210\u73af\uff0c\u6bcf\u4e2a\u70b9\u8fde\u63a5\u5de6\u53f3\u5404 k/2 \u4e2a\u6700\u8fd1\u90bb\u7684\u89c4\u5219\u56fe\u3002",
+"characteristic path length":"\u6240\u6709\u9876\u70b9\u5bf9\u6700\u77ed\u8def\u5f84\u957f\u5ea6\u7684\u5e73\u5747\u503c\uff0c\u8bb0 L\uff1b\u5ea6\u91cf\u5168\u5c40\u5206\u9694\u3002",
+"clustering coefficient":"\u5ea6\u91cf\u5c40\u90e8\u62b1\u56e2\uff1a\u90bb\u5c45\u4e4b\u95f4\u5b9e\u9645\u8fb9\u6570\u5360\u53ef\u80fd\u8fb9\u6570\u7684\u6bd4\u4f8b\uff0c\u518d\u5bf9\u70b9\u5e73\u5747\uff0c\u8bb0 C\u3002",
+"short cuts":"\u8fde\u63a5\u539f\u672c\u5f88\u8fdc\u9876\u70b9\u7684\u957f\u7a0b\u8fb9\uff1b\u5c11\u91cf\u5373\u53ef\u975e\u7ebf\u6027\u5730\u538b\u7f29 L\u3002",
+"p":"\u6bcf\u6761\u8fb9\u88ab\u968f\u673a\u91cd\u8fde\u7684\u6982\u7387\uff1bp=0 \u89c4\u5219\uff0cp=1 \u5168\u968f\u673a\uff0c\u4e2d\u95f4\u51fa\u73b0\u5c0f\u4e16\u754c\u3002",
+"n":"\u9876\u70b9\u6570\u3002",
+"k":"\u6bcf\u4e2a\u9876\u70b9\u7684\u8fb9\u6570\uff08\u5ea6\u6570\uff09\u3002",
+"L_random":"\u540c n\u3001k \u7684\u968f\u673a\u56fe\u4e0a\u7684\u7279\u5f81\u8def\u5f84\u957f\u5ea6\uff0c\u7ea6 ln(n)/ln(k)\u3002",
+"C_random":"\u540c n\u3001k \u7684\u968f\u673a\u56fe\u805a\u7c7b\u7cfb\u6570\uff0c\u7ea6 k/n\u3002",
+"regular lattice":"\u9ad8\u5ea6\u89c4\u5219\u3001\u5c40\u90e8\u8fde\u63a5\u5360\u4e3b\u5bfc\u7684\u683c\u5b50\u7f51\u7edc\u3002",
+"random graph":"\u8fb9\u968f\u673a\u653e\u7f6e\u7684\u56fe\uff08\u5982 Erd\u0151s\u2013R\u00e9nyi\uff09\uff1b\u77ed\u8def\u5f84\u4f46\u4f4e\u805a\u7c7b\u3002",
+"coupled dynamical systems":"\u5355\u5143\u6309\u7f51\u7edc\u8fb9\u76f8\u4e92\u4f5c\u7528\u7684\u52a8\u529b\u5b66\u7cfb\u7edf\u65cf\u3002",
+"synchronizability":"\u8026\u5408\u7cfb\u7edf\u8fbe\u6210\u540c\u6b65\u7684\u96be\u6613\u7a0b\u5ea6\u3002",
+"C. elegans":"\u79c0\u4e3d\u9690\u6746\u7ebf\u866b\uff1b\u5176\u795e\u7ecf\u7f51\u7edc\u88ab\u5b8c\u6574\u6d4b\u7ed8\uff0c\u662f\u672c\u6587\u5b9e\u8bc1\u4e4b\u4e00\u3002",
+"power grid":"\u7f8e\u56fd\u897f\u90e8\u7535\u7f51\u56fe\uff1a\u7535\u7ad9/\u53d8\u7535\u7ad9\u4e3a\u70b9\uff0c\u9ad8\u538b\u7ebf\u4e3a\u8fb9\u3002",
+"film actors":"\u7535\u5f71\u6f14\u5458\u5408\u4f5c\u56fe\uff1a\u540c\u7247\u5408\u4f5c\u5219\u8fde\u8fb9\u3002",
+"Table 1":"\u4e09\u4e2a\u771f\u5b9e\u7f51\u7edc\u7684 L\u3001C \u4e0e\u5bf9\u5e94\u968f\u673a\u57fa\u7ebf\u5bf9\u7167\u8868\u3002",
+"r":"\u75be\u75c5\u6a21\u578b\u4e2d\uff0c\u611f\u67d3\u8005\u5728\u4e00\u4e2a\u75c5\u7a0b\u5185\u4f20\u67d3\u6bcf\u4e2a\u5065\u5eb7\u90bb\u5c45\u7684\u6982\u7387\u3002",
+"r_half":"\u4f7f\u6700\u7ec8\u611f\u67d3\u4eba\u6570\u8fbe\u5230\u4eba\u53e3\u4e00\u534a\u7684\u4e34\u754c\u4f20\u67d3\u6027\u3002",
+"T(p)":"\u5728\u8db3\u591f\u5f3a\u4f20\u67d3\u4e0b\uff0c\u75be\u75c5\u4f20\u904d\u5168\u56fe\u6240\u9700\u65f6\u95f4\uff1b\u5f62\u6001\u63a5\u8fd1 L(p)\u3002",
+"BigBird":"\u7a00\u758f Transformer\uff1a\u7a97\u53e3+\u968f\u673a+\u5168\u5c40\uff1b\u968f\u673a\u8fb9\u7075\u611f\u6765\u81ea\u5c0f\u4e16\u754c\u6377\u5f84\u3002",
+"window attention":"\u6ce8\u610f\u529b\u4e2d\u7684\u5c40\u90e8\u7a97\u53e3\u8fde\u63a5\uff0c\u5bf9\u5e94 WS \u7684\u73af\u683c\u5b50\u5c40\u90e8\u8fb9\u3002",
+"random attention":"\u6ce8\u610f\u529b\u4e2d\u7684\u968f\u673a\u8fde\u63a5\uff0c\u5bf9\u5e94 WS \u7684\u77ed\u7a0b/\u957f\u7a0b\u6377\u5f84\u3002",
+"global tokens":"\u4e0e\u5168\u5e8f\u5217\u76f8\u8fde\u7684\u67a2\u7ebd token\uff1bBigBird \u5728 WS \u76f4\u89c9\u4e4b\u5916\u8ffd\u52a0\u7684\u661f\u5f62\u7ed3\u6784\u3002",
+"block sparse":"\u4ee5\u5757\u4e3a\u5355\u4f4d\u7684\u7a00\u758f\u5b9e\u73b0\uff0c\u4f7f GPU \u80fd\u5bf9\u9009\u4e2d\u5757\u505a\u7a20\u5bc6 GEMM\u3002"};
+function setMode(m){body.classList.remove('mode-both','mode-zh','mode-en');body.classList.add('mode-'+m);
+document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));}
+document.getElementById('modeSeg').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.mode);};
+function focusCard(i){if(!cards.length)return;idx=(i+cards.length)%cards.length;cards.forEach(c=>c.classList.remove('active'));
+const c=cards[idx];c.classList.add('active');c.scrollIntoView({behavior:'smooth',block:'center'});}
+const q=document.getElementById('q');q.oninput=()=>{const s=q.value.trim().toLowerCase();
+document.querySelectorAll('[data-blob]').forEach(el=>{el.classList.toggle('hidden-by-search',s&&!(el.dataset.blob||'').includes(s));});};
+const drawer=document.getElementById('drawer');const drawerBody=document.getElementById('drawerBody');
+document.getElementById('btnGlossary').onclick=()=>{drawerBody.innerHTML=Object.entries(glossary).map(([k,v])=>`<div class="gitem"><b>${k}</b><p>${v}</p></div>`).join('');drawer.classList.add('open');};
+document.getElementById('closeDrawer').onclick=()=>drawer.classList.remove('open');
+document.body.onclick=e=>{const t=e.target.closest('.term');if(!t)return;
+drawerBody.innerHTML=`<div class="gitem"><b>${t.dataset.term}</b><p>${glossary[t.dataset.term]||'暂无'}</p></div>`;drawer.classList.add('open');};
+const tocLinks=[...document.querySelectorAll('#toc a')];
+const sections=tocLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io=new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const id='#'+en.target.id;
+tocLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===id));});},
+{rootMargin:'-20% 0px -65% 0px',threshold:0.01});
+sections.forEach(s=>io.observe(s));
+document.onkeydown=e=>{if(e.target.matches('input,textarea'))return;
+if(e.key==='1')setMode('both');if(e.key==='2')setMode('zh');if(e.key==='3')setMode('en');
+if(e.key==='j'||e.key==='J'){e.preventDefault();focusCard(idx+1);}
+if(e.key==='k'||e.key==='K'){e.preventDefault();focusCard(idx-1);}
+if(e.key==='g'||e.key==='G')document.getElementById('btnGlossary').click();
+if(e.key==='/'){e.preventDefault();q.focus();};};
+</script></body></html>

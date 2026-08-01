@@ -565,6 +565,13 @@ REFS = [
         "ext": "",
     },
     {
+        "level": "前驱",
+        "title": "Watts–Strogatz 小世界网络",
+        "why": "随机捷径 / 高聚类短路径的图论源头；对照 BigBird 随机边。",
+        "url": "../watts-strogatz/index.html",
+        "ext": "https://doi.org/10.1038/30918",
+    },
+    {
         "level": "专题",
         "title": "稀疏注意力专题页",
         "why": "把 BigBird 放回稀疏注意力谱系里对照。",
