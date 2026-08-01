@@ -382,7 +382,7 @@ REFS = [
         "level": "专题",
         "title": "稀疏注意力专题",
         "why": "把小世界图直觉放回现代注意力谱系。",
-        "url": "../../topics/sparse-attention/index.html",
+        "url": "../sparse-attention/index.html",
         "ext": "",
     },
 ]

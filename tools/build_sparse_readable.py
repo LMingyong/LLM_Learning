@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parents[1] / "topics/sparse-attention/index.html"
+OUT = Path(__file__).resolve().parents[1] / "papers/sparse-attention/index.html"
 
 
 def grid_svg(kind: str, n: int = 12, cell: int = 16) -> str:
@@ -306,10 +306,10 @@ background:var(--accent);color:#fff;font-family:var(--sans);font-size:13px;displ
 
 <main class="main">
   <div class="toolbar">
-    <a class="btn primary" href="./papers/NSA_2502.11089.pdf" target="_blank">NSA 原文 PDF</a>
-    <a class="btn" href="./papers/Longformer_2004.05150.pdf" target="_blank">Longformer</a>
-    <a class="btn" href="./papers/BigBird_2007.14062.pdf" target="_blank">BigBird</a>
-    <a class="btn" href="./papers/SparseTransformer_1904.10509.pdf" target="_blank">Sparse Transformer</a>
+    <a class="btn primary" href="../nsa/paper.pdf" target="_blank">NSA 原文 PDF</a>
+    <a class="btn" href="../longformer/index.html">Longformer 精读</a>
+    <a class="btn" href="../bigbird/index.html">BigBird 精读</a>
+    <a class="btn" href="../sparse-transformer/paper.pdf" target="_blank">Sparse Transformer</a>
     <a class="btn" href="../flash-attention/index.html">Flash 专题 →</a>
   </div>
 
@@ -376,11 +376,11 @@ o_t = Σ_{{i∈S(t)}} α_t,i · v_i</div>
     <li>再选少量 <strong>global tokens</strong>（如 [CLS]、任务相关位置），它们可以 attend 全序列，也被全序列 attend。</li>
   </ul>
   <p>直觉：把文档里的「枢纽车站」设成全局站，普通站只连邻近站——全网仍可达，边数却近似线性。这是今天「工业长文本」最常见的骨架之一：<strong>90% 局部 + 少量全局</strong>。</p>
-  <div class="callout">想把这一段吃透？看专页详解：<a href="../../papers/longformer/index.html"><strong>Longformer 局部 + 全局注意力</strong></a>（含四种图案图、对称全局、两套 QKV、任务怎么设全局位）。</div>
+  <div class="callout">想把这一段吃透？看专页详解：<a href="../longformer/index.html"><strong>Longformer 局部 + 全局注意力</strong></a>（含四种图案图、对称全局、两套 QKV、任务怎么设全局位）。</div>
 
   <h4>3.3 BigBird：局部 + 全局 + 随机块</h4>
   <p>BigBird（Zaheer et al., 2020）在窗口与全局之外，再加 <strong>随机稀疏边</strong>（常以块为单位）。随机边缩短了图上的平均路径长度，理论性质更漂亮。工程上它推动了「块稀疏」表示：不是每个 token 各选邻居，而是按 block 决定整块是否参与，方便用块矩阵核。</p>
-  <div class="callout">展开读：<a href="../../papers/bigbird/index.html"><strong>BigBird 详解专页</strong></a>（三块积木图、小世界路径、ITC/ETC、块稀疏、与 Longformer 对照）。</div>
+  <div class="callout">展开读：<a href="../bigbird/index.html"><strong>BigBird 详解专页</strong></a>（三块积木图、小世界路径、ITC/ETC、块稀疏、与 Longformer 对照）。</div>
 
   <h4>3.4 Sparse Transformer：固定步长 / 跨步图案</h4>
   <p>Sparse Transformer（Child et al., 2019）更早提出用固定 stride、局部块等模式把自注意力变稀疏，让生成模型能吃更长序列。今天纯 LLM 预训练里「手写 stride」已不如窗口+全局流行，但「用固定图案换线性复杂度」的思路一脉相承。</p>
@@ -491,10 +491,10 @@ o_t = Σ_{{i∈S(t)}} α_t,i · v_i</div>
 
   <h3 class="sec" id="refs"><span class="num">09</span>原文 PDF 与重点引用</h3>
   <div class="refgrid">
-    <div class="ref"><span class="tag">必读 · 本地 PDF</span><h5>Native Sparse Attention (NSA)</h5><p>可训练层次稀疏：压缩、选块、窗口；硬件对齐讨论最完整的现代报告之一。</p><a href="./papers/NSA_2502.11089.pdf">打开 PDF</a> · <a href="https://arxiv.org/abs/2502.11089">arXiv</a></div>
-    <div class="ref"><span class="tag">必读 · 本地 PDF</span><h5>Longformer</h5><p>局部窗口 + 全局 token 的经典操作范式，文档 Transformer 起点。</p><a href="./papers/Longformer_2004.05150.pdf">打开 PDF</a> · <a href="https://arxiv.org/abs/2004.05150">arXiv</a></div>
-    <div class="ref"><span class="tag imp">重点 · 本地 PDF</span><h5>BigBird</h5><p>局部+全局+随机；块稀疏与理论连通性。</p><a href="./papers/BigBird_2007.14062.pdf">打开 PDF</a> · <a href="https://arxiv.org/abs/2007.14062">arXiv</a></div>
-    <div class="ref"><span class="tag imp">重点 · 本地 PDF</span><h5>Sparse Transformer</h5><p>早期固定稀疏图案，长序列生成的重要前驱。</p><a href="./papers/SparseTransformer_1904.10509.pdf">打开 PDF</a> · <a href="https://arxiv.org/abs/1904.10509">arXiv</a></div>
+    <div class="ref"><span class="tag">必读 · 本地 PDF</span><h5>Native Sparse Attention (NSA)</h5><p>可训练层次稀疏：压缩、选块、窗口；硬件对齐讨论最完整的现代报告之一。</p><a href="../nsa/paper.pdf">打开 PDF</a> · <a href="../nsa/">目录</a> · <a href="https://arxiv.org/abs/2502.11089">arXiv</a></div>
+    <div class="ref"><span class="tag">必读 · 本地 PDF</span><h5>Longformer</h5><p>局部窗口 + 全局 token 的经典操作范式，文档 Transformer 起点。</p><a href="../longformer/index.html">精读</a> · <a href="../longformer/paper.pdf">PDF</a> · <a href="https://arxiv.org/abs/2004.05150">arXiv</a></div>
+    <div class="ref"><span class="tag imp">重点 · 本地 PDF</span><h5>BigBird</h5><p>局部+全局+随机；块稀疏与理论连通性。</p><a href="../bigbird/index.html">精读</a> · <a href="../bigbird/paper.pdf">PDF</a> · <a href="https://arxiv.org/abs/2007.14062">arXiv</a></div>
+    <div class="ref"><span class="tag imp">重点 · 本地 PDF</span><h5>Sparse Transformer</h5><p>早期固定稀疏图案，长序列生成的重要前驱。</p><a href="../sparse-transformer/paper.pdf">打开 PDF</a> · <a href="../sparse-transformer/">目录</a> · <a href="https://arxiv.org/abs/1904.10509">arXiv</a></div>
     <div class="ref"><span class="tag">扩展</span><h5>StreamingLLM / Attention Sinks</h5><p>推理期用 sink 稳定超长生成，理解「缓存稀疏」。</p><a href="https://arxiv.org/abs/2309.17453">arXiv</a></div>
     <div class="ref"><span class="tag">扩展</span><h5>FlashAttention-2</h5><p>与窗口稀疏结合的 IO 感知核；读完本页建议接着读 Flash 专题。</p><a href="../flash-attention/index.html">本仓库专题</a> · <a href="https://arxiv.org/abs/2307.08691">arXiv</a></div>
   </div>

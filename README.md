@@ -2,29 +2,29 @@
 
 用于存放 LLM 学习笔记、论文精读与可运行教学代码。
 
-## 论文精读（每篇一个文件夹）
+## 统一约定
 
-入口：[`papers/`](./papers/)
+全部学习单元都在 [`papers/<slug>/`](./papers/)：
 
-| 论文 | 精读入口 |
-|------|----------|
+```text
+papers/<slug>/
+  README.md
+  paper.pdf      # 单篇论文；跨论文专题可省略
+  index.html     # 精读入口
+```
+
+| 单元 | 入口 |
+|------|------|
 | **Longformer**（局部+全局） | [`papers/longformer/index.html`](./papers/longformer/index.html) |
 | **BigBird**（局部+全局+随机） | [`papers/bigbird/index.html`](./papers/bigbird/index.html) |
 | Attention Residuals | [`papers/attention-residuals/index.html`](./papers/attention-residuals/index.html) |
 | **Linear Attention**（Transformers are RNNs） | [`papers/linear-attention/index.html`](./papers/linear-attention/index.html) |
 | **Kimi Linear / Delta Attention** | [`papers/kimi-linear-delta-attention/index.html`](./papers/kimi-linear-delta-attention/index.html) |
 | Watts–Strogatz（小世界） | [`papers/watts-strogatz/index.html`](./papers/watts-strogatz/index.html) |
-
-## 技术专题（两个文件夹，各一篇 HTML）
-
-入口：[`topics/`](./topics/)
-
-| 专题 | 精读入口 |
-|------|----------|
-| **稀疏注意力** Sparse Attention | [`topics/sparse-attention/index.html`](./topics/sparse-attention/index.html) |
-| **Flash Attention** | [`topics/flash-attention/index.html`](./topics/flash-attention/index.html) |
-
-约定：`papers/<slug>/` 单篇论文；`topics/<slug>/` 跨论文专题。均提供 HTML 精读（对照翻译、段末小结、名词、引用）。
+| Native Sparse Attention (NSA) | [`papers/nsa/`](./papers/nsa/) |
+| Sparse Transformer | [`papers/sparse-transformer/`](./papers/sparse-transformer/) |
+| **稀疏注意力专题** | [`papers/sparse-attention/index.html`](./papers/sparse-attention/index.html) |
+| **Flash Attention 专题** | [`papers/flash-attention/index.html`](./papers/flash-attention/index.html) |
 
 ## 代码模块
 
