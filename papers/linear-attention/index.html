@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Linear Attention 逐段精读 · Transformers are RNNs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#f6f3ec; --bg2:#efe9dc; --paper:#fffcf5; --ink:#1c2420; --muted:#5a6a62;
+  --faint:#7d8c84; --line:#d8d0c0; --accent:#0f6e56; --accent-soft:#d8efe6;
+  --warm:#b85c38; --warm-soft:#f3e0d6; --blue:#1f4e79; --blue-soft:#dce8f3;
+  --shadow:0 12px 40px rgba(40,50,40,.08);
+  --serif:"Literata",Georgia,"Noto Serif SC",serif;
+  --sans:"Manrope",system-ui,"Noto Sans SC",sans-serif;
+  --mono:ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.75;
+background:radial-gradient(900px 500px at 0% 0%,rgba(15,110,86,.07),transparent 55%),
+radial-gradient(700px 400px at 100% 8%,rgba(184,92,56,.06),transparent 50%),
+linear-gradient(180deg,var(--bg),var(--bg2));min-height:100vh}
+a{color:var(--accent);text-underline-offset:3px}
+a:hover{color:var(--warm)}
+.app{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow:auto;padding:22px 16px 28px;
+border-right:1px solid var(--line);background:rgba(255,252,245,.85);backdrop-filter:blur(10px)}
+.brand{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--accent);letter-spacing:.04em;margin:0 0 8px}
+.side h1{font-family:var(--sans);font-size:20px;line-height:1.25;margin:0 0 8px}
+.side .meta{font-family:var(--sans);font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+.side nav a{display:block;padding:8px 10px;border-radius:10px;color:var(--muted);
+font-family:var(--sans);font-size:13px;text-decoration:none;margin-bottom:2px}
+.side nav a:hover,.side nav a.active{background:var(--accent-soft);color:var(--ink)}
+.side .hint{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:12px;
+font-family:var(--sans);font-size:12px;color:var(--faint);line-height:1.55;background:var(--paper)}
+.main{padding:22px 28px 80px;max-width:1080px}
+.topbar{position:sticky;top:0;z-index:20;margin:0 -28px 22px;padding:14px 28px;
+display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+background:rgba(246,243,236,.9);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.seg{display:inline-flex;padding:4px;border-radius:999px;background:var(--paper);border:1px solid var(--line)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;
+font-family:var(--sans);font-size:12px;padding:8px 12px;border-radius:999px}
+.seg button.on{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.btn{font-family:var(--sans);font-size:12px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);border-radius:999px;padding:8px 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.search{flex:1;min-width:180px}
+.search input{width:100%;border-radius:999px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);padding:9px 14px;font-family:var(--sans);font-size:13px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.hero{border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:22px;
+background:linear-gradient(135deg,rgba(15,110,86,.08),transparent 45%),var(--paper);
+box-shadow:var(--shadow)}
+.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:24px}
+.hero p{margin:0;color:var(--muted);font-family:var(--sans);font-size:14px;line-height:1.65}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-family:var(--sans);font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.chip em{color:var(--warm);font-style:normal;font-weight:600}
+.section{margin:28px 0 10px;scroll-margin-top:78px}
+.section h3{font-family:var(--sans);font-size:18px;margin:0 0 12px;padding-bottom:8px;
+border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:10px}
+.section h3 span{font-size:12px;color:var(--faint);font-weight:500}
+.card{border:1px solid var(--line);background:var(--paper);border-radius:16px;padding:14px 16px;margin:0 0 12px;
+transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover{border-color:rgba(15,110,86,.35);transform:translateY(-1px);box-shadow:var(--shadow)}
+.card.active{border-color:var(--accent);box-shadow:0 0 0 1px rgba(15,110,86,.2),var(--shadow)}
+.pidx{font-family:var(--sans);font-size:11px;color:var(--faint);float:right;margin-left:8px}
+.summary{font-family:var(--sans);font-size:13px;color:#0b3d30;background:var(--accent-soft);
+border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 10px 10px 0;margin:0 0 12px;line-height:1.55}
+.lang{font-size:15.5px;line-height:1.8}
+.lang .en{color:#24312c}
+.lang .zh{color:#1c2420}
+.lang .label{font-family:var(--sans);font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+body.mode-zh .en-block,body.mode-en .zh-block{display:none}
+body.mode-zh .pair,body.mode-en .pair{grid-template-columns:1fr}
+.terms{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;clear:both}
+.term{font-family:var(--sans);font-size:11px;padding:4px 8px;border-radius:999px;cursor:pointer;
+background:var(--warm-soft);color:#6a2f18;border:1px solid rgba(184,92,56,.25)}
+.term:hover{background:#efd2c2}
+.figure{margin:12px 0 4px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fffcf5}
+.figure .cap{font-family:var(--sans);font-size:12px;color:var(--faint);padding:8px 12px;border-top:1px solid var(--line)}
+.figure svg{display:block;width:100%;height:auto}
+.hidden-by-search{display:none !important}
+.drawer{position:fixed;top:0;right:0;width:min(420px,100%);height:100vh;overflow:auto;z-index:40;
+background:var(--paper);border-left:1px solid var(--line);
+transform:translateX(100%);transition:transform .28s ease;padding:18px 16px 40px;box-shadow:var(--shadow)}
+.drawer.open{transform:none}
+.drawer h2{font-family:var(--sans);margin:8px 0 6px;font-size:18px}
+.gitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff}
+.gitem b{font-family:var(--sans);color:var(--warm)}
+.gitem p{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.55}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ref{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--paper);
+display:flex;flex-direction:column;gap:8px;min-height:140px}
+.ref .lv{font-family:var(--sans);font-size:11px;align-self:start;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.ref .lv.must{color:#fff;background:var(--accent);border-color:transparent;font-weight:700}
+.ref .lv.imp{color:#fff;background:var(--warm);border-color:transparent;font-weight:700}
+.ref h4{margin:0;font-family:var(--sans);font-size:15px;line-height:1.35}
+.ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint);background:#fff}
+.note{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .pair{grid-template-columns:1fr}
+  .main{padding:16px 14px 70px}
+  .topbar{margin:0 -14px 16px;padding:12px 14px}
+}
+</style></head>
+<body class="mode-both"><div class="app">
+<aside class="side">
+<div class="brand">LLM Learning · Paper Reader</div>
+<h1>Linear Attention</h1>
+<div class="meta">Katharopoulos et al. · ICML 2020<br/>arXiv:2006.16236<br/>每段 = 小结 + Original + 译文</div>
+<nav id="toc"><a href="#abstract">Abstract 摘要</a>
+<a href="#intro">1 Introduction 引言</a>
+<a href="#related">2 Related Work 相关工作（精要）</a>
+<a href="#softmax">3.1 Softmax 注意力回顾</a>
+<a href="#linearize">3.2 线性化注意力（核心推导）</a>
+<a href="#causal">3.3 因果掩码：线性时间 + 常数内存</a>
+<a href="#rnn">3.4 Transformers are RNNs</a>
+<a href="#expts">4 Experiments 实验要点</a>
+<a href="#bridge">桥接到后续：Delta / KDA / 混合架构</a>
+<a href="#glossary">名词重点解释</a>
+<a href="#refs">重点引用</a>
+</nav>
+<div class="hint">
+<div><span class="kbd">1</span>对照 <span class="kbd">2</span>译文 <span class="kbd">3</span>原文</div>
+<div style="margin-top:6px"><span class="kbd">J</span>/<span class="kbd">K</span>跳段 <span class="kbd">G</span>名词 <span class="kbd">/</span>搜索</div>
+</div></aside>
+<main class="main">
+<div class="topbar">
+<div class="seg" id="modeSeg">
+<button data-mode="both" class="on">对照</button>
+<button data-mode="zh">仅译文</button>
+<button data-mode="en">仅原文</button>
+</div>
+<button class="btn" id="btnGlossary">名词表</button>
+<a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+<a class="btn" href="../kimi-linear-delta-attention/index.html">KDA 精读 →</a>
+<a class="btn" href="https://linear-transformers.com/" target="_blank" rel="noopener">官网 →</a>
+<div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
+</div>
+<section class="hero">
+<h2>Transformers are RNNs · Linear Attention</h2>
+<p>线性注意力经典源头：用核特征把 softmax 换成 φ(q)ᵀφ(k)，再用结合律把计算从「N×N 矩阵」重排成「固定大小状态聚合」。因果形式下，Transformer 就是带双状态 (S,Z) 的 RNN——这也是后来 DeltaNet / GDN / KDA 的起点。</p>
+<div class="chips">
+<span class="chip">复杂度：<em>O(N²) → O(N)</em></span>
+<span class="chip">特征：<em>φ = elu+1</em></span>
+<span class="chip">推理：<em>常数内存 RNN</em></span>
+<span class="chip">下游：<em>KDA / 混合架构</em></span>
+</div>
+</section>
+<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。学完建议接着读 <a href="../kimi-linear-delta-attention/index.html">Kimi Linear / KDA</a>。</p>
+<section class="section" id="abstract"><h3>Abstract 摘要 <span>4 段</span></h3>
+<article class="card para" data-idx="1" data-blob="transformers achieve remarkable performance in several tasks but due to their quadratic complexity, with respect to the input’s length, they are prohibitively slow for very long sequences. transformer 在多项任务上表现卓越，但由于相对输入长度的二次复杂度，对很长序列而言慢得难以接受。 痛点：全注意力 o(n²)，长序列吃不消。 quadratic complexity">
+<span class="pidx">§1</span>
+<div class="summary"><b>小结</b> · 痛点：全注意力 O(N²)，长序列吃不消。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Transformers achieve remarkable performance in several tasks but due to their quadratic complexity, with respect to the input’s length, they are prohibitively slow for very long sequences.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Transformer 在多项任务上表现卓越，但由于相对输入长度的二次复杂度，对很长序列而言慢得难以接受。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="quadratic complexity">quadratic complexity</span></div></article>
+<article class="card para" data-idx="2" data-blob="to address this limitation, we express the self-attention as a linear dot-product of kernel feature maps and make use of the associativity property of matrix products to reduce the complexity from o(n²) to o(n), where n is the sequence length. 为此，我们把自注意力写成核特征映射的线性点积，并利用矩阵乘法结合律，把复杂度从 o(n²) 降到 o(n)，其中 n 为序列长度。 核心手法：核特征 φ + 结合律重排 → 线性复杂度。 kernel feature maps associativity linear attention">
+<span class="pidx">§2</span>
+<div class="summary"><b>小结</b> · 核心手法：核特征 φ + 结合律重排 → 线性复杂度。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">To address this limitation, we express the self-attention as a linear dot-product of kernel feature maps and make use of the associativity property of matrix products to reduce the complexity from O(N²) to O(N), where N is the sequence length.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">为此，我们把自注意力写成核特征映射的线性点积，并利用矩阵乘法结合律，把复杂度从 O(N²) 降到 O(N)，其中 N 为序列长度。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="kernel feature maps">kernel feature maps</span><span class="term" data-term="associativity">associativity</span><span class="term" data-term="linear attention">linear attention</span></div></article>
+<article class="card para" data-idx="3" data-blob="we show that this formulation permits an iterative implementation that dramatically accelerates autoregressive transformers and reveals their relationship to recurrent neural networks. 该形式允许迭代实现，从而大幅加速自回归 transformer，并揭示其与循环神经网络的关系。 副产品：因果线性注意力 = 固定状态 rnn。 rnn autoregressive inference">
+<span class="pidx">§3</span>
+<div class="summary"><b>小结</b> · 副产品：因果线性注意力 = 固定状态 RNN。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We show that this formulation permits an iterative implementation that dramatically accelerates autoregressive transformers and reveals their relationship to recurrent neural networks.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">该形式允许迭代实现，从而大幅加速自回归 Transformer，并揭示其与循环神经网络的关系。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="RNN">RNN</span><span class="term" data-term="autoregressive inference">autoregressive inference</span></div></article>
+<article class="card para" data-idx="4" data-blob="our linear transformers achieve similar performance to vanilla transformers and they are up to 4000x faster on autoregressive prediction of very long sequences. 我们的线性 transformer 性能接近原版 transformer，在很长序列的自回归预测上最高可快约 4000 倍。 卖点数字：质量相近，长解码最高约 4000×。 linear transformers">
+<span class="pidx">§4</span>
+<div class="summary"><b>小结</b> · 卖点数字：质量相近，长解码最高约 4000×。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Our linear transformers achieve similar performance to vanilla transformers and they are up to 4000x faster on autoregressive prediction of very long sequences.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们的线性 Transformer 性能接近原版 Transformer，在很长序列的自回归预测上最高可快约 4000 倍。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Linear Transformers">Linear Transformers</span></div></article>
+</section>
+<section class="section" id="intro"><h3>1 Introduction 引言 <span>6 段</span></h3>
+<article class="card para" data-idx="5" data-blob="transformer models were originally introduced by vaswani et al. (2017) in the context of neural machine translation and have demonstrated impressive results on a variety of tasks dealing with natural language, audio, and images. transformer 最初由 vaswani 等（2017）在神经机器翻译中提出，并在自然语言、音频与图像等多种任务上取得亮眼结果。 先立功：transformer 已是多模态默认底座。 transformer">
+<span class="pidx">§5</span>
+<div class="summary"><b>小结</b> · 先立功：Transformer 已是多模态默认底座。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Transformer models were originally introduced by Vaswani et al. (2017) in the context of neural machine translation and have demonstrated impressive results on a variety of tasks dealing with natural language, audio, and images.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Transformer 最初由 Vaswani 等（2017）在神经机器翻译中提出，并在自然语言、音频与图像等多种任务上取得亮眼结果。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Transformer">Transformer</span></div></article>
+<article class="card para" data-idx="6" data-blob="however, these benefits often come with a very high computational and memory cost. the bottleneck is mainly caused by the global receptive field of self-attention, which processes contexts of n inputs with a quadratic memory and time complexity o(n²). 然而这些收益常伴随极高的计算与内存代价。瓶颈主要来自自注意力的全局感受野：处理长度为 n 的上下文时，内存与时间复杂度为二次的 o(n²)。 瓶颈定位：全局自注意力的二次代价。 self-attention">
+<span class="pidx">§6</span>
+<div class="summary"><b>小结</b> · 瓶颈定位：全局自注意力的二次代价。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">However, these benefits often come with a very high computational and memory cost. The bottleneck is mainly caused by the global receptive field of self-attention, which processes contexts of N inputs with a quadratic memory and time complexity O(N²).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">然而这些收益常伴随极高的计算与内存代价。瓶颈主要来自自注意力的全局感受野：处理长度为 N 的上下文时，内存与时间复杂度为二次的 O(N²)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="self-attention">self-attention</span></div></article>
+<article class="card para" data-idx="7" data-blob="as a result, in practice transformers are slow to train and their context is limited. this disrupts temporal coherence and hinders the capturing of long-term dependencies. 结果是：实践中 transformer 训练慢、上下文受限，破坏时间连贯性，并阻碍长程依赖捕捉。 后果：训不快、看不长、长依赖难。 ">
+<span class="pidx">§7</span>
+<div class="summary"><b>小结</b> · 后果：训不快、看不长、长依赖难。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">As a result, in practice transformers are slow to train and their context is limited. This disrupts temporal coherence and hinders the capturing of long-term dependencies.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">结果是：实践中 Transformer 训练慢、上下文受限，破坏时间连贯性，并阻碍长程依赖捕捉。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="8" data-blob="lately, researchers shifted their attention to approaches that increase the context length without sacrificing efficiency. child et al. (2019) introduced sparse factorizations (o(n√n)); kitaev et al. (2020) reduced complexity to o(n log n) using lsh. even though these models can be efficiently trained on large sequences, they do not speed-up autoregressive inference. 近期研究转向「加长上下文又不牺牲效率」：child 等提出稀疏分解（o(n√n)）；kitaev 等用 lsh 降到 o(n log n)。但这些模型虽能高效训练长序列，却不能加速自回归推理。 前人缺口：训练可加速，解码逐步仍贵。 sparse transformer reformer lsh">
+<span class="pidx">§8</span>
+<div class="summary"><b>小结</b> · 前人缺口：训练可加速，解码逐步仍贵。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Lately, researchers shifted their attention to approaches that increase the context length without sacrificing efficiency. Child et al. (2019) introduced sparse factorizations (O(N√N)); Kitaev et al. (2020) reduced complexity to O(N log N) using LSH. Even though these models can be efficiently trained on large sequences, they do not speed-up autoregressive inference.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">近期研究转向「加长上下文又不牺牲效率」：Child 等提出稀疏分解（O(N√N)）；Kitaev 等用 LSH 降到 O(N log N)。但这些模型虽能高效训练长序列，却不能加速自回归推理。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Sparse Transformer">Sparse Transformer</span><span class="term" data-term="Reformer">Reformer</span><span class="term" data-term="LSH">LSH</span></div></article>
+<article class="card para" data-idx="9" data-blob="in this paper, we introduce the linear transformer model that significantly reduces the memory footprint and scales linearly with respect to the context length. we achieve this by using a kernel-based formulation of self-attention and the associative property of matrix products (§3.2). using our linear formulation, we also express causal masking with linear complexity and constant memory (§3.3). 本文提出线性 transformer：显著降低内存占用，并对上下文长度线性扩展。做法是核形式的自注意力 + 矩阵乘法结合律（§3.2）；并在线性复杂度与常数内存下表达因果掩码（§3.3）。 本文贡献预告：线性训练 + 因果常数内存推理。 causal masking linear attention">
+<span class="pidx">§9</span>
+<div class="summary"><b>小结</b> · 本文贡献预告：线性训练 + 因果常数内存推理。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In this paper, we introduce the linear transformer model that significantly reduces the memory footprint and scales linearly with respect to the context length. We achieve this by using a kernel-based formulation of self-attention and the associative property of matrix products (§3.2). Using our linear formulation, we also express causal masking with linear complexity and constant memory (§3.3).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本文提出线性 Transformer：显著降低内存占用，并对上下文长度线性扩展。做法是核形式的自注意力 + 矩阵乘法结合律（§3.2）；并在线性复杂度与常数内存下表达因果掩码（§3.3）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="causal masking">causal masking</span><span class="term" data-term="linear attention">linear attention</span></div></article>
+<article class="card para" data-idx="10" data-blob="this reveals the relation between transformers and rnns, which enables us to perform autoregressive inference orders of magnitude faster (§3.4). evaluation on image generation and asr shows linear transformer reaches transformer-level performance while being up to three orders of magnitude faster during inference. 这揭示了 transformer 与 rnn 的关系，使自回归推理快上几个数量级（§3.4）。在图像生成与语音识别上的评估显示：线性 transformer 可达 transformer 级性能，推理最高快约三个数量级。 标题含义落地：transformers are rnns ⇒ 解码像 rnn 一样便宜。 rnn autoregressive inference">
+<span class="pidx">§10</span>
+<div class="summary"><b>小结</b> · 标题含义落地：Transformers are RNNs ⇒ 解码像 RNN 一样便宜。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">This reveals the relation between transformers and RNNs, which enables us to perform autoregressive inference orders of magnitude faster (§3.4). Evaluation on image generation and ASR shows linear transformer reaches transformer-level performance while being up to three orders of magnitude faster during inference.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">这揭示了 Transformer 与 RNN 的关系，使自回归推理快上几个数量级（§3.4）。在图像生成与语音识别上的评估显示：线性 Transformer 可达 Transformer 级性能，推理最高快约三个数量级。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="RNN">RNN</span><span class="term" data-term="autoregressive inference">autoregressive inference</span></div></article>
+</section>
+<section class="section" id="related"><h3>2 Related Work 相关工作（精要） <span>3 段</span></h3>
+<article class="card para" data-idx="11" data-blob="pruning, factorization, quantization, and distillation can speed training/inference, but time complexity remains quadratic in sequence length. in contrast, we reduce both memory and time complexity of transformers theoretically and empirically. 剪枝、分解、量化与蒸馏可加速训练/推理，但时间复杂度对序列长度仍是二次的。对比之下，我们在理论与经验上都降低了 transformer 的内存与时间复杂度。 批评压缩派：再压也还是 o(n²)。 ">
+<span class="pidx">§11</span>
+<div class="summary"><b>小结</b> · 批评压缩派：再压也还是 O(N²)。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Pruning, factorization, quantization, and distillation can speed training/inference, but time complexity remains quadratic in sequence length. In contrast, we reduce both memory and time complexity of transformers theoretically and empirically.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">剪枝、分解、量化与蒸馏可加速训练/推理，但时间复杂度对序列长度仍是二次的。对比之下，我们在理论与经验上都降低了 Transformer 的内存与时间复杂度。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="12" data-blob="more related are child et al. (sparse attention, o(n√n)) and kitaev et al. (reformer, o(n log n) via lsh). reformer constrains keys to equal queries, so it cannot be used for decoding tasks where keys must differ from queries. linear transformers impose no such constraints and scale linearly; they can also perform autoregressive inference three orders of magnitude faster. 更相关的是 child 等（稀疏注意力，o(n√n)）与 kitaev 等（reformer，经 lsh 达 o(n log n)）。reformer 强制 key=query，故无法用于 key 必须异于 query 的解码任务。线性 transformer 无此约束、线性扩展，且自回归推理可快三个数量级。 对 reformer：训练友好 ≠ 解码友好；本文两者兼顾。 reformer sparse transformer">
+<span class="pidx">§12</span>
+<div class="summary"><b>小结</b> · 对 Reformer：训练友好 ≠ 解码友好；本文两者兼顾。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">More related are Child et al. (sparse attention, O(N√N)) and Kitaev et al. (Reformer, O(N log N) via LSH). Reformer constrains keys to equal queries, so it cannot be used for decoding tasks where keys must differ from queries. Linear transformers impose no such constraints and scale linearly; they can also perform autoregressive inference three orders of magnitude faster.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">更相关的是 Child 等（稀疏注意力，O(N√N)）与 Kitaev 等（Reformer，经 LSH 达 O(N log N)）。Reformer 强制 key=query，故无法用于 key 必须异于 query 的解码任务。线性 Transformer 无此约束、线性扩展，且自回归推理可快三个数量级。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Reformer">Reformer</span><span class="term" data-term="Sparse Transformer">Sparse Transformer</span></div></article>
+<article class="card para" data-idx="13" data-blob="tsai et al. proposed a kernel-based formulation of attention as a kernel smoother. we use the kernel formulation to speed up self-attention and lower complexity. concurrently, shen et al. explored linearized attention for object detection; we additionally develop an autoregressive transformer with linear complexity and constant memory for both inference and training. tsai 等提出注意力的核平滑视角；我们用核形式加速自注意力并降复杂度。同期 shen 等探索目标检测中的线性化注意力；我们进一步做出训练与推理皆线性复杂度、推理常数内存的自回归 transformer。 谱系：核注意力思想 → 本文把它变成可训可推的线性 rnn 形。 kernel feature maps">
+<span class="pidx">§13</span>
+<div class="summary"><b>小结</b> · 谱系：核注意力思想 → 本文把它变成可训可推的线性 RNN 形。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Tsai et al. proposed a kernel-based formulation of attention as a kernel smoother. We use the kernel formulation to speed up self-attention and lower complexity. Concurrently, Shen et al. explored linearized attention for object detection; we additionally develop an autoregressive transformer with linear complexity and constant memory for both inference and training.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Tsai 等提出注意力的核平滑视角；我们用核形式加速自注意力并降复杂度。同期 Shen 等探索目标检测中的线性化注意力；我们进一步做出训练与推理皆线性复杂度、推理常数内存的自回归 Transformer。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="kernel feature maps">kernel feature maps</span></div></article>
+</section>
+<section class="section" id="softmax"><h3>3.1 Softmax 注意力回顾 <span>3 段</span></h3>
+<article class="card para" data-idx="14" data-blob="let x ∈ r^{n×f} denote a sequence of n feature vectors of dimensions f. a transformer is t : r^{n×f} → r^{n×f} defined by composing l layers. each layer is t_l(x) = f_l(a_l(x) + x), where f_l acts position-wise (ffn) and a_l is self-attention across the sequence. 令 x∈r^{n×f} 为 n 个 f 维特征向量组成的序列。transformer 由 l 层复合：t_l(x)=f_l(a_l(x)+x)，其中 f_l 逐位置作用（ffn），a_l 是跨序列的自注意力。 层结构：残差 + 位置无关 ffn + 唯一跨位置算子 a。 transformer">
+<span class="pidx">§14</span>
+<div class="summary"><b>小结</b> · 层结构：残差 + 位置无关 FFN + 唯一跨位置算子 A。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Let x ∈ R^{N×F} denote a sequence of N feature vectors of dimensions F. A transformer is T : R^{N×F} → R^{N×F} defined by composing L layers. Each layer is T_l(x) = f_l(A_l(x) + x), where f_l acts position-wise (FFN) and A_l is self-attention across the sequence.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">令 x∈R^{N×F} 为 N 个 F 维特征向量组成的序列。Transformer 由 L 层复合：T_l(x)=f_l(A_l(x)+x)，其中 f_l 逐位置作用（FFN），A_l 是跨序列的自注意力。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Transformer">Transformer</span></div></article>
+<article class="card para" data-idx="15" data-blob="the input is projected to q = x w_q, k = x w_k, v = x w_v. softmax attention computes a_l(x) = softmax(q kᵀ / √d) v, with softmax applied row-wise. 输入投影为 q=xw_q、k=xw_k、v=xw_v。softmax 注意力计算 a_l(x)=softmax(qkᵀ/√d)v，softmax 按行作用。 标准式：先物化 n×n 相似度，再加权 v。 softmax attention q k v">
+<span class="pidx">§15</span>
+<div class="summary"><b>小结</b> · 标准式：先物化 N×N 相似度，再加权 V。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The input is projected to Q = x W_Q, K = x W_K, V = x W_V. Softmax attention computes A_l(x) = softmax(Q Kᵀ / √D) V, with softmax applied row-wise.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">输入投影为 Q=xW_Q、K=xW_K、V=xW_V。Softmax 注意力计算 A_l(x)=softmax(QKᵀ/√D)V，softmax 按行作用。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="softmax attention">softmax attention</span><span class="term" data-term="Q">Q</span><span class="term" data-term="K">K</span><span class="term" data-term="V">V</span></div></article>
+<article class="card para" data-idx="16" data-blob="generalized attention for any similarity: v&#x27;_i = σ_j sim(q_i, k_j) v_j / σ_j sim(q_i, k_j). softmax attention is the special case sim(q,k) = exp(qᵀ k / √d). 对任意相似度的广义注意力：v&#x27;_i = σ_j sim(q_i,k_j)v_j / σ_j sim(q_i,k_j)。softmax 是特例 sim(q,k)=exp(qᵀk/√d)。 抽象接口：只要 sim≥0，就能定义注意力。 similarity function">
+<span class="pidx">§16</span>
+<div class="summary"><b>小结</b> · 抽象接口：只要 sim≥0，就能定义注意力。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Generalized attention for any similarity: V&#x27;_i = Σ_j sim(Q_i, K_j) V_j / Σ_j sim(Q_i, K_j). Softmax attention is the special case sim(q,k) = exp(qᵀ k / √D).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">对任意相似度的广义注意力：V&#x27;_i = Σ_j sim(Q_i,K_j)V_j / Σ_j sim(Q_i,K_j)。Softmax 是特例 sim(q,k)=exp(qᵀk/√D)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="similarity function">similarity function</span></div></article>
+</section>
+<section class="section" id="linearize"><h3>3.2 线性化注意力（核心推导） <span>5 段</span></h3>
+<article class="card para" data-idx="17" data-blob="the only constraint on sim(·) for eq.3 to define attention is non-negativity. this includes all kernels k(x,y): r^{2}→r₊. given a kernel with feature map φ(x), we can write v&#x27;_i = σ_j φ(q_i)ᵀ φ(k_j) v_j / σ_j φ(q_i)ᵀ φ(k_j). 式 (3) 要成为注意力，对 sim(·) 的唯一约束是非负。这包含所有核 k(x,y):r²→r₊。给定特征映射 φ(x)，可写 v&#x27;_i=σ_j φ(q_i)ᵀφ(k_j)v_j / σ_j φ(q_i)ᵀφ(k_j)。 第一步：用 φ(q)ᵀφ(k) 代替 softmax 相似度。 kernel feature maps φ">
+<span class="pidx">§17</span>
+<div class="summary"><b>小结</b> · 第一步：用 φ(q)ᵀφ(k) 代替 softmax 相似度。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The only constraint on sim(·) for Eq.3 to define attention is non-negativity. This includes all kernels k(x,y): R^{2}→R₊. Given a kernel with feature map φ(x), we can write V&#x27;_i = Σ_j φ(Q_i)ᵀ φ(K_j) V_j / Σ_j φ(Q_i)ᵀ φ(K_j).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">式 (3) 要成为注意力，对 sim(·) 的唯一约束是非负。这包含所有核 k(x,y):R²→R₊。给定特征映射 φ(x)，可写 V&#x27;_i=Σ_j φ(Q_i)ᵀφ(K_j)V_j / Σ_j φ(Q_i)ᵀφ(K_j)。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="associativity">
+  <rect width="820" height="220" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">结合律重排：从 O(N²) 注意力矩阵到 O(N) 状态聚合</text>
+    <rect x="40" y="55" width="320" height="110" rx="14" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="200" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">Softmax / 朴素核</text>
+    <text x="200" y="112" text-anchor="middle" font-size="13" fill="#5a6a62">(φ(Q) φ(K)ᵀ) V</text>
+    <text x="200" y="138" text-anchor="middle" font-size="12" fill="#7d8c84">先造 N×N，再乘 V → O(N²)</text>
+    <path d="M375 110 H445" stroke="#0f6e56" stroke-width="2"/>
+    <text x="410" y="100" text-anchor="middle" font-size="11" fill="#0f6e56">结合律</text>
+    <rect x="460" y="55" width="320" height="110" rx="14" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="620" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">Linear Attention</text>
+    <text x="620" y="112" text-anchor="middle" font-size="13" fill="#5a6a62">φ(Q) (φ(K)ᵀ V)</text>
+    <text x="620" y="138" text-anchor="middle" font-size="12" fill="#7d8c84">先聚 S=Σφ(k)vᵀ，再读 → O(N)</text>
+    <text x="410" y="195" text-anchor="middle" font-size="12" fill="#7d8c84">前提：sim(q,k)=φ(q)ᵀφ(k) ≥ 0</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应论文 §3.2 结合律重排</div></div>
+<div class="terms"><span class="term" data-term="kernel feature maps">kernel feature maps</span><span class="term" data-term="φ">φ</span></div></article>
+<article class="card para" data-idx="18" data-blob="using associativity of matrix multiplication: v&#x27;_i = φ(q_i)ᵀ (σ_j φ(k_j) v_jᵀ) / (φ(q_i)ᵀ σ_j φ(k_j)). vectorized: φ(q) (φ(k)ᵀ v) instead of (φ(q) φ(k)ᵀ) v. 利用矩阵乘法结合律：v&#x27;_i = φ(q_i)ᵀ(σ_j φ(k_j)v_jᵀ) / (φ(q_i)ᵀ σ_j φ(k_j))。向量化即用 φ(q)(φ(k)ᵀv) 代替 (φ(q)φ(k)ᵀ)v。 关键重排：先聚合成 kv 状态，再对每个 query 读出。 associativity linear attention">
+<span class="pidx">§18</span>
+<div class="summary"><b>小结</b> · 关键重排：先聚合成 KV 状态，再对每个 query 读出。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Using associativity of matrix multiplication: V&#x27;_i = φ(Q_i)ᵀ (Σ_j φ(K_j) V_jᵀ) / (φ(Q_i)ᵀ Σ_j φ(K_j)). Vectorized: φ(Q) (φ(K)ᵀ V) instead of (φ(Q) φ(K)ᵀ) V.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">利用矩阵乘法结合律：V&#x27;_i = φ(Q_i)ᵀ(Σ_j φ(K_j)V_jᵀ) / (φ(Q_i)ᵀ Σ_j φ(K_j))。向量化即用 φ(Q)(φ(K)ᵀV) 代替 (φ(Q)φ(K)ᵀ)V。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="associativity">associativity</span><span class="term" data-term="linear attention">linear attention</span></div></article>
+<article class="card para" data-idx="19" data-blob="softmax attention costs o(n²) time and memory because the full attention matrix must be stored for gradients. linear attention from eq.5 is o(n) time and memory because σ_j φ(k_j) v_jᵀ and σ_j φ(k_j) can be computed once and reused for every query. softmax 注意力因需存储完整注意力矩阵以算梯度，时空皆 o(n²)。式 (5) 的线性注意力为 o(n)：σ_j φ(k_j)v_jᵀ 与 σ_j φ(k_j) 只需算一次，供所有 query 复用。 复杂度跳跃：共享两个累加器，不再物化 n×n。 o(n)">
+<span class="pidx">§19</span>
+<div class="summary"><b>小结</b> · 复杂度跳跃：共享两个累加器，不再物化 N×N。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Softmax attention costs O(N²) time and memory because the full attention matrix must be stored for gradients. Linear attention from Eq.5 is O(N) time and memory because Σ_j φ(K_j) V_jᵀ and Σ_j φ(K_j) can be computed once and reused for every query.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Softmax 注意力因需存储完整注意力矩阵以算梯度，时空皆 O(N²)。式 (5) 的线性注意力为 O(N)：Σ_j φ(K_j)V_jᵀ 与 Σ_j φ(K_j) 只需算一次，供所有 query 复用。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="O(N)">O(N)</span></div></article>
+<article class="card para" data-idx="20" data-blob="feature maps and cost: exact softmax corresponds to an infinite-dimensional feature map, so exact linearization is infeasible. a degree-2 polynomial map costs o(n d² m), favorable when n &gt; d². for experiments they use φ(x) = elu(x) + 1, yielding positive similarities and o(n d m) cost. 特征映射与代价：精确 softmax 对应无穷维特征，无法精确线性化。二次多项式映射代价 o(n d² m)，当 n&gt;d² 时更划算。实验采用 φ(x)=elu(x)+1，保证相似度非负，代价 o(n d m)。 实践选择：elu+1 既正定友好，又避免 relu 把负梯度打死。 elu+1 feature map">
+<span class="pidx">§20</span>
+<div class="summary"><b>小结</b> · 实践选择：elu+1 既正定友好，又避免 ReLU 把负梯度打死。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Feature maps and cost: exact softmax corresponds to an infinite-dimensional feature map, so exact linearization is infeasible. A degree-2 polynomial map costs O(N D² M), favorable when N &gt; D². For experiments they use φ(x) = elu(x) + 1, yielding positive similarities and O(N D M) cost.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">特征映射与代价：精确 softmax 对应无穷维特征，无法精确线性化。二次多项式映射代价 O(N D² M)，当 N&gt;D² 时更划算。实验采用 φ(x)=elu(x)+1，保证相似度非负，代价 O(N D M)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="elu+1">elu+1</span><span class="term" data-term="feature map">feature map</span></div></article>
+<article class="card para" data-idx="21" data-blob="we prefer elu(·) over relu(·) to avoid setting gradients to 0 when x is negative. empirically this feature map performs on par with the full transformer while significantly reducing compute and memory. 相对 relu，更偏好 elu，以免 x 为负时梯度被置零。经验上该特征映射性能与全 transformer 相当，同时显著降低计算与内存。 消融动机：正值相似度 + 可训练梯度。 elu+1">
+<span class="pidx">§21</span>
+<div class="summary"><b>小结</b> · 消融动机：正值相似度 + 可训练梯度。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We prefer elu(·) over relu(·) to avoid setting gradients to 0 when x is negative. Empirically this feature map performs on par with the full transformer while significantly reducing compute and memory.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">相对 relu，更偏好 elu，以免 x 为负时梯度被置零。经验上该特征映射性能与全 Transformer 相当，同时显著降低计算与内存。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="elu+1">elu+1</span></div></article>
+</section>
+<section class="section" id="causal"><h3>3.3 因果掩码：线性时间 + 常数内存 <span>4 段</span></h3>
+<article class="card para" data-idx="22" data-blob="causal masking ensures position i is influenced only by positions j ≤ i. softmax form becomes v&#x27;_i = σ_{j=1..i} sim(q_i,k_j) v_j / σ_{j=1..i} sim(q_i,k_j). 因果掩码保证位置 i 只受 j≤i 影响。softmax 形式变为 v&#x27;_i=σ_{j=1..i} sim(q_i,k_j)v_j / σ_{j=1..i} sim(q_i,k_j)。 自回归训练的标准掩码约束。 causal masking">
+<span class="pidx">§22</span>
+<div class="summary"><b>小结</b> · 自回归训练的标准掩码约束。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Causal masking ensures position i is influenced only by positions j ≤ i. Softmax form becomes V&#x27;_i = Σ_{j=1..i} sim(Q_i,K_j) V_j / Σ_{j=1..i} sim(Q_i,K_j).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">因果掩码保证位置 i 只受 j≤i 影响。Softmax 形式变为 V&#x27;_i=Σ_{j=1..i} sim(Q_i,K_j)V_j / Σ_{j=1..i} sim(Q_i,K_j)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="causal masking">causal masking</span></div></article>
+<article class="card para" data-idx="23" data-blob="linearized causal attention: v&#x27;_i = φ(q_i)ᵀ s_i / (φ(q_i)ᵀ z_i), where s_i = σ_{j≤i} φ(k_j) v_jᵀ and z_i = σ_{j≤i} φ(k_j). s_i and z_i update from the previous step in constant time. 线性化因果注意力：v&#x27;_i=φ(q_i)ᵀs_i/(φ(q_i)ᵀz_i)，其中 s_i=σ_{j≤i}φ(k_j)v_jᵀ，z_i=σ_{j≤i}φ(k_j)。s_i、z_i 可由前一步常数时间更新。 两个状态：内容记忆 s + 归一化记忆 z。 s z">
+<span class="pidx">§23</span>
+<div class="summary"><b>小结</b> · 两个状态：内容记忆 S + 归一化记忆 Z。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Linearized causal attention: V&#x27;_i = φ(Q_i)ᵀ S_i / (φ(Q_i)ᵀ Z_i), where S_i = Σ_{j≤i} φ(K_j) V_jᵀ and Z_i = Σ_{j≤i} φ(K_j). S_i and Z_i update from the previous step in constant time.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">线性化因果注意力：V&#x27;_i=φ(Q_i)ᵀS_i/(φ(Q_i)ᵀZ_i)，其中 S_i=Σ_{j≤i}φ(K_j)V_jᵀ，Z_i=Σ_{j≤i}φ(K_j)。S_i、Z_i 可由前一步常数时间更新。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RNN form">
+  <rect width="820" height="210" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">因果线性注意力 = 双状态 RNN</text>
+    <rect x="40" y="60" width="120" height="70" rx="12" fill="#efe9dc" stroke="#5a6a62"/>
+    <text x="100" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1c2420">x_i</text>
+    <text x="100" y="112" text-anchor="middle" font-size="11" fill="#5a6a62">当前输入</text>
+    <path d="M165 95 H200" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="205" y="50" width="200" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="305" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#1f4e79">更新状态</text>
+    <text x="305" y="100" text-anchor="middle" font-size="12" fill="#5a6a62">S ← S + φ(k)vᵀ</text>
+    <text x="305" y="120" text-anchor="middle" font-size="12" fill="#5a6a62">Z ← Z + φ(k)</text>
+    <path d="M410 95 H445" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="450" y="50" width="200" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="550" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">读出</text>
+    <text x="550" y="100" text-anchor="middle" font-size="12" fill="#5a6a62">o ∝ φ(q)ᵀ S</text>
+    <text x="550" y="120" text-anchor="middle" font-size="12" fill="#5a6a62">/ φ(q)ᵀ Z</text>
+    <path d="M655 95 H690" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="695" y="60" width="90" height="70" rx="12" fill="#1c2420"/>
+    <text x="740" y="100" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">y_i</text>
+    <text x="410" y="175" text-anchor="middle" font-size="12" fill="#5a6a62">每步常数时间；状态大小与序列长度无关</text>
+    <text x="410" y="195" text-anchor="middle" font-size="12" fill="#7d8c84">标题含义：Transformers are RNNs（时间维递推）</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应论文 §3.3–3.4 因果递推 / RNN 形式</div></div>
+<div class="terms"><span class="term" data-term="S">S</span><span class="term" data-term="Z">Z</span></div></article>
+<article class="card para" data-idx="24" data-blob="a naive implementation stores all intermediate s_i for gradients, multiplying memory by max(d,m). the authors derive gradients via cumulative sums so both forward and backward of causal linear attention run in linear time and constant memory w.r.t. sequence length. 朴素实现为求梯度需存所有中间 s_i，内存乘上 max(d,m)。作者用累加和形式推导梯度，使因果线性注意力前向与反向都对序列长度线性时间、常数内存。 训练可行关键：常数内存反传（algorithm 1 / cuda）。 constant memory">
+<span class="pidx">§24</span>
+<div class="summary"><b>小结</b> · 训练可行关键：常数内存反传（Algorithm 1 / CUDA）。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">A naive implementation stores all intermediate S_i for gradients, multiplying memory by max(D,M). The authors derive gradients via cumulative sums so both forward and backward of causal linear attention run in linear time and constant memory w.r.t. sequence length.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">朴素实现为求梯度需存所有中间 S_i，内存乘上 max(D,M)。作者用累加和形式推导梯度，使因果线性注意力前向与反向都对序列长度线性时间、常数内存。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="constant memory">constant memory</span></div></article>
+<article class="card para" data-idx="25" data-blob="training vs inference: with full ground truth available, layerwise parallelism still works for training. at inference, transformers normally recompute attention over all past steps (cost grows with square of current length). linear transformers keep φ(k)vᵀ as an internal state and update it each step like an rnn—constant cost per token. 训练 vs 推理：有完整真值时仍可层间并行训练。推理时普通 transformer 需对全部历史重算注意力（代价随当前长度平方涨）；线性 transformer 把 φ(k)vᵀ 当内部状态逐步更新，像 rnn——每 token 常数代价。 两全：训练可并行，推理像 rnn。 autoregressive inference rnn">
+<span class="pidx">§25</span>
+<div class="summary"><b>小结</b> · 两全：训练可并行，推理像 RNN。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Training vs inference: with full ground truth available, layerwise parallelism still works for training. At inference, transformers normally recompute attention over all past steps (cost grows with square of current length). Linear transformers keep φ(K)Vᵀ as an internal state and update it each step like an RNN—constant cost per token.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">训练 vs 推理：有完整真值时仍可层间并行训练。推理时普通 Transformer 需对全部历史重算注意力（代价随当前长度平方涨）；线性 Transformer 把 φ(K)Vᵀ 当内部状态逐步更新，像 RNN——每 token 常数代价。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="autoregressive inference">autoregressive inference</span><span class="term" data-term="RNN">RNN</span></div></article>
+</section>
+<section class="section" id="rnn"><h3>3.4 Transformers are RNNs <span>3 段</span></h3>
+<article class="card para" data-idx="26" data-blob="any causally masked transformer layer can be written as a model that, given an input, modifies an internal state and then predicts an output—namely an rnn (recurrence over time, not depth as in universal transformers). 任何带因果掩码的 transformer 层都可写成：给定输入、修改内部状态、再预测输出——即 rnn（时间维递推，而非 universal transformers 那种深度维递推）。 标题命题：因果 transformer ≡ 某种 rnn。 rnn">
+<span class="pidx">§26</span>
+<div class="summary"><b>小结</b> · 标题命题：因果 Transformer ≡ 某种 RNN。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Any causally masked transformer layer can be written as a model that, given an input, modifies an internal state and then predicts an output—namely an RNN (recurrence over time, not depth as in Universal Transformers).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">任何带因果掩码的 Transformer 层都可写成：给定输入、修改内部状态、再预测输出——即 RNN（时间维递推，而非 Universal Transformers 那种深度维递推）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="RNN">RNN</span></div></article>
+<article class="card para" data-idx="27" data-blob="rnn form with two hidden states (attention memory s and normalizer z): s_0=0, z_0=0; s_i = s_{i−1} + φ(x_i w_k)(x_i w_v)ᵀ; z_i = z_{i−1} + φ(x_i w_k); y_i = f_l( φ(x_i w_q)ᵀ s_i / (φ(x_i w_q)ᵀ z_i) + x_i ). 双隐状态 rnn 形式（注意力记忆 s 与归一化记忆 z）：s_0=z_0=0；s_i=s_{i−1}+φ(x_i w_k)(x_i w_v)ᵀ；z_i=z_{i−1}+φ(x_i w_k)；y_i=f_l( φ(x_i w_q)ᵀs_i/(φ(x_i w_q)ᵀz_i) + x_i )。 必背递推：累加 kv 外积与 k 特征，再用 q 特征归一化读出。 s z φ">
+<span class="pidx">§27</span>
+<div class="summary"><b>小结</b> · 必背递推：累加 KV 外积与 K 特征，再用 q 特征归一化读出。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">RNN form with two hidden states (attention memory s and normalizer z): s_0=0, z_0=0; s_i = s_{i−1} + φ(x_i W_K)(x_i W_V)ᵀ; z_i = z_{i−1} + φ(x_i W_K); y_i = f_l( φ(x_i W_Q)ᵀ s_i / (φ(x_i W_Q)ᵀ z_i) + x_i ).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">双隐状态 RNN 形式（注意力记忆 s 与归一化记忆 z）：s_0=z_0=0；s_i=s_{i−1}+φ(x_i W_K)(x_i W_V)ᵀ；z_i=z_{i−1}+φ(x_i W_K)；y_i=f_l( φ(x_i W_Q)ᵀs_i/(φ(x_i W_Q)ᵀz_i) + x_i )。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="s">s</span><span class="term" data-term="Z">Z</span><span class="term" data-term="φ">φ</span></div></article>
+<article class="card para" data-idx="28" data-blob="this formulation imposes no constraint on the feature function and can represent any transformer in theory—even softmax ones (though exact softmax needs infinite features). it is a step toward understanding how transformers store and retrieve information relative to lstms. 该形式对特征函数无额外约束，理论上可表示任意 transformer——甚至 softmax 版（尽管精确 softmax 需要无穷维特征）。这是理解 transformer 相对 lstm 如何存取信息的一步。 理论视野：线性化不只是加速技巧，也是统一视角。 feature map">
+<span class="pidx">§28</span>
+<div class="summary"><b>小结</b> · 理论视野：线性化不只是加速技巧，也是统一视角。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">This formulation imposes no constraint on the feature function and can represent any transformer in theory—even softmax ones (though exact softmax needs infinite features). It is a step toward understanding how transformers store and retrieve information relative to LSTMs.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">该形式对特征函数无额外约束，理论上可表示任意 Transformer——甚至 softmax 版（尽管精确 softmax 需要无穷维特征）。这是理解 Transformer 相对 LSTM 如何存取信息的一步。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="feature map">feature map</span></div></article>
+</section>
+<section class="section" id="expts"><h3>4 Experiments 实验要点 <span>3 段</span></h3>
+<article class="card para" data-idx="29" data-blob="baselines: full softmax transformer and reformer (lsh-x). feature map for linear: φ(x)=elu(x)+1. code/demos at https://linear-transformers.com/; constant-memory gradients implemented in ~200 lines of cuda. 基线：全 softmax transformer 与 reformer（lsh-x）。线性模型特征映射：φ(x)=elu(x)+1。代码/演示见 linear-transformers.com；常数内存梯度约 200 行 cuda。 复现入口：官网 + cuda 反传核。 elu+1 reformer">
+<span class="pidx">§29</span>
+<div class="summary"><b>小结</b> · 复现入口：官网 + CUDA 反传核。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Baselines: full softmax transformer and Reformer (lsh-X). Feature map for linear: φ(x)=elu(x)+1. Code/demos at https://linear-transformers.com/; constant-memory gradients implemented in ~200 lines of CUDA.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">基线：全 softmax Transformer 与 Reformer（lsh-X）。线性模型特征映射：φ(x)=elu(x)+1。代码/演示见 linear-transformers.com；常数内存梯度约 200 行 CUDA。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="elu+1">elu+1</span><span class="term" data-term="Reformer">Reformer</span></div></article>
+<article class="card para" data-idx="30" data-blob="synthetic copy/duplication: linear converges smoothly to the same final loss as softmax, and lower than noisy lsh. memory/time per sample scale linearly with n for linear and reformer, while softmax scales quadratically (fig.1, n up to 2^16). 合成拷贝/复制任务：线性模型平滑收敛到与 softmax 相同的最终 loss，且低于带噪声的 lsh。每样本内存/时间对 n 线性扩展（linear 与 reformer），softmax 仍二次（图 1，n 直至 2^16）。 合成验证：收敛不差 + 资源真线性。 o(n)">
+<span class="pidx">§30</span>
+<div class="summary"><b>小结</b> · 合成验证：收敛不差 + 资源真线性。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Synthetic copy/duplication: linear converges smoothly to the same final loss as softmax, and lower than noisy LSH. Memory/time per sample scale linearly with N for linear and Reformer, while softmax scales quadratically (Fig.1, N up to 2^16).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">合成拷贝/复制任务：线性模型平滑收敛到与 softmax 相同的最终 loss，且低于带噪声的 LSH。每样本内存/时间对 N 线性扩展（linear 与 Reformer），softmax 仍二次（图 1，N 直至 2^16）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="O(N)">O(N)</span></div></article>
+<article class="card para" data-idx="31" data-blob="image generation and asr: linear transformers reach competitive / transformer-level performance with substantially less gpu memory and computation; autoregressive prediction of very long sequences can be up to ~4000× faster than vanilla transformers. 图像生成与语音识别：线性 transformer 达到有竞争力 / transformer 级性能，同时 gpu 内存与计算显著更少；很长序列自回归预测最高可比原版快约 4000 倍。 真实任务：质量跟得上，长解码拉开数量级差距。 autoregressive inference">
+<span class="pidx">§31</span>
+<div class="summary"><b>小结</b> · 真实任务：质量跟得上，长解码拉开数量级差距。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Image generation and ASR: linear transformers reach competitive / transformer-level performance with substantially less GPU memory and computation; autoregressive prediction of very long sequences can be up to ~4000× faster than vanilla transformers.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">图像生成与语音识别：线性 Transformer 达到有竞争力 / Transformer 级性能，同时 GPU 内存与计算显著更少；很长序列自回归预测最高可比原版快约 4000 倍。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="autoregressive inference">autoregressive inference</span></div></article>
+</section>
+<section class="section" id="bridge"><h3>桥接到后续：Delta / KDA / 混合架构 <span>3 段</span></h3>
+<article class="card para" data-idx="32" data-blob="bridge (study note): katharopoulos linear attention is the ancestor of the “fixed-size state s” view used throughout modern linear-attention llms. their recurrence s_i ← s_{i−1} + φ(k_i) v_iᵀ is exactly the additive online update that later papers reinterpret as fast-weight associative memory. 桥接（学习笔记）：katharopoulos 线性注意力是现代线性注意力 llm 中「固定大小状态 s」视角的源头。其递推 s_i←s_{i−1}+φ(k_i)v_iᵀ，正是后来被重释为快权重联想记忆的加性在线更新。 家族起点：只加不改的 s 累加器。 linear attention associative memory">
+<span class="pidx">§32</span>
+<div class="summary"><b>小结</b> · 家族起点：只加不改的 S 累加器。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Bridge (study note): Katharopoulos linear attention is the ancestor of the “fixed-size state S” view used throughout modern linear-attention LLMs. Their recurrence s_i ← s_{i−1} + φ(k_i) v_iᵀ is exactly the additive online update that later papers reinterpret as fast-weight associative memory.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">桥接（学习笔记）：Katharopoulos 线性注意力是现代线性注意力 LLM 中「固定大小状态 S」视角的源头。其递推 s_i←s_{i−1}+φ(k_i)v_iᵀ，正是后来被重释为快权重联想记忆的加性在线更新。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="linear attention">linear attention</span><span class="term" data-term="associative memory">associative memory</span></div></article>
+<article class="card para" data-idx="33" data-blob="limitations that later work attacks: (1) no forgetting—old associations interfere; (2) additive updates cannot correct wrong key→value bindings (hence deltanet’s delta rule); (3) scalar/channel gates (gdn/gla/kda) add data-dependent decay; (4) pure finite-state memory still struggles at retrieval, motivating hybrids like kimi linear (kda:mla=3:1). 后续工作攻击的局限：(1) 无遗忘——旧关联互相干扰；(2) 加性更新不能纠正错误的 key→value 绑定（故有 deltanet 的 delta rule）；(3) 标量/通道门（gdn/gla/kda）加入数据相关衰减；(4) 纯有限状态检索仍吃力，催生 kimi linear 这类混合（kda:mla=3:1）。 阅读地图：本文 → deltanet → gdn → kda → 混合。 delta rule kda gated deltanet">
+<span class="pidx">§33</span>
+<div class="summary"><b>小结</b> · 阅读地图：本文 → DeltaNet → GDN → KDA → 混合。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Limitations that later work attacks: (1) no forgetting—old associations interfere; (2) additive updates cannot correct wrong key→value bindings (hence DeltaNet’s delta rule); (3) scalar/channel gates (GDN/GLA/KDA) add data-dependent decay; (4) pure finite-state memory still struggles at retrieval, motivating hybrids like Kimi Linear (KDA:MLA=3:1).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">后续工作攻击的局限：(1) 无遗忘——旧关联互相干扰；(2) 加性更新不能纠正错误的 key→value 绑定（故有 DeltaNet 的 delta rule）；(3) 标量/通道门（GDN/GLA/KDA）加入数据相关衰减；(4) 纯有限状态检索仍吃力，催生 Kimi Linear 这类混合（KDA:MLA=3:1）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="delta rule">delta rule</span><span class="term" data-term="KDA">KDA</span><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span></div></article>
+<article class="card para" data-idx="34" data-blob="suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/kimi-linear-delta-attention/index.html for the gated-delta upgrade; step through src/delta_attention/recurrent.py to see channel-wise forget + delta write on top of the same s-state idea. 本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/kimi-linear-delta-attention/index.html 看门控-delta 升级；最后跟 src/delta_attention/recurrent.py，看在同一 s 状态思想上的通道遗忘 + delta 写入。 学完这篇，再学 kda 不会懵「s 从哪来」。 kda recurrent_kda">
+<span class="pidx">§34</span>
+<div class="summary"><b>小结</b> · 学完这篇，再学 KDA 不会懵「S 从哪来」。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/kimi-linear-delta-attention/index.html for the gated-delta upgrade; step through src/delta_attention/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/kimi-linear-delta-attention/index.html 看门控-delta 升级；最后跟 src/delta_attention/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="KDA">KDA</span><span class="term" data-term="recurrent_kda">recurrent_kda</span></div></article>
+</section>
+<section class="section" id="glossary"><h3>名词重点解释 <span>31 条</span></h3><div class="refgrid">
+<div class="gitem" id="term-linear attention" data-blob="linear attention 用核特征把注意力写成可结合的点积，使复杂度对长度线性。"><b>linear attention</b><p>用核特征把注意力写成可结合的点积，使复杂度对长度线性。</p></div>
+<div class="gitem" id="term-Linear Transformers" data-blob="linear transformers 本文提出的线性注意力 transformer 模型族。"><b>Linear Transformers</b><p>本文提出的线性注意力 Transformer 模型族。</p></div>
+<div class="gitem" id="term-quadratic complexity" data-blob="quadratic complexity 标准自注意力对序列长度 n 的 o(n²) 时空代价。"><b>quadratic complexity</b><p>标准自注意力对序列长度 N 的 O(N²) 时空代价。</p></div>
+<div class="gitem" id="term-O(N)" data-blob="o(n) 线性注意力相对序列长度的渐近复杂度。"><b>O(N)</b><p>线性注意力相对序列长度的渐近复杂度。</p></div>
+<div class="gitem" id="term-kernel feature maps" data-blob="kernel feature maps 把 query/key 映射到特征空间，使 sim(q,k)=φ(q)ᵀφ(k)。"><b>kernel feature maps</b><p>把 query/key 映射到特征空间，使 sim(q,k)=φ(q)ᵀφ(k)。</p></div>
+<div class="gitem" id="term-φ" data-blob="φ 特征映射函数；本文实验用 elu(x)+1。"><b>φ</b><p>特征映射函数；本文实验用 elu(x)+1。</p></div>
+<div class="gitem" id="term-associativity" data-blob="associativity 矩阵乘法结合律：(ab)c=a(bc)，用于重排注意力计算顺序。"><b>associativity</b><p>矩阵乘法结合律：(AB)C=A(BC)，用于重排注意力计算顺序。</p></div>
+<div class="gitem" id="term-softmax attention" data-blob="softmax attention sim=exp(qᵀk/√d) 的标准注意力。"><b>softmax attention</b><p>sim=exp(qᵀk/√D) 的标准注意力。</p></div>
+<div class="gitem" id="term-self-attention" data-blob="self-attention 序列内部用 q/k/v 计算的注意力。"><b>self-attention</b><p>序列内部用 Q/K/V 计算的注意力。</p></div>
+<div class="gitem" id="term-causal masking" data-blob="causal masking 位置 i 只能看见 j≤i，用于自回归。"><b>causal masking</b><p>位置 i 只能看见 j≤i，用于自回归。</p></div>
+<div class="gitem" id="term-S" data-blob="s 因果线性注意力中的内容状态 σ φ(k)vᵀ。"><b>S</b><p>因果线性注意力中的内容状态 Σ φ(k)vᵀ。</p></div>
+<div class="gitem" id="term-Z" data-blob="z 归一化状态 σ φ(k)，用于分母。"><b>Z</b><p>归一化状态 Σ φ(k)，用于分母。</p></div>
+<div class="gitem" id="term-s" data-blob="s rnn 写法中的注意力记忆（同 s 的递推形式）。"><b>s</b><p>RNN 写法中的注意力记忆（同 S 的递推形式）。</p></div>
+<div class="gitem" id="term-RNN" data-blob="rnn 逐步更新隐状态并产出输出的循环模型；本文证明因果 transformer 可写成 rnn。"><b>RNN</b><p>逐步更新隐状态并产出输出的循环模型；本文证明因果 Transformer 可写成 RNN。</p></div>
+<div class="gitem" id="term-autoregressive inference" data-blob="autoregressive inference 逐步生成：每步输出作为下一步输入。"><b>autoregressive inference</b><p>逐步生成：每步输出作为下一步输入。</p></div>
+<div class="gitem" id="term-elu+1" data-blob="elu+1 φ(x)=elu(x)+1，保证非负相似度并保留负区梯度。"><b>elu+1</b><p>φ(x)=elu(x)+1，保证非负相似度并保留负区梯度。</p></div>
+<div class="gitem" id="term-feature map" data-blob="feature map 同 φ：核对应的显式特征函数。"><b>feature map</b><p>同 φ：核对应的显式特征函数。</p></div>
+<div class="gitem" id="term-constant memory" data-blob="constant memory 相对序列长度，激活/状态内存不随 n 增长（推理或特化反传）。"><b>constant memory</b><p>相对序列长度，激活/状态内存不随 N 增长（推理或特化反传）。</p></div>
+<div class="gitem" id="term-Transformer" data-blob="transformer 以自注意力为核心的序列模型。"><b>Transformer</b><p>以自注意力为核心的序列模型。</p></div>
+<div class="gitem" id="term-Q" data-blob="q 查询矩阵/向量。"><b>Q</b><p>查询矩阵/向量。</p></div>
+<div class="gitem" id="term-K" data-blob="k 键矩阵/向量。"><b>K</b><p>键矩阵/向量。</p></div>
+<div class="gitem" id="term-V" data-blob="v 值矩阵/向量。"><b>V</b><p>值矩阵/向量。</p></div>
+<div class="gitem" id="term-similarity function" data-blob="similarity function 广义注意力中的 sim(q,k)≥0。"><b>similarity function</b><p>广义注意力中的 sim(q,k)≥0。</p></div>
+<div class="gitem" id="term-Sparse Transformer" data-blob="sparse transformer child et al. 用稀疏因子分解降复杂度的模型。"><b>Sparse Transformer</b><p>Child et al. 用稀疏因子分解降复杂度的模型。</p></div>
+<div class="gitem" id="term-Reformer" data-blob="reformer kitaev et al. 用 lsh 近似注意力的模型。"><b>Reformer</b><p>Kitaev et al. 用 LSH 近似注意力的模型。</p></div>
+<div class="gitem" id="term-LSH" data-blob="lsh locality-sensitive hashing，局部敏感哈希。"><b>LSH</b><p>Locality-Sensitive Hashing，局部敏感哈希。</p></div>
+<div class="gitem" id="term-delta rule" data-blob="delta rule 后续 deltanet：按 key 擦旧再写新的更新，改进纯加性 s。"><b>delta rule</b><p>后续 DeltaNet：按 key 擦旧再写新的更新，改进纯加性 S。</p></div>
+<div class="gitem" id="term-Gated DeltaNet" data-blob="gated deltanet 在 delta rule 上加标量遗忘门的线性注意力。"><b>Gated DeltaNet</b><p>在 delta rule 上加标量遗忘门的线性注意力。</p></div>
+<div class="gitem" id="term-KDA" data-blob="kda kimi delta attention：通道级门控的 delta 线性注意力。"><b>KDA</b><p>Kimi Delta Attention：通道级门控的 delta 线性注意力。</p></div>
+<div class="gitem" id="term-associative memory" data-blob="associative memory 把 key 映射到 value 的可写可读记忆（状态 s）。"><b>associative memory</b><p>把 key 映射到 value 的可写可读记忆（状态 S）。</p></div>
+<div class="gitem" id="term-recurrent_kda" data-blob="recurrent_kda 本仓库 kda 逐步递推实现。"><b>recurrent_kda</b><p>本仓库 KDA 逐步递推实现。</p></div>
+</div></section>
+<section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">
+<div class="ref" data-blob="transformers are rnns (linear attention) 逐段精读对象；线性注意力经典源头。"><span class="lv must">本篇</span><h4>Transformers are RNNs (Linear Attention)</h4><p>逐段精读对象；线性注意力经典源头。</p><a href="./paper.pdf" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2006.16236" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="linear-transformers.com 作者页：公式演示与代码入口。"><span class="lv imp">官网</span><h4>linear-transformers.com</h4><p>作者页：公式演示与代码入口。</p><a href="https://linear-transformers.com/" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="kimi linear / kda 逐段精读 在加性 s 上加入遗忘门与 delta rule 的现代升级。"><span class="lv imp">下游</span><h4>Kimi Linear / KDA 逐段精读</h4><p>在加性 S 上加入遗忘门与 delta rule 的现代升级。</p><a href="../kimi-linear-delta-attention/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="reformer 同期高效注意力；训练可扩但解码约束不同。"><span class="lv ">对照</span><h4>Reformer</h4><p>同期高效注意力；训练可扩但解码约束不同。</p><a href="https://arxiv.org/abs/2001.04451" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="src/delta_attention 看清「同一 s 状态」如何演变成 kda。"><span class="lv ">代码</span><h4>src/delta_attention</h4><p>看清「同一 S 状态」如何演变成 KDA。</p><a href="../../src/delta_attention/" target="_blank" rel="noopener">打开 →</a></div>
+</div><p class="note" style="margin-top:28px">本页为学习用逐段精读；公式以 PDF 为准。示意图为教学重绘。</p></section></main></div>
+
+<aside class="drawer" id="drawer"><button class="btn" id="closeDrawer">关闭</button>
+<h2>名词速查</h2><div id="drawerBody"></div></aside>
+<script>
+const body=document.body;const cards=[...document.querySelectorAll('.para')];let idx=0;
+const glossary={"linear attention":"\u7528\u6838\u7279\u5f81\u628a\u6ce8\u610f\u529b\u5199\u6210\u53ef\u7ed3\u5408\u7684\u70b9\u79ef\uff0c\u4f7f\u590d\u6742\u5ea6\u5bf9\u957f\u5ea6\u7ebf\u6027\u3002",
+"Linear Transformers":"\u672c\u6587\u63d0\u51fa\u7684\u7ebf\u6027\u6ce8\u610f\u529b Transformer \u6a21\u578b\u65cf\u3002",
+"quadratic complexity":"\u6807\u51c6\u81ea\u6ce8\u610f\u529b\u5bf9\u5e8f\u5217\u957f\u5ea6 N \u7684 O(N\u00b2) \u65f6\u7a7a\u4ee3\u4ef7\u3002",
+"O(N)":"\u7ebf\u6027\u6ce8\u610f\u529b\u76f8\u5bf9\u5e8f\u5217\u957f\u5ea6\u7684\u6e10\u8fd1\u590d\u6742\u5ea6\u3002",
+"kernel feature maps":"\u628a query/key \u6620\u5c04\u5230\u7279\u5f81\u7a7a\u95f4\uff0c\u4f7f sim(q,k)=\u03c6(q)\u1d40\u03c6(k)\u3002",
+"\u03c6":"\u7279\u5f81\u6620\u5c04\u51fd\u6570\uff1b\u672c\u6587\u5b9e\u9a8c\u7528 elu(x)+1\u3002",
+"associativity":"\u77e9\u9635\u4e58\u6cd5\u7ed3\u5408\u5f8b\uff1a(AB)C=A(BC)\uff0c\u7528\u4e8e\u91cd\u6392\u6ce8\u610f\u529b\u8ba1\u7b97\u987a\u5e8f\u3002",
+"softmax attention":"sim=exp(q\u1d40k/\u221aD) \u7684\u6807\u51c6\u6ce8\u610f\u529b\u3002",
+"self-attention":"\u5e8f\u5217\u5185\u90e8\u7528 Q/K/V \u8ba1\u7b97\u7684\u6ce8\u610f\u529b\u3002",
+"causal masking":"\u4f4d\u7f6e i \u53ea\u80fd\u770b\u89c1 j\u2264i\uff0c\u7528\u4e8e\u81ea\u56de\u5f52\u3002",
+"S":"\u56e0\u679c\u7ebf\u6027\u6ce8\u610f\u529b\u4e2d\u7684\u5185\u5bb9\u72b6\u6001 \u03a3 \u03c6(k)v\u1d40\u3002",
+"Z":"\u5f52\u4e00\u5316\u72b6\u6001 \u03a3 \u03c6(k)\uff0c\u7528\u4e8e\u5206\u6bcd\u3002",
+"s":"RNN \u5199\u6cd5\u4e2d\u7684\u6ce8\u610f\u529b\u8bb0\u5fc6\uff08\u540c S \u7684\u9012\u63a8\u5f62\u5f0f\uff09\u3002",
+"RNN":"\u9010\u6b65\u66f4\u65b0\u9690\u72b6\u6001\u5e76\u4ea7\u51fa\u8f93\u51fa\u7684\u5faa\u73af\u6a21\u578b\uff1b\u672c\u6587\u8bc1\u660e\u56e0\u679c Transformer \u53ef\u5199\u6210 RNN\u3002",
+"autoregressive inference":"\u9010\u6b65\u751f\u6210\uff1a\u6bcf\u6b65\u8f93\u51fa\u4f5c\u4e3a\u4e0b\u4e00\u6b65\u8f93\u5165\u3002",
+"elu+1":"\u03c6(x)=elu(x)+1\uff0c\u4fdd\u8bc1\u975e\u8d1f\u76f8\u4f3c\u5ea6\u5e76\u4fdd\u7559\u8d1f\u533a\u68af\u5ea6\u3002",
+"feature map":"\u540c \u03c6\uff1a\u6838\u5bf9\u5e94\u7684\u663e\u5f0f\u7279\u5f81\u51fd\u6570\u3002",
+"constant memory":"\u76f8\u5bf9\u5e8f\u5217\u957f\u5ea6\uff0c\u6fc0\u6d3b/\u72b6\u6001\u5185\u5b58\u4e0d\u968f N \u589e\u957f\uff08\u63a8\u7406\u6216\u7279\u5316\u53cd\u4f20\uff09\u3002",
+"Transformer":"\u4ee5\u81ea\u6ce8\u610f\u529b\u4e3a\u6838\u5fc3\u7684\u5e8f\u5217\u6a21\u578b\u3002",
+"Q":"\u67e5\u8be2\u77e9\u9635/\u5411\u91cf\u3002",
+"K":"\u952e\u77e9\u9635/\u5411\u91cf\u3002",
+"V":"\u503c\u77e9\u9635/\u5411\u91cf\u3002",
+"similarity function":"\u5e7f\u4e49\u6ce8\u610f\u529b\u4e2d\u7684 sim(q,k)\u22650\u3002",
+"Sparse Transformer":"Child et al. \u7528\u7a00\u758f\u56e0\u5b50\u5206\u89e3\u964d\u590d\u6742\u5ea6\u7684\u6a21\u578b\u3002",
+"Reformer":"Kitaev et al. \u7528 LSH \u8fd1\u4f3c\u6ce8\u610f\u529b\u7684\u6a21\u578b\u3002",
+"LSH":"Locality-Sensitive Hashing\uff0c\u5c40\u90e8\u654f\u611f\u54c8\u5e0c\u3002",
+"delta rule":"\u540e\u7eed DeltaNet\uff1a\u6309 key \u64e6\u65e7\u518d\u5199\u65b0\u7684\u66f4\u65b0\uff0c\u6539\u8fdb\u7eaf\u52a0\u6027 S\u3002",
+"Gated DeltaNet":"\u5728 delta rule \u4e0a\u52a0\u6807\u91cf\u9057\u5fd8\u95e8\u7684\u7ebf\u6027\u6ce8\u610f\u529b\u3002",
+"KDA":"Kimi Delta Attention\uff1a\u901a\u9053\u7ea7\u95e8\u63a7\u7684 delta \u7ebf\u6027\u6ce8\u610f\u529b\u3002",
+"associative memory":"\u628a key \u6620\u5c04\u5230 value \u7684\u53ef\u5199\u53ef\u8bfb\u8bb0\u5fc6\uff08\u72b6\u6001 S\uff09\u3002",
+"recurrent_kda":"\u672c\u4ed3\u5e93 KDA \u9010\u6b65\u9012\u63a8\u5b9e\u73b0\u3002"};
+function setMode(m){body.classList.remove('mode-both','mode-zh','mode-en');body.classList.add('mode-'+m);
+document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));}
+document.getElementById('modeSeg').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.mode);};
+function focusCard(i){if(!cards.length)return;idx=(i+cards.length)%cards.length;cards.forEach(c=>c.classList.remove('active'));
+const c=cards[idx];c.classList.add('active');c.scrollIntoView({behavior:'smooth',block:'center'});}
+const q=document.getElementById('q');q.oninput=()=>{const s=q.value.trim().toLowerCase();
+document.querySelectorAll('[data-blob]').forEach(el=>{el.classList.toggle('hidden-by-search',s&&!(el.dataset.blob||'').includes(s));});};
+const drawer=document.getElementById('drawer');const drawerBody=document.getElementById('drawerBody');
+document.getElementById('btnGlossary').onclick=()=>{drawerBody.innerHTML=Object.entries(glossary).map(([k,v])=>`<div class="gitem"><b>${k}</b><p>${v}</p></div>`).join('');drawer.classList.add('open');};
+document.getElementById('closeDrawer').onclick=()=>drawer.classList.remove('open');
+document.body.onclick=e=>{const t=e.target.closest('.term');if(!t)return;
+drawerBody.innerHTML=`<div class="gitem"><b>${t.dataset.term}</b><p>${glossary[t.dataset.term]||'暂无'}</p></div>`;drawer.classList.add('open');};
+const tocLinks=[...document.querySelectorAll('#toc a')];
+const sections=tocLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io=new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const id='#'+en.target.id;
+tocLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===id));});},
+{rootMargin:'-20% 0px -65% 0px',threshold:0.01});
+sections.forEach(s=>io.observe(s));
+document.onkeydown=e=>{if(e.target.matches('input,textarea'))return;
+if(e.key==='1')setMode('both');if(e.key==='2')setMode('zh');if(e.key==='3')setMode('en');
+if(e.key==='j'||e.key==='J'){e.preventDefault();focusCard(idx+1);}
+if(e.key==='k'||e.key==='K'){e.preventDefault();focusCard(idx-1);}
+if(e.key==='g'||e.key==='G')document.getElementById('btnGlossary').click();
+if(e.key==='/'){e.preventDefault();q.focus();};};
+</script></body></html>

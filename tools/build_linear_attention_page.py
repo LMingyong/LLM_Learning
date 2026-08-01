@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build fine-grained Kimi Linear / KDA study page."""
+"""Build fine-grained Linear Attention (Katharopoulos et al.) study page."""
 
 from __future__ import annotations
 
@@ -7,105 +7,69 @@ import html
 import json
 from pathlib import Path
 
-from kimi_linear_paragraphs import GLOSSARY, REFS, SECTIONS
+from linear_attention_paragraphs import GLOSSARY, REFS, SECTIONS
 
-OUT = Path(__file__).resolve().parents[1] / "papers/kimi-linear-delta-attention/index.html"
+OUT = Path(__file__).resolve().parents[1] / "papers/linear-attention/index.html"
 
 
 def esc(s: str) -> str:
     return html.escape(s)
 
 
-def fig_pipeline() -> str:
+def fig_assoc() -> str:
     return """
-<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="lineage">
-  <rect width="820" height="200" fill="#fffcf5"/>
+<svg viewBox="0 0 820 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="associativity">
+  <rect width="820" height="220" fill="#fffcf5"/>
   <g font-family="Manrope,sans-serif">
-    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">谱系：Linear → DeltaNet → GDN → KDA</text>
-    <rect x="30" y="60" width="160" height="70" rx="12" fill="#efe9dc" stroke="#5a6a62"/>
-    <text x="110" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Linear Attn</text>
-    <text x="110" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">S+=kvᵀ · 只加不改</text>
-    <path d="M195 95 H225" stroke="#0f6e56" stroke-width="2"/>
-    <rect x="230" y="60" width="160" height="70" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
-    <text x="310" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#1f4e79">DeltaNet</text>
-    <text x="310" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">delta 擦写纠错</text>
-    <path d="M395 95 H425" stroke="#0f6e56" stroke-width="2"/>
-    <rect x="430" y="60" width="160" height="70" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
-    <text x="510" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">GDN</text>
-    <text x="510" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">标量门 α</text>
-    <path d="M595 95 H625" stroke="#0f6e56" stroke-width="2"/>
-    <rect x="630" y="60" width="160" height="70" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
-    <text x="710" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#b85c38">KDA</text>
-    <text x="710" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">Diag(α) 通道门</text>
-    <text x="410" y="170" text-anchor="middle" font-size="12" fill="#7d8c84">每一步都保留前一步能力，只把「遗忘」做得更细</text>
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">结合律重排：从 O(N²) 注意力矩阵到 O(N) 状态聚合</text>
+    <rect x="40" y="55" width="320" height="110" rx="14" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="200" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">Softmax / 朴素核</text>
+    <text x="200" y="112" text-anchor="middle" font-size="13" fill="#5a6a62">(φ(Q) φ(K)ᵀ) V</text>
+    <text x="200" y="138" text-anchor="middle" font-size="12" fill="#7d8c84">先造 N×N，再乘 V → O(N²)</text>
+    <path d="M375 110 H445" stroke="#0f6e56" stroke-width="2"/>
+    <text x="410" y="100" text-anchor="middle" font-size="11" fill="#0f6e56">结合律</text>
+    <rect x="460" y="55" width="320" height="110" rx="14" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="620" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">Linear Attention</text>
+    <text x="620" y="112" text-anchor="middle" font-size="13" fill="#5a6a62">φ(Q) (φ(K)ᵀ V)</text>
+    <text x="620" y="138" text-anchor="middle" font-size="12" fill="#7d8c84">先聚 S=Σφ(k)vᵀ，再读 → O(N)</text>
+    <text x="410" y="195" text-anchor="middle" font-size="12" fill="#7d8c84">前提：sim(q,k)=φ(q)ᵀφ(k) ≥ 0</text>
   </g>
 </svg>
 """
 
 
-def fig_kda_steps() -> str:
+def fig_rnn() -> str:
     return """
-<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KDA four steps">
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RNN form">
   <rect width="820" height="210" fill="#fffcf5"/>
   <g font-family="Manrope,sans-serif">
-    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">KDA 逐步递推（与 recurrent_kda 对齐）</text>
-    <rect x="20" y="55" width="170" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
-    <text x="105" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">1. 遗忘</text>
-    <text x="105" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">S ← Diag(e^{g}) S</text>
-    <text x="105" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">逐通道 α</text>
-    <rect x="220" y="55" width="170" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
-    <text x="305" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">2. 预测</text>
-    <text x="305" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v̂ ← kᵀ S</text>
-    <text x="305" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">按地址读出</text>
-    <rect x="420" y="55" width="180" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
-    <text x="510" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 纠错写入</text>
-    <text x="510" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">S += β k (v−v̂)ᵀ</text>
-    <text x="510" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">delta rule</text>
-    <rect x="630" y="55" width="170" height="90" rx="12" fill="#1c2420"/>
-    <text x="715" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">4. 查询</text>
-    <text x="715" y="108" text-anchor="middle" font-size="12" fill="#cfd8d3">o ← (q/√d)ᵀ S</text>
-    <text x="715" y="128" text-anchor="middle" font-size="11" fill="#9bb4ae">固定大小状态</text>
-    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">状态 S ∈ R^{d×d}/head，不随序列长度增长</text>
-  </g>
-</svg>
-"""
-
-
-def fig_hybrid() -> str:
-    boxes = []
-    labels = ["KDA", "KDA", "KDA", "MLA", "KDA", "KDA", "KDA", "MLA"]
-    x = 40
-    for i, lab in enumerate(labels):
-        if lab == "KDA":
-            fill, stroke, tc = "#d8efe6", "#0f6e56", "#0f6e56"
-        else:
-            fill, stroke, tc = "#f3e0d6", "#b85c38", "#b85c38"
-        boxes.append(
-            f'<rect x="{x}" y="70" width="80" height="56" rx="10" fill="{fill}" stroke="{stroke}"/>'
-            f'<text x="{x+40}" y="103" text-anchor="middle" font-size="13" font-weight="700" fill="{tc}">{lab}</text>'
-        )
-        if i < len(labels) - 1:
-            boxes.append(
-                f'<path d="M{x+82} 98 H{x+95}" stroke="#5a6a62" stroke-width="2"/>'
-            )
-        x += 95
-    return f"""
-<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="hybrid 3:1">
-  <rect width="820" height="200" fill="#fffcf5"/>
-  <g font-family="Manrope,sans-serif">
-    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">层间混合 3:1 · 每层后接 MoE FFN（示意）</text>
-    {''.join(boxes)}
-    <text x="410" y="165" text-anchor="middle" font-size="12" fill="#5a6a62">绿 = KDA 线性层（压 cache） · 橙 = MLA 全注意力（补检索） · MLA 用 NoPE</text>
-    <text x="410" y="188" text-anchor="middle" font-size="12" fill="#7d8c84">长生成时 KV cache 约只剩全注意力层的 1/4</text>
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">因果线性注意力 = 双状态 RNN</text>
+    <rect x="40" y="60" width="120" height="70" rx="12" fill="#efe9dc" stroke="#5a6a62"/>
+    <text x="100" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1c2420">x_i</text>
+    <text x="100" y="112" text-anchor="middle" font-size="11" fill="#5a6a62">当前输入</text>
+    <path d="M165 95 H200" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="205" y="50" width="200" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="305" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#1f4e79">更新状态</text>
+    <text x="305" y="100" text-anchor="middle" font-size="12" fill="#5a6a62">S ← S + φ(k)vᵀ</text>
+    <text x="305" y="120" text-anchor="middle" font-size="12" fill="#5a6a62">Z ← Z + φ(k)</text>
+    <path d="M410 95 H445" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="450" y="50" width="200" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="550" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">读出</text>
+    <text x="550" y="100" text-anchor="middle" font-size="12" fill="#5a6a62">o ∝ φ(q)ᵀ S</text>
+    <text x="550" y="120" text-anchor="middle" font-size="12" fill="#5a6a62">/ φ(q)ᵀ Z</text>
+    <path d="M655 95 H690" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="695" y="60" width="90" height="70" rx="12" fill="#1c2420"/>
+    <text x="740" y="100" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">y_i</text>
+    <text x="410" y="175" text-anchor="middle" font-size="12" fill="#5a6a62">每步常数时间；状态大小与序列长度无关</text>
+    <text x="410" y="195" text-anchor="middle" font-size="12" fill="#7d8c84">标题含义：Transformers are RNNs（时间维递推）</text>
   </g>
 </svg>
 """
 
 
 FIGURES = {
-    "pipeline": ("教学示意 · 从线性注意力到 KDA", fig_pipeline()),
-    "kda_steps": ("教学示意 · 与 src/delta_attention/recurrent.py 对齐", fig_kda_steps()),
-    "hybrid": ("教学示意 · 对应论文 Fig.3 的 3:1 交织", fig_hybrid()),
+    "assoc": ("教学示意 · 对应论文 §3.2 结合律重排", fig_assoc()),
+    "rnn": ("教学示意 · 对应论文 §3.3–3.4 因果递推 / RNN 形式", fig_rnn()),
 }
 
 
@@ -157,7 +121,7 @@ color:var(--ink);padding:9px 14px;font-family:var(--sans);font-size:13px;outline
 .hero{border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:22px;
 background:linear-gradient(135deg,rgba(15,110,86,.08),transparent 45%),var(--paper);
 box-shadow:var(--shadow)}
-.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:26px}
+.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:24px}
 .hero p{margin:0;color:var(--muted);font-family:var(--sans);font-size:14px;line-height:1.65}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .chip{font-family:var(--sans);font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
@@ -223,7 +187,7 @@ def build() -> str:
 <html lang="zh-CN"><head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Kimi Linear / KDA 逐段精读 · Delta Attention</title>
+<title>Linear Attention 逐段精读 · Transformers are RNNs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
@@ -231,8 +195,8 @@ def build() -> str:
 <body class="mode-both"><div class="app">
 <aside class="side">
 <div class="brand">LLM Learning · Paper Reader</div>
-<h1>Kimi Linear / KDA</h1>
-<div class="meta">arXiv:2510.26692<br/>每段 = 小结 + Original + 译文<br/>对照 src/delta_attention</div>
+<h1>Linear Attention</h1>
+<div class="meta">Katharopoulos et al. · ICML 2020<br/>arXiv:2006.16236<br/>每段 = 小结 + Original + 译文</div>
 <nav id="toc">"""
     )
     for sec in SECTIONS:
@@ -254,23 +218,21 @@ def build() -> str:
 </div>
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
-<a class="btn" href="./notes.md">公式笔记 →</a>
-<a class="btn" href="../linear-attention/index.html">Linear Attention →</a>
-<a class="btn" href="../../examples/delta_attention_demo.py">demo.py →</a>
-<a class="btn" href="../attention-residuals/index.html">AttnRes →</a>
+<a class="btn" href="../kimi-linear-delta-attention/index.html">KDA 精读 →</a>
+<a class="btn" href="https://linear-transformers.com/" target="_blank" rel="noopener">官网 →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">
-<h2>Kimi Linear · Kimi Delta Attention</h2>
-<p>仓库里原先已有 PDF、粗笔记与教学代码，但缺少逐段精读页。本页按 BigBird 同款精细度整理：从 Linear→DeltaNet→GDN→KDA 谱系，到式 (1) 四步递推、3:1 混合与实验数字，并桥接到 <code>src/delta_attention</code>。</p>
+<h2>Transformers are RNNs · Linear Attention</h2>
+<p>线性注意力经典源头：用核特征把 softmax 换成 φ(q)ᵀφ(k)，再用结合律把计算从「N×N 矩阵」重排成「固定大小状态聚合」。因果形式下，Transformer 就是带双状态 (S,Z) 的 RNN——这也是后来 DeltaNet / GDN / KDA 的起点。</p>
 <div class="chips">
-<span class="chip">核心：<em>KDA = GDN + Diag(α)</em></span>
-<span class="chip">架构：<em>KDA:MLA = 3:1</em></span>
-<span class="chip">收益：<em>−75% cache · ~6× 解码</em></span>
-<span class="chip">代码：<em>recurrent_kda</em></span>
+<span class="chip">复杂度：<em>O(N²) → O(N)</em></span>
+<span class="chip">特征：<em>φ = elu+1</em></span>
+<span class="chip">推理：<em>常数内存 RNN</em></span>
+<span class="chip">下游：<em>KDA / 混合架构</em></span>
 </div>
 </section>
-<p class="note">英文贴近技术报告；分块 WY/UT 细节以 PDF §3.1 为准。段末小结是学习导读。建议先读本页式 (1)，再打开 <a href="./notes.md">notes.md</a> 与 <a href="../../src/delta_attention/recurrent.py">recurrent.py</a>。</p>
+<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。学完建议接着读 <a href="../kimi-linear-delta-attention/index.html">Kimi Linear / KDA</a>。</p>
 """
     )
 
@@ -323,7 +285,7 @@ def build() -> str:
 
     parts.append('<section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">\n')
     for r in REFS:
-        lv = "must" if r["level"] == "本篇" else ("imp" if r["level"] in ("代码", "前驱", "笔记") else "")
+        lv = "must" if r["level"] == "本篇" else ("imp" if r["level"] in ("下游", "官网") else "")
         links = f'<a href="{esc(r["url"])}" target="_blank" rel="noopener">打开 →</a>'
         if r.get("ext"):
             links += f' · <a href="{esc(r["ext"])}" target="_blank" rel="noopener">外链</a>'
@@ -333,7 +295,7 @@ def build() -> str:
             f"<h4>{esc(r['title'])}</h4><p>{esc(r['why'])}</p>{links}</div>\n"
         )
     parts.append(
-        '</div><p class="note" style="margin-top:28px">本页为学习用逐段精读；数字与公式以 PDF 为准。示意图为教学重绘。</p>'
+        '</div><p class="note" style="margin-top:28px">本页为学习用逐段精读；公式以 PDF 为准。示意图为教学重绘。</p>'
         "</section></main></div>\n"
     )
 
