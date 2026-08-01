@@ -27,4 +27,4 @@ python3 tools/build_kimi_linear_page.py
 
 内容数据：`tools/kimi_linear_paragraphs.py`
 
-相关：[Attention Residuals](../attention-residuals/) · [官方 KDA kernel](https://github.com/fla-org/flash-linear-attention/tree/main/fla/ops/kda)
+相关：[Linear Attention 源头](../linear-attention/) · [Attention Residuals](../attention-residuals/) · [官方 KDA kernel](https://github.com/fla-org/flash-linear-attention/tree/main/fla/ops/kda)

@@ -375,6 +375,13 @@ REFS = [
     },
     {
         "level": "前驱",
+        "title": "Linear Attention（Transformers are RNNs）",
+        "why": "固定大小状态 S / 因果 RNN 形式的经典源头。",
+        "url": "../linear-attention/index.html",
+        "ext": "https://arxiv.org/abs/2006.16236",
+    },
+    {
+        "level": "前驱",
         "title": "Gated DeltaNet",
         "why": "标量门 + delta rule 的直接前驱。",
         "url": "https://arxiv.org/abs/2412.06464",

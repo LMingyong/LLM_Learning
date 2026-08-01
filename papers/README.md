@@ -17,4 +17,5 @@ papers/<paper-slug>/
 | [bigbird](./bigbird/) | BigBird (arXiv:2007.14062) — **局部+全局+随机块** |
 | [watts-strogatz](./watts-strogatz/) | Watts–Strogatz (Nature 1998) — **小世界网络**（BigBird 随机边前驱） |
 | [attention-residuals](./attention-residuals/) | Attention Residuals (arXiv:2603.15031) |
+| [linear-attention](./linear-attention/) | Linear Attention / Transformers are RNNs (arXiv:2006.16236) |
 | [kimi-linear-delta-attention](./kimi-linear-delta-attention/) | Kimi Linear / KDA (arXiv:2510.26692) |
