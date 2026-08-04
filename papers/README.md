@@ -7,6 +7,7 @@ papers/<slug>/
   README.md      # 索引
   paper.pdf      # 原文（单篇论文；专题可省略）
   index.html     # 精读页
+  …              # 可选：notes、教学代码、demo、测试（如 KDA）
 ```
 
 - **单篇论文**：有 `paper.pdf`，精读在同目录 `index.html`。
@@ -21,7 +22,7 @@ papers/<slug>/
 | [watts-strogatz](./watts-strogatz/) | Watts–Strogatz (Nature 1998) — 小世界网络 |
 | [attention-residuals](./attention-residuals/) | Attention Residuals (arXiv:2603.15031) |
 | [linear-attention](./linear-attention/) | Linear Attention / Transformers are RNNs (arXiv:2006.16236) |
-| [kimi-linear-delta-attention](./kimi-linear-delta-attention/) | Kimi Linear / KDA (arXiv:2510.26692) |
+| [kimi-linear-delta-attention](./kimi-linear-delta-attention/) | Kimi Linear / KDA (arXiv:2510.26692) — 精读 + **同夹教学代码** |
 | [nsa](./nsa/) | Native Sparse Attention (arXiv:2502.11089) |
 | [sparse-transformer](./sparse-transformer/) | Sparse Transformer (arXiv:1904.10509) |
 | [sparse-attention](./sparse-attention/) | **专题**：稀疏注意力谱系 |

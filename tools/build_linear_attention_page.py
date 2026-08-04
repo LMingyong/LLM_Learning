@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from linear_attention_paragraphs import GLOSSARY, REFS, SECTIONS
+from reader_math import KATEX_HEAD, MATH_CSS, render_formulas
 
 OUT = Path(__file__).resolve().parents[1] / "papers/linear-attention/index.html"
 
@@ -170,6 +171,7 @@ display:flex;flex-direction:column;gap:8px;min-height:140px}
 .ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
 .kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint);background:#fff}
 .note{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+""" + MATH_CSS + r"""
 @media (max-width:960px){
   .app{grid-template-columns:1fr}
   .side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
@@ -191,6 +193,7 @@ def build() -> str:
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+{KATEX_HEAD}
 <style>{CSS}</style></head>
 <body class="mode-both"><div class="app">
 <aside class="side">
@@ -259,11 +262,13 @@ def build() -> str:
                     f'<div class="figure">{svg}'
                     f'<div class="cap">{esc(cap)}</div></div>'
                 )
+            math_html = render_formulas(p.get("formulas"))
             p_en, p_zh, p_sum = esc(p["en"]), esc(p["zh"]), esc(p["summary"])
             parts.append(
                 f'<article class="card para" data-idx="{card_i}" data-blob="{esc(blob)}">\n'
                 f'<span class="pidx">§{card_i}</span>\n'
                 f'<div class="summary"><b>小结</b> · {p_sum}</div>\n'
+                f"{math_html}"
                 f'<div class="pair lang">\n'
                 f'<div class="en-block"><div class="label">Original</div><div class="en">{p_en}</div></div>\n'
                 f'<div class="zh-block"><div class="label">译文</div><div class="zh">{p_zh}</div></div>\n'
