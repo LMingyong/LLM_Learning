@@ -6,6 +6,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"/>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+
 <style>
 :root{
   --bg:#f6f3ec; --bg2:#efe9dc; --paper:#fffcf5; --ink:#1c2420; --muted:#5a6a62;
@@ -103,6 +109,23 @@ display:flex;flex-direction:column;gap:8px;min-height:140px}
 .ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
 .kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint);background:#fff}
 .note{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+
+.math-stack{display:flex;flex-direction:column;gap:10px;margin:12px 0 4px}
+.math-panel{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#fff,#fffcf5);
+padding:12px 14px;box-shadow:0 8px 24px rgba(40,50,40,.04)}
+.math-panel .math-tag{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.04em;
+color:var(--accent);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.math-panel .math-tag::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--accent);flex:0 0 auto}
+.math-panel .math-eq{overflow-x:auto;padding:4px 0 2px;font-size:1.05em;line-height:1.6;color:var(--ink)}
+.math-panel .math-eq .katex-display{margin:0.4em 0}
+.math-panel .math-note{font-family:var(--sans);font-size:12px;color:var(--muted);margin-top:8px;
+padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
+.formula-wall{display:grid;grid-template-columns:1fr;gap:12px;margin:0 0 18px}
+@media (min-width:820px){.formula-wall{grid-template-columns:1fr 1fr}}
+.formula-wall .math-panel{min-height:100%}
+.formula-wall .math-panel.span2{grid-column:1 / -1}
+.inline-math-hint{font-family:var(--sans);font-size:12px;color:var(--faint);margin:0 0 10px}
+
 @media (max-width:960px){
   .app{grid-template-columns:1fr}
   .side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
@@ -480,12 +503,12 @@ display:flex;flex-direction:column;gap:8px;min-height:140px}
 <div class="zh-block"><div class="label">译文</div><div class="zh">后续工作攻击的局限：(1) 无遗忘——旧关联互相干扰；(2) 加性更新不能纠正错误的 key→value 绑定（故有 DeltaNet 的 delta rule）；(3) 标量/通道门（GDN/GLA/KDA）加入数据相关衰减；(4) 纯有限状态检索仍吃力，催生 Kimi Linear 这类混合（KDA:MLA=3:1）。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="delta rule">delta rule</span><span class="term" data-term="KDA">KDA</span><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span></div></article>
-<article class="card para" data-idx="34" data-blob="suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/kimi-linear-delta-attention/index.html for the gated-delta upgrade; step through src/delta_attention/recurrent.py to see channel-wise forget + delta write on top of the same s-state idea. 本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/kimi-linear-delta-attention/index.html 看门控-delta 升级；最后跟 src/delta_attention/recurrent.py，看在同一 s 状态思想上的通道遗忘 + delta 写入。 学完这篇，再学 kda 不会懵「s 从哪来」。 kda recurrent_kda">
+<article class="card para" data-idx="34" data-blob="suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/kimi-linear-delta-attention/index.html for the gated-delta upgrade; step through papers/kimi-linear-delta-attention/delta_attention/recurrent.py to see channel-wise forget + delta write on top of the same s-state idea. 本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/kimi-linear-delta-attention/index.html 看门控-delta 升级；最后跟同夹 delta_attention/recurrent.py，看在同一 s 状态思想上的通道遗忘 + delta 写入。 学完这篇，再学 kda 不会懵「s 从哪来」。 kda recurrent_kda">
 <span class="pidx">§34</span>
 <div class="summary"><b>小结</b> · 学完这篇，再学 KDA 不会懵「S 从哪来」。</div>
 <div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/kimi-linear-delta-attention/index.html for the gated-delta upgrade; step through src/delta_attention/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/kimi-linear-delta-attention/index.html 看门控-delta 升级；最后跟 src/delta_attention/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。</div></div>
+<div class="en-block"><div class="label">Original</div><div class="en">Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/kimi-linear-delta-attention/index.html for the gated-delta upgrade; step through papers/kimi-linear-delta-attention/delta_attention/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/kimi-linear-delta-attention/index.html 看门控-delta 升级；最后跟同夹 delta_attention/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="KDA">KDA</span><span class="term" data-term="recurrent_kda">recurrent_kda</span></div></article>
 </section>
@@ -527,7 +550,7 @@ display:flex;flex-direction:column;gap:8px;min-height:140px}
 <div class="ref" data-blob="linear-transformers.com 作者页：公式演示与代码入口。"><span class="lv imp">官网</span><h4>linear-transformers.com</h4><p>作者页：公式演示与代码入口。</p><a href="https://linear-transformers.com/" target="_blank" rel="noopener">打开 →</a></div>
 <div class="ref" data-blob="kimi linear / kda 逐段精读 在加性 s 上加入遗忘门与 delta rule 的现代升级。"><span class="lv imp">下游</span><h4>Kimi Linear / KDA 逐段精读</h4><p>在加性 S 上加入遗忘门与 delta rule 的现代升级。</p><a href="../kimi-linear-delta-attention/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noopener">外链</a></div>
 <div class="ref" data-blob="reformer 同期高效注意力；训练可扩但解码约束不同。"><span class="lv ">对照</span><h4>Reformer</h4><p>同期高效注意力；训练可扩但解码约束不同。</p><a href="https://arxiv.org/abs/2001.04451" target="_blank" rel="noopener">打开 →</a></div>
-<div class="ref" data-blob="src/delta_attention 看清「同一 s 状态」如何演变成 kda。"><span class="lv ">代码</span><h4>src/delta_attention</h4><p>看清「同一 S 状态」如何演变成 KDA。</p><a href="../../src/delta_attention/" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="kda 教学代码（同夹于 kimi linear） 看清「同一 s 状态」如何演变成 kda。"><span class="lv ">代码</span><h4>KDA 教学代码（同夹于 Kimi Linear）</h4><p>看清「同一 S 状态」如何演变成 KDA。</p><a href="../kimi-linear-delta-attention/delta_attention/" target="_blank" rel="noopener">打开 →</a></div>
 </div><p class="note" style="margin-top:28px">本页为学习用逐段精读；公式以 PDF 为准。示意图为教学重绘。</p></section></main></div>
 
 <aside class="drawer" id="drawer"><button class="btn" id="closeDrawer">关闭</button>

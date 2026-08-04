@@ -7,7 +7,8 @@ import html
 import json
 from pathlib import Path
 
-from kimi_linear_paragraphs import GLOSSARY, REFS, SECTIONS
+from kimi_linear_paragraphs import FORMULA_WALL, GLOSSARY, REFS, SECTIONS
+from reader_math import KATEX_HEAD, MATH_CSS, render_formulas
 
 OUT = Path(__file__).resolve().parents[1] / "papers/kimi-linear-delta-attention/index.html"
 
@@ -104,7 +105,7 @@ def fig_hybrid() -> str:
 
 FIGURES = {
     "pipeline": ("教学示意 · 从线性注意力到 KDA", fig_pipeline()),
-    "kda_steps": ("教学示意 · 与 src/delta_attention/recurrent.py 对齐", fig_kda_steps()),
+    "kda_steps": ("教学示意 · 与本夹 delta_attention/recurrent.py 对齐", fig_kda_steps()),
     "hybrid": ("教学示意 · 对应论文 Fig.3 的 3:1 交织", fig_hybrid()),
 }
 
@@ -206,6 +207,7 @@ display:flex;flex-direction:column;gap:8px;min-height:140px}
 .ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
 .kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint);background:#fff}
 .note{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+""" + MATH_CSS + r"""
 @media (max-width:960px){
   .app{grid-template-columns:1fr}
   .side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
@@ -227,13 +229,16 @@ def build() -> str:
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+{KATEX_HEAD}
 <style>{CSS}</style></head>
 <body class="mode-both"><div class="app">
 <aside class="side">
 <div class="brand">LLM Learning · Paper Reader</div>
 <h1>Kimi Linear / KDA</h1>
-<div class="meta">arXiv:2510.26692<br/>每段 = 小结 + Original + 译文<br/>对照 src/delta_attention</div>
-<nav id="toc">"""
+<div class="meta">arXiv:2510.26692<br/>每段 = 小结 + Original + 译文<br/>公式独立成卡 · 对照本夹代码</div>
+<nav id="toc">
+<a href="#formulas">公式墙（速查）</a>
+"""
     )
     for sec in SECTIONS:
         parts.append(f'<a href="#{sec["id"]}">{esc(sec["title"])}</a>\n')
@@ -254,24 +259,30 @@ def build() -> str:
 </div>
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+<a class="btn" href="#formulas">公式墙</a>
 <a class="btn" href="./notes.md">公式笔记 →</a>
+<a class="btn" href="./delta_attention/recurrent.py">recurrent.py →</a>
+<a class="btn" href="./demo.py">demo.py →</a>
 <a class="btn" href="../linear-attention/index.html">Linear Attention →</a>
-<a class="btn" href="../../examples/delta_attention_demo.py">demo.py →</a>
 <a class="btn" href="../attention-residuals/index.html">AttnRes →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">
 <h2>Kimi Linear · Kimi Delta Attention</h2>
-<p>仓库里原先已有 PDF、粗笔记与教学代码，但缺少逐段精读页。本页按 BigBird 同款精细度整理：从 Linear→DeltaNet→GDN→KDA 谱系，到式 (1) 四步递推、3:1 混合与实验数字，并桥接到 <code>src/delta_attention</code>。</p>
+<p>本夹统一存放 PDF、精读页、公式笔记与教学代码。精读按 BigBird 同款：小结 → Original → 译文；关键公式<strong>提出来单独成卡</strong>（KaTeX），不再挤进段落正文。</p>
 <div class="chips">
 <span class="chip">核心：<em>KDA = GDN + Diag(α)</em></span>
 <span class="chip">架构：<em>KDA:MLA = 3:1</em></span>
 <span class="chip">收益：<em>−75% cache · ~6× 解码</em></span>
-<span class="chip">代码：<em>recurrent_kda</em></span>
+<span class="chip">代码：<em>./delta_attention/</em></span>
 </div>
 </section>
-<p class="note">英文贴近技术报告；分块 WY/UT 细节以 PDF §3.1 为准。段末小结是学习导读。建议先读本页式 (1)，再打开 <a href="./notes.md">notes.md</a> 与 <a href="../../src/delta_attention/recurrent.py">recurrent.py</a>。</p>
+<p class="note">英文贴近技术报告；分块 WY/UT 细节以 PDF §3.1 为准。建议：先扫 <a href="#formulas">公式墙</a>，再读谱系段落，最后打开 <a href="./delta_attention/recurrent.py">recurrent.py</a> 对四步。</p>
+<section class="section" id="formulas"><h3>公式墙（速查） <span>谱系一览</span></h3>
+<p class="inline-math-hint">以下公式从正文抽出，便于对照；段内还有更细的展开卡。</p>
 """
+        + render_formulas(FORMULA_WALL, wall=True)
+        + "</section>\n"
     )
 
     card_i = 0
@@ -297,11 +308,13 @@ def build() -> str:
                     f'<div class="figure">{svg}'
                     f'<div class="cap">{esc(cap)}</div></div>'
                 )
+            math_html = render_formulas(p.get("formulas"))
             p_en, p_zh, p_sum = esc(p["en"]), esc(p["zh"]), esc(p["summary"])
             parts.append(
                 f'<article class="card para" data-idx="{card_i}" data-blob="{esc(blob)}">\n'
                 f'<span class="pidx">§{card_i}</span>\n'
                 f'<div class="summary"><b>小结</b> · {p_sum}</div>\n'
+                f"{math_html}"
                 f'<div class="pair lang">\n'
                 f'<div class="en-block"><div class="label">Original</div><div class="en">{p_en}</div></div>\n'
                 f'<div class="zh-block"><div class="label">译文</div><div class="zh">{p_zh}</div></div>\n'

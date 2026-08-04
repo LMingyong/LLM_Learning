@@ -4,8 +4,32 @@ Paper: Kimi Linear: An Expressive, Efficient Attention Architecture
 arXiv:2510.26692 (Kimi Team / Moonshot).
 
 Focus: Abstract, Intro, §2 lineage, §3 KDA, §4 architecture, key experiments,
-plus a code-bridge section aligned with src/delta_attention/.
+plus a code-bridge section aligned with ./delta_attention/.
 """
+
+FORMULA_WALL = [
+    {
+        "tag": "Linear · 只加不改",
+        "latex": r"S_t = S_{t-1} + k_t v_t^\top,\quad o_t = S_t^\top q_t",
+        "note": "固定大小状态；旧关联永不擦除。",
+    },
+    {
+        "tag": "DeltaNet · delta rule",
+        "latex": r"S_t=(I-\beta_t k_t k_t^\top)S_{t-1}+\beta_t k_t v_t^\top",
+        "note": "先按 key 擦旧，再写入新 value。",
+    },
+    {
+        "tag": "GDN · 标量遗忘",
+        "latex": r"S_t=\alpha_t\,(I-\beta_t k_t k_t^\top)S_{t-1}+\beta_t k_t v_t^\top",
+        "note": "整头共用一个 α。",
+    },
+    {
+        "tag": "式 (1) · KDA",
+        "latex": r"S_t=\bigl(I-\beta_t k_t k_t^\top\bigr)\,\mathrm{Diag}(\alpha_t)\,S_{t-1}+\beta_t k_t v_t^\top",
+        "note": "通道级对角门；本页必背。",
+        "wide": True,
+    },
+]
 
 SECTIONS = [
     {
@@ -91,35 +115,83 @@ SECTIONS = [
         "title": "2.2 谱系：Linear → DeltaNet → GDN",
         "paras": [
             {
-                "en": "Linear Attention as Online Learning. Linear attention maintains a matrix-valued recurrent state that accumulates key–value associations: S_t = S_{t−1} + k_t v_tᵀ, o_t = S_tᵀ q_t.",
-                "zh": "线性注意力作为在线学习：用矩阵值递推状态累积 key–value 关联：S_t = S_{t−1} + k_t v_tᵀ，o_t = S_tᵀ q_t。",
+                "en": "Linear Attention as Online Learning. Linear attention maintains a matrix-valued recurrent state that accumulates key–value associations (see formula panel).",
+                "zh": "线性注意力作为在线学习：用矩阵值递推状态累积 key–value 关联（见下方公式卡）。",
                 "summary": "朴素线性：只加不改；S 是固定大小的联想记忆。",
                 "terms": ["linear attention", "associative memory"],
                 "figure": "pipeline",
+                "formulas": [
+                    {
+                        "tag": "Linear · 状态更新",
+                        "latex": r"S_t = S_{t-1} + k_t v_t^\top",
+                        "note": "只加不改：旧关联永不擦除。",
+                    },
+                    {
+                        "tag": "Linear · 读出",
+                        "latex": r"o_t = S_t^\top q_t",
+                        "note": "用当前 query 从固定大小状态读出。",
+                    },
+                ],
             },
             {
-                "en": "From the fast-weight perspective, S_t serves as an associative memory storing transient mappings from keys to values. This update can be viewed as performing gradient descent on the unbounded correlation objective L_t(S) = −⟨Sᵀ k_t, v_t⟩, which continually reinforces recent key–value pairs without any forgetting.",
-                "zh": "从快权重视角，S_t 是存储 key→value 短暂映射的联想记忆。该更新可视为对无界相关目标 L_t(S)=−⟨Sᵀk_t,v_t⟩ 做梯度下降：不断强化近期 KV，却没有任何遗忘。",
+                "en": "From the fast-weight perspective, S_t serves as an associative memory storing transient mappings from keys to values. This update can be viewed as performing gradient descent on an unbounded correlation objective, which continually reinforces recent key–value pairs without any forgetting.",
+                "zh": "从快权重视角，S_t 是存储 key→value 短暂映射的联想记忆。该更新可视为对无界相关目标做梯度下降：不断强化近期 KV，却没有任何遗忘。",
                 "summary": "问题种子：没有「擦除标准」，状态只会越堆越脏。",
                 "terms": ["fast weights"],
+                "formulas": [
+                    {
+                        "tag": "目标 · 无界相关",
+                        "latex": r"\mathcal{L}_t(S) = -\langle S^\top k_t,\, v_t\rangle",
+                        "note": "梯度下降只会「越加越多」，没有遗忘项。",
+                    },
+                ],
             },
             {
-                "en": "DeltaNet: Online Gradient Descent on Reconstruction Loss. DeltaNet reinterprets this recurrence as online gradient descent on a reconstruction objective: L_t(S) = ½ ‖Sᵀ k_t − v_t‖². Taking a gradient step with learning rate β_t gives S_t = (I − β_t k_t k_tᵀ) S_{t−1} + β_t k_t v_tᵀ.",
-                "zh": "DeltaNet：对重构损失做在线梯度下降。目标 L_t(S)=½‖Sᵀk_t−v_t‖²；以学习率 β_t 走一步得到 S_t=(I−β_t k_t k_tᵀ)S_{t−1}+β_t k_t v_tᵀ。",
+                "en": "DeltaNet: Online Gradient Descent on Reconstruction Loss. DeltaNet reinterprets this recurrence as online gradient descent on a reconstruction objective. Taking a gradient step with learning rate β_t yields the classical delta rule (see formula panel).",
+                "zh": "DeltaNet：对重构损失做在线梯度下降。以学习率 β_t 走一步，得到经典 delta rule（见下方公式卡）。",
                 "summary": "delta rule：先按当前 key 擦旧，再写入新 value（秩一 Householder 型）。",
                 "terms": ["DeltaNet", "delta rule", "β"],
+                "formulas": [
+                    {
+                        "tag": "目标 · 重构损失",
+                        "latex": r"\mathcal{L}_t(S)=\tfrac12\bigl\|S^\top k_t - v_t\bigr\|^2",
+                        "note": "希望当前 key 读出的内容接近目标 value。",
+                    },
+                    {
+                        "tag": "DeltaNet · 更新",
+                        "latex": r"S_t=(I-\beta_t k_t k_t^\top)S_{t-1}+\beta_t k_t v_t^\top",
+                        "note": "先按 key 擦旧，再写入新 value。",
+                        "wide": True,
+                    },
+                ],
             },
             {
                 "en": "This rule—the classical delta rule—treats S as a learnable associative memory that continually corrects itself toward the mapping k_t ↦ v_t. The rank-1 update structure, equivalent to a generalized Householder transformation, supports hardware-efficient chunkwise parallelization.",
                 "zh": "这一经典 delta rule 把 S 当作可学习联想记忆，不断向映射 k_t↦v_t 自我纠正。秩一更新等价于广义 Householder 变换，支持硬件高效的分块并行。",
                 "summary": "既有学习语义，又有可并行的代数结构。",
                 "terms": ["Householder", "chunkwise algorithm"],
+                "formulas": [
+                    {
+                        "tag": "等价展开 · 预测误差",
+                        "latex": r"\hat v_t=k_t^\top S_{t-1},\quad e_t=v_t-\hat v_t,\quad S_t=S_{t-1}+\beta_t k_t e_t^\top",
+                        "note": "误差接近 0 时几乎不再写入——避免重复叠同一关联。",
+                        "wide": True,
+                    },
+                ],
             },
             {
-                "en": "Gated DeltaNet as Weight Decay. Although DeltaNet stabilizes learning, it still retains outdated associations indefinitely. Gated DeltaNet (GDN) introduces a scalar forget gate α_t ∈ [0,1], yielding S_t = α_t (I − β_t k_t k_tᵀ) S_{t−1} + β_t k_t v_tᵀ.",
-                "zh": "Gated DeltaNet 作为权重衰减：尽管 DeltaNet 稳定了学习，过时关联仍无限保留。GDN 引入标量遗忘门 α_t∈[0,1]，得到 S_t=α_t(I−β_t k_t k_tᵀ)S_{t−1}+β_t k_t v_tᵀ。",
+                "en": "Gated DeltaNet as Weight Decay. Although DeltaNet stabilizes learning, it still retains outdated associations indefinitely. Gated DeltaNet (GDN) introduces a scalar forget gate α_t ∈ [0,1] before the delta update.",
+                "zh": "Gated DeltaNet 作为权重衰减：尽管 DeltaNet 稳定了学习，过时关联仍无限保留。GDN 在 delta 更新前引入标量遗忘门 α_t∈[0,1]。",
                 "summary": "GDN：整头共用一个 α，给快权重加数据相关的「体重衰减」。",
                 "terms": ["Gated DeltaNet", "α"],
+                "formulas": [
+                    {
+                        "tag": "GDN · 标量门",
+                        "latex": r"S_t=\alpha_t\,(I-\beta_t k_t k_t^\top)S_{t-1}+\beta_t k_t v_t^\top",
+                        "note": "整头共用一个遗忘速度。",
+                        "wide": True,
+                    },
+                ],
             },
             {
                 "en": "Here, α_t acts as a form of weight decay on the fast weights, implementing a forgetting mechanism analogous to data-dependent L2 regularization. This simple yet effective modification provides a principled way to control memory lifespan and mitigate interference.",
@@ -140,17 +212,52 @@ SECTIONS = [
                 "terms": ["KDA", "Diag(α_t)"],
             },
             {
-                "en": "Equation (1): S_t = (I − β_t k_t k_tᵀ) Diag(α_t) S_{t−1} + β_t k_t v_tᵀ ∈ R^{d_k×d_v}; o_t = S_tᵀ q_t ∈ R^{d_v}.",
-                "zh": "式 (1)：S_t=(I−β_t k_t k_tᵀ) Diag(α_t) S_{t−1}+β_t k_t v_tᵀ ∈ R^{d_k×d_v}；o_t=S_tᵀ q_t ∈ R^{d_v}。",
+                "en": "Equation (1) is the core KDA recurrence: channel-wise forget via Diag(α_t), then a delta-rule write, then a query readout. Shapes: S ∈ R^{d_k×d_v}, o ∈ R^{d_v}.",
+                "zh": "式 (1) 是 KDA 核心递推：用 Diag(α_t) 做通道遗忘，再做 delta 写入，最后用 query 读出。形状：S∈R^{d_k×d_v}，o∈R^{d_v}。",
                 "summary": "必背公式：先通道遗忘，再 delta 擦写，最后用 q 读出。",
                 "terms": ["Eq.1", "β", "α"],
                 "figure": "kda_steps",
+                "formulas": [
+                    {
+                        "tag": "式 (1) · KDA 状态更新",
+                        "latex": r"S_t=\bigl(I-\beta_t k_t k_t^\top\bigr)\,\mathrm{Diag}(\alpha_t)\,S_{t-1}+\beta_t k_t v_t^\top",
+                        "note": "相对 GDN：α 从标量变成对角向量。",
+                        "wide": True,
+                    },
+                    {
+                        "tag": "式 (1) · 读出",
+                        "latex": r"o_t = S_t^\top q_t",
+                        "note": "状态大小固定，不随序列长度增长。",
+                    },
+                ],
             },
             {
-                "en": "Teaching expansion (aligned with this repo’s recurrent_kda): (1) forget: S ← Diag(exp(g_t)) S with g_t ≤ 0 channel-wise; (2) predict: v̂ ← k_tᵀ S; (3) correct: S ← S + β_t k_t (v_t − v̂)ᵀ; (4) read: o_t ← (q_t/√d)ᵀ S.",
-                "zh": "教学展开（与本仓库 recurrent_kda 对齐）：(1) 遗忘：S←Diag(exp(g_t))S，g_t≤0 逐通道；(2) 预测：v̂←k_tᵀS；(3) 纠错：S←S+β_t k_t(v_t−v̂)ᵀ；(4) 读取：o_t←(q_t/√d)ᵀS。",
+                "en": "Teaching expansion (aligned with this repo’s recurrent_kda): four explicit steps—forget, predict, correct, read—matching the formula panels below.",
+                "zh": "教学展开（与本仓库 recurrent_kda 对齐）：四步——遗忘、预测、纠错、读取——见下方公式卡。",
                 "summary": "四步口诀：忘 → 读预测 → 写误差 → 用 q 查。",
                 "terms": ["recurrent_kda", "log_decay"],
+                "formulas": [
+                    {
+                        "tag": "步骤 1 · 遗忘",
+                        "latex": r"S \leftarrow \mathrm{Diag}\bigl(\exp(g_t)\bigr)\,S,\quad g_t\le 0",
+                        "note": "逐通道 α=exp(g)；g≤0 ⇒ α∈(0,1]。",
+                    },
+                    {
+                        "tag": "步骤 2 · 预测",
+                        "latex": r"\hat v \leftarrow k_t^\top S",
+                        "note": "用当前 key 当地址，读出旧内容。",
+                    },
+                    {
+                        "tag": "步骤 3 · 纠错写入",
+                        "latex": r"S \leftarrow S + \beta_t\, k_t\,(v_t-\hat v)^\top",
+                        "note": "只写预测误差（delta）。",
+                    },
+                    {
+                        "tag": "步骤 4 · 查询",
+                        "latex": r"o_t \leftarrow \Bigl(\frac{q_t}{\sqrt{d}}\Bigr)^\top S",
+                        "note": "教学代码里带 1/√d 缩放。",
+                    },
+                ],
             },
             {
                 "en": "Intuition: k_t is the address that selects which memory “row” to edit/query; v_t is the content to store; q_t reads from the updated S; exp(g_t) is the per-channel forget rate; β_t is the write strength of this correction step.",
@@ -183,10 +290,18 @@ SECTIONS = [
                 "terms": ["Tensor Core"],
             },
             {
-                "en": "In representational capacity, KDA aligns with the generalized DPLR formulation S_t = (D − a_t b_tᵀ) S_{t−1} + k_t v_tᵀ, both exhibiting fine-grained decay. By binding both variables a and b to k, KDA reduces second-level chunk matrix computations from four to two and eliminates three additional matmuls, improving operator efficiency by roughly 100% versus general DPLR.",
-                "zh": "表达能力上，KDA 对齐广义 DPLR：S_t=(D−a_t b_tᵀ)S_{t−1}+k_t v_tᵀ，同样具有细粒度衰减。通过把 a、b 都绑定到 k，KDA 把二级分块矩阵计算从四次减到两次，并再省三次 matmul，算子效率相对通用 DPLR 约提升 100%。",
+                "en": "In representational capacity, KDA aligns with the generalized DPLR family (fine-grained decay). By binding both low-rank factors to k, KDA cuts second-level chunk matmuls and stays closer to the classical delta rule.",
+                "zh": "表达能力上，KDA 对齐广义 DPLR 族（同样细粒度衰减）。通过把两个低秩因子都绑定到 k，KDA 减少二级分块 matmul，同时更贴近经典 delta rule。",
                 "summary": "特化诀窍：a=b=k → 少做 matmul，还更贴经典 delta rule。",
                 "terms": ["DPLR"],
+                "formulas": [
+                    {
+                        "tag": "广义 DPLR",
+                        "latex": r"S_t=\bigl(D-a_t b_t^\top\bigr)S_{t-1}+k_t v_t^\top",
+                        "note": "KDA 特化：把 a、b 都绑到 k，算子约快 1×（相对通用 DPLR）。",
+                        "wide": True,
+                    },
+                ],
             },
         ],
     },
@@ -195,11 +310,25 @@ SECTIONS = [
         "title": "4 Kimi Linear 模型架构",
         "paras": [
             {
-                "en": "Neural parameterization (per head): q_t, k_t = L2Norm(Swish(ShortConv(W_{q/k} x_t))); v_t = Swish(ShortConv(W_v x_t)); α_t = f(W↑_α W↓_α x_t) ∈ [0,1]^{d_k}; β_t = Sigmoid(W_β x_t) ∈ [0,1].",
-                "zh": "神经参数化（每头）：q_t,k_t=L2Norm(Swish(ShortConv(W_{q/k}x_t)))；v_t=Swish(ShortConv(W_v x_t))；α_t=f(W↑_α W↓_α x_t)∈[0,1]^{d_k}；β_t=Sigmoid(W_β x_t)∈[0,1]。",
+                "en": "Neural parameterization (per head): short-conv + Swish for q/k/v; L2Norm on q/k; low-rank channel gate α; sigmoid write strength β. See formula panels.",
+                "zh": "神经参数化（每头）：q/k/v 走短卷积 + Swish；q/k 再 L2Norm；α 低秩通道门；β 为 sigmoid 写入强度。见公式卡。",
                 "summary": "实现清单：短卷积 + Swish；q/k 再 L2Norm；α 低秩投影；β sigmoid。",
                 "terms": ["ShortConv", "L2Norm", "α", "β"],
                 "figure": "hybrid",
+                "formulas": [
+                    {
+                        "tag": "q / k",
+                        "latex": r"q_t,k_t=\mathrm{L2Norm}\bigl(\mathrm{Swish}(\mathrm{ShortConv}(W_{q/k}x_t))\bigr)",
+                        "note": "L2Norm 稳住特征值。",
+                        "wide": True,
+                    },
+                    {
+                        "tag": "v / α / β",
+                        "latex": r"v_t=\mathrm{Swish}(\mathrm{ShortConv}(W_v x_t)),\quad \alpha_t=f(W^\uparrow_\alpha W^\downarrow_\alpha x_t),\quad \beta_t=\sigma(W_\beta x_t)",
+                        "note": "α∈[0,1]^{d_k}（逐通道）；β∈[0,1]（标量写入强度）。",
+                        "wide": True,
+                    },
+                ],
             },
             {
                 "en": "For q, k, v we apply a ShortConv followed by a Swish activation, following GDN. The q and k representations are further L2-normalized to ensure eigenvalue stability. The per-channel decay α is parameterized via a low-rank projection with rank equal to the head dimension.",
@@ -208,10 +337,18 @@ SECTIONS = [
                 "terms": ["ShortConv"],
             },
             {
-                "en": "Before the output projection, we use a head-wise RMSNorm and a data-dependent gating mechanism: o_t = W_o ( Sigmoid(W↑_g W↓_g x_t) ⊙ RMSNorm(KDA(...)) ). The output gate uses low-rank parameterization similar to the forget gate, alleviating Attention Sink while keeping parameters fair.",
-                "zh": "输出投影前使用 head 级 RMSNorm 与数据相关门控：o_t=W_o(Sigmoid(W↑_g W↓_g x_t)⊙RMSNorm(KDA(...)))。输出门同样低秩，在参数公平的同时缓解 Attention Sink。",
+                "en": "Before the output projection, we use a head-wise RMSNorm and a data-dependent gating mechanism. The output gate uses low-rank parameterization similar to the forget gate, alleviating Attention Sink while keeping parameters fair.",
+                "zh": "输出投影前使用 head 级 RMSNorm 与数据相关门控。输出门同样低秩，在参数公平的同时缓解 Attention Sink。",
                 "summary": "输出门默认 Sigmoid（消融显示优于 Swish / 无门）。",
                 "terms": ["output gate", "Attention Sink", "RMSNorm"],
+                "formulas": [
+                    {
+                        "tag": "输出门",
+                        "latex": r"o_t=W_o\Bigl(\sigma(W^\uparrow_g W^\downarrow_g x_t)\,\odot\,\mathrm{RMSNorm}(\mathrm{KDA}(\cdot))\Bigr)",
+                        "note": "默认 Sigmoid 门；消融显示优于 Swish / 无门。",
+                        "wide": True,
+                    },
+                ],
             },
             {
                 "en": "Hybrid model architecture. Long-context retrieval remains the primary bottleneck for pure linear attention; we therefore hybridize KDA with a small number of full global-attention (Full MLA) layers. Empirically, a uniform 3:1 ratio (3 KDA layers to 1 MLA layer) provided the best quality–throughput trade-off.",
@@ -280,26 +417,26 @@ SECTIONS = [
         "title": "对照本仓库代码（学习桥接）",
         "paras": [
             {
-                "en": "Code bridge (study note): src/delta_attention/recurrent.py implements the token-wise gold recurrence—channel forget, predict, delta write, query—matching Eq.1’s teaching expansion. Prefer this file when checking numerical correctness.",
-                "zh": "代码桥接（学习笔记）：src/delta_attention/recurrent.py 实现逐步金标准递推——通道遗忘、预测、delta 写入、查询——对应式 (1) 的教学展开。核对数值正确性时优先看此文件。",
+                "en": "Code bridge (study note): delta_attention/recurrent.py (same folder as this HTML) implements the token-wise gold recurrence—channel forget, predict, delta write, query—matching Eq.1’s teaching expansion. Prefer this file when checking numerical correctness.",
+                "zh": "代码桥接（学习笔记）：与本页同夹的 delta_attention/recurrent.py 实现逐步金标准递推——通道遗忘、预测、delta 写入、查询——对应式 (1) 的教学展开。核对数值正确性时优先看此文件。",
                 "summary": "正确性锚点：先读 recurrent_kda，再谈 chunk / 融合核。",
                 "terms": ["recurrent_kda"],
             },
             {
-                "en": "src/delta_attention/layer.py wraps projections, short convolution, gate parameterization, and output gating around the recurrence—mirroring §4 neural parameterization at teaching scale.",
-                "zh": "src/delta_attention/layer.py 在递推外包投影、短卷积、门控参数化与输出门，对应 §4 神经参数化的教学尺度实现。",
+                "en": "delta_attention/layer.py wraps projections, short convolution, gate parameterization, and output gating around the recurrence—mirroring §4 neural parameterization at teaching scale.",
+                "zh": "delta_attention/layer.py 在递推外包投影、短卷积、门控参数化与输出门，对应 §4 神经参数化的教学尺度实现。",
                 "summary": "层包装：公式之外的「工程零件」都在 layer.py。",
                 "terms": ["ShortConv", "output gate"],
             },
             {
-                "en": "examples/delta_attention_demo.py shows shapes and stateful cache continuation; tests/test_kda.py checks chunk equivalence, β=0 decay-only behavior, causality, and cache consistency. Production should use official FlashKDA / FLA kernels.",
-                "zh": "examples/delta_attention_demo.py 演示形状与带状态 cache 续写；tests/test_kda.py 检查 chunk 等价、β=0 仅衰减、因果性与 cache 一致性。生产请用官方 FlashKDA / FLA 核。",
-                "summary": "学习路径：笔记公式 → recurrent → layer → demo → tests → 官方 kernel。",
+                "en": "demo.py shows shapes and stateful cache continuation; test_kda.py checks chunk equivalence, β=0 decay-only behavior, causality, and cache consistency. Production should use official FlashKDA / FLA kernels.",
+                "zh": "同夹 demo.py 演示形状与带状态 cache 续写；test_kda.py 检查 chunk 等价、β=0 仅衰减、因果性与 cache 一致性。生产请用官方 FlashKDA / FLA 核。",
+                "summary": "学习路径：公式墙 → recurrent → layer → demo → tests → 官方 kernel。",
                 "terms": ["FlashKDA"],
             },
             {
-                "en": "Reading order suggestion: (1) this HTML’s lineage + Eq.1; (2) notes.md for a compact formula card; (3) step through recurrent_kda with a tiny [B,T,H,D]; (4) compare to GDN by collapsing α to a scalar; (5) return to paper §3.1 only when you need chunk/WY details.",
-                "zh": "建议阅读顺序：(1) 本页谱系 + 式 (1)；(2) notes.md 公式卡片；(3) 用很小的 [B,T,H,D] 单步跟 recurrent_kda；(4) 把 α 塌成标量对比 GDN；(5) 需要 chunk/WY 细节时再回论文 §3.1。",
+                "en": "Reading order suggestion: (1) this HTML’s formula wall + lineage; (2) notes.md for a compact card; (3) step through recurrent_kda with a tiny [B,T,H,D]; (4) compare to GDN by collapsing α to a scalar; (5) return to paper §3.1 only when you need chunk/WY details.",
+                "zh": "建议阅读顺序：(1) 本页公式墙 + 谱系；(2) notes.md 短卡片；(3) 用很小的 [B,T,H,D] 单步跟 recurrent_kda；(4) 把 α 塌成标量对比 GDN；(5) 需要 chunk/WY 细节时再回论文 §3.1。",
                 "summary": "别一上来啃分块推导；先把递推四步跑通。",
                 "terms": [],
             },
@@ -368,9 +505,9 @@ REFS = [
     },
     {
         "level": "代码",
-        "title": "src/delta_attention",
-        "why": "教学向 PyTorch：recurrent / layer / tests。",
-        "url": "../../src/delta_attention/",
+        "title": "本夹 delta_attention/",
+        "why": "教学向 PyTorch：recurrent / layer；同夹还有 demo.py 与 test_kda.py。",
+        "url": "./delta_attention/",
         "ext": "",
     },
     {

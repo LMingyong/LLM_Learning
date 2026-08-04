@@ -21,8 +21,9 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["papers/kimi-linear-delta-attention"]
+include = ["delta_attention*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
+testpaths = ["papers/kimi-linear-delta-attention"]
+pythonpath = ["papers/kimi-linear-delta-attention"]
