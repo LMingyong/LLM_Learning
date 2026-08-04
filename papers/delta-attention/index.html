@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>DeltaNet / Delta Attention 逐段精读</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"/>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+
+<style>
+:root{
+  --bg:#f6f3ec; --bg2:#efe9dc; --paper:#fffcf5; --ink:#1c2420; --muted:#5a6a62;
+  --faint:#7d8c84; --line:#d8d0c0; --accent:#0f6e56; --accent-soft:#d8efe6;
+  --warm:#b85c38; --warm-soft:#f3e0d6; --blue:#1f4e79; --blue-soft:#dce8f3;
+  --shadow:0 12px 40px rgba(40,50,40,.08);
+  --serif:"Literata",Georgia,"Noto Serif SC",serif;
+  --sans:"Manrope",system-ui,"Noto Sans SC",sans-serif;
+  --mono:ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.75;
+background:radial-gradient(900px 500px at 0% 0%,rgba(15,110,86,.07),transparent 55%),
+radial-gradient(700px 400px at 100% 8%,rgba(184,92,56,.06),transparent 50%),
+linear-gradient(180deg,var(--bg),var(--bg2));min-height:100vh}
+a{color:var(--accent);text-underline-offset:3px}
+a:hover{color:var(--warm)}
+.app{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow:auto;padding:22px 16px 28px;
+border-right:1px solid var(--line);background:rgba(255,252,245,.85);backdrop-filter:blur(10px)}
+.brand{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--accent);letter-spacing:.04em;margin:0 0 8px}
+.side h1{font-family:var(--sans);font-size:20px;line-height:1.25;margin:0 0 8px}
+.side .meta{font-family:var(--sans);font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+.side nav a{display:block;padding:8px 10px;border-radius:10px;color:var(--muted);
+font-family:var(--sans);font-size:13px;text-decoration:none;margin-bottom:2px}
+.side nav a:hover,.side nav a.active{background:var(--accent-soft);color:var(--ink)}
+.side .hint{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:12px;
+font-family:var(--sans);font-size:12px;color:var(--faint);line-height:1.55;background:var(--paper)}
+.main{padding:22px 28px 80px;max-width:1080px}
+.topbar{position:sticky;top:0;z-index:20;margin:0 -28px 22px;padding:14px 28px;
+display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+background:rgba(246,243,236,.9);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.seg{display:inline-flex;padding:4px;border-radius:999px;background:var(--paper);border:1px solid var(--line)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;
+font-family:var(--sans);font-size:12px;padding:8px 12px;border-radius:999px}
+.seg button.on{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.btn{font-family:var(--sans);font-size:12px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);border-radius:999px;padding:8px 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.search{flex:1;min-width:180px}
+.search input{width:100%;border-radius:999px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);padding:9px 14px;font-family:var(--sans);font-size:13px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.hero{border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:22px;
+background:linear-gradient(135deg,rgba(15,110,86,.08),transparent 45%),var(--paper);
+box-shadow:var(--shadow)}
+.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:26px}
+.hero p{margin:0;color:var(--muted);font-family:var(--sans);font-size:14px;line-height:1.65}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-family:var(--sans);font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.chip em{color:var(--warm);font-style:normal;font-weight:600}
+.section{margin:28px 0 10px;scroll-margin-top:78px}
+.section h3{font-family:var(--sans);font-size:18px;margin:0 0 12px;padding-bottom:8px;
+border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:10px}
+.section h3 span{font-size:12px;color:var(--faint);font-weight:500}
+.card{border:1px solid var(--line);background:var(--paper);border-radius:16px;padding:14px 16px;margin:0 0 12px;
+transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover{border-color:rgba(15,110,86,.35);transform:translateY(-1px);box-shadow:var(--shadow)}
+.card.active{border-color:var(--accent);box-shadow:0 0 0 1px rgba(15,110,86,.2),var(--shadow)}
+.pidx{font-family:var(--sans);font-size:11px;color:var(--faint);float:right;margin-left:8px}
+.summary{font-family:var(--sans);font-size:13px;color:#0b3d30;background:var(--accent-soft);
+border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 10px 10px 0;margin:0 0 12px;line-height:1.55}
+.lang{font-size:15.5px;line-height:1.8}
+.lang .en{color:#24312c}
+.lang .zh{color:#1c2420}
+.lang .label{font-family:var(--sans);font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+body.mode-zh .en-block,body.mode-en .zh-block{display:none}
+body.mode-zh .pair,body.mode-en .pair{grid-template-columns:1fr}
+.terms{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;clear:both}
+.term{font-family:var(--sans);font-size:11px;padding:4px 8px;border-radius:999px;cursor:pointer;
+background:var(--warm-soft);color:#6a2f18;border:1px solid rgba(184,92,56,.25)}
+.term:hover{background:#efd2c2}
+.figure{margin:12px 0 4px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fffcf5}
+.figure .cap{font-family:var(--sans);font-size:12px;color:var(--faint);padding:8px 12px;border-top:1px solid var(--line)}
+.figure svg{display:block;width:100%;height:auto}
+.hidden-by-search{display:none !important}
+.drawer{position:fixed;top:0;right:0;width:min(420px,100%);height:100vh;overflow:auto;z-index:40;
+background:var(--paper);border-left:1px solid var(--line);
+transform:translateX(100%);transition:transform .28s ease;padding:18px 16px 40px;box-shadow:var(--shadow)}
+.drawer.open{transform:none}
+.drawer h2{font-family:var(--sans);margin:8px 0 6px;font-size:18px}
+.gitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff}
+.gitem b{font-family:var(--sans);color:var(--warm)}
+.gitem p{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.55}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ref{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--paper);
+display:flex;flex-direction:column;gap:8px;min-height:140px}
+.ref .lv{font-family:var(--sans);font-size:11px;align-self:start;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.ref .lv.must{color:#fff;background:var(--accent);border-color:transparent;font-weight:700}
+.ref .lv.imp{color:#fff;background:var(--warm);border-color:transparent;font-weight:700}
+.ref h4{margin:0;font-family:var(--sans);font-size:15px;line-height:1.35}
+.ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint);background:#fff}
+.note{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+
+.math-stack{display:flex;flex-direction:column;gap:10px;margin:12px 0 4px}
+.math-panel{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#fff,#fffcf5);
+padding:12px 14px;box-shadow:0 8px 24px rgba(40,50,40,.04)}
+.math-panel .math-tag{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.04em;
+color:var(--accent);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.math-panel .math-tag::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--accent);flex:0 0 auto}
+.math-panel .math-eq{overflow-x:auto;padding:4px 0 2px;font-size:1.05em;line-height:1.6;color:var(--ink)}
+.math-panel .math-eq .katex-display{margin:0.4em 0}
+.math-panel .math-note{font-family:var(--sans);font-size:12px;color:var(--muted);margin-top:8px;
+padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
+.formula-wall{display:grid;grid-template-columns:1fr;gap:12px;margin:0 0 18px}
+@media (min-width:820px){.formula-wall{grid-template-columns:1fr 1fr}}
+.formula-wall .math-panel{min-height:100%}
+.formula-wall .math-panel.span2{grid-column:1 / -1}
+.inline-math-hint{font-family:var(--sans);font-size:12px;color:var(--faint);margin:0 0 10px}
+
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .pair{grid-template-columns:1fr}
+  .main{padding:16px 14px 70px}
+  .topbar{margin:0 -14px 16px;padding:12px 14px}
+}
+</style></head>
+<body class="mode-both"><div class="app">
+<aside class="side">
+<div class="brand">LLM Learning · Paper Reader</div>
+<h1>DeltaNet / Delta Attention</h1>
+<div class="meta">arXiv:2406.06484<br/>每段 = 小结 + Original + 译文<br/>公式独立成卡 · 与 KDA 分夹</div>
+<nav id="toc">
+<a href="#formulas">公式墙（速查）</a>
+<a href="#abstract">Abstract 摘要</a>
+<a href="#intro">1 Introduction 引言（关键）</a>
+<a href="#linear">2.1 线性注意力回顾</a>
+<a href="#delta">2.2 DeltaNet：delta 更新规则</a>
+<a href="#parallel">3 沿序列并行：WY / 分块</a>
+<a href="#arch">3.3–3.4 架构与混合</a>
+<a href="#expts">4 实验要点</a>
+<a href="#bridge">桥接到 GDN / KDA</a>
+<a href="#glossary">名词重点解释</a>
+<a href="#refs">重点引用</a>
+</nav>
+<div class="hint">
+<div><span class="kbd">1</span>对照 <span class="kbd">2</span>译文 <span class="kbd">3</span>原文</div>
+<div style="margin-top:6px"><span class="kbd">J</span>/<span class="kbd">K</span>跳段 <span class="kbd">G</span>名词 <span class="kbd">/</span>搜索</div>
+</div></aside>
+<main class="main">
+<div class="topbar">
+<div class="seg" id="modeSeg">
+<button data-mode="both" class="on">对照</button>
+<button data-mode="zh">仅译文</button>
+<button data-mode="en">仅原文</button>
+</div>
+<button class="btn" id="btnGlossary">名词表</button>
+<a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+<a class="btn" href="#formulas">公式墙</a>
+<a class="btn" href="../kda/index.html">KDA 精读 →</a>
+<a class="btn" href="../linear-attention/index.html">Linear Attention →</a>
+<a class="btn" href="https://github.com/fla-org/flash-linear-attention" target="_blank" rel="noopener">FLA 算子 →</a>
+<div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
+</div>
+<section class="hero">
+<h2>DeltaNet · Delta Attention</h2>
+<p>本夹对应 <strong>arXiv:2406.06484</strong>（可扩展 DeltaNet），与 <a href="../kda/">Kimi Linear / KDA</a> 分开放。精读：小结 → Original → 译文；关键公式<strong>独立成卡</strong>（KaTeX）。</p>
+<div class="chips">
+<span class="chip">核心：<em>delta rule 擦写</em></span>
+<span class="chip">算法：<em>WY + 分块并行</em></span>
+<span class="chip">规模：<em>1.3B / 100B tokens</em></span>
+<span class="chip">下游：<em>→ GDN → KDA</em></span>
+</div>
+</section>
+<p class="note">英文贴近 NeurIPS 2024 论文。建议：先扫 <a href="#formulas">公式墙</a>，再读 §2.2 擦写与 §3 并行；学完接 <a href="../kda/index.html">KDA</a>。</p>
+<section class="section" id="formulas"><h3>公式墙（速查） <span>谱系一览</span></h3>
+<p class="inline-math-hint">以下公式从正文抽出，便于对照；段内还有更细的展开卡。</p>
+<div class="formula-wall"><div class="math-panel" data-blob="linear · 加性更新 只加不改；l&gt;d 时易发生 key 碰撞。 s_t = s_{t-1} + v_t k_t^\top,\quad o_t = s_t q_t"><div class="math-tag">Linear · 加性更新</div><div class="math-eq">\[S_t = S_{t-1} + v_t k_t^\top,\quad o_t = S_t q_t\]</div><div class="math-note">只加不改；L&gt;d 时易发生 key 碰撞。</div></div><div class="math-panel span2" data-blob="deltanet · 递推形式 广义 householder：先擦旧再写新。 s_t = s_{t-1}(i-\beta_t k_t k_t^\top)+\beta_t v_t k_t^\top"><div class="math-tag">DeltaNet · 递推形式</div><div class="math-eq">\[S_t = S_{t-1}(I-\beta_t k_t k_t^\top)+\beta_t v_t k_t^\top\]</div><div class="math-note">广义 Householder：先擦旧再写新。</div></div><div class="math-panel" data-blob="写入强度 β=1 完全覆盖；β=0 记忆不变。 \beta_t=\sigma(w_\beta x_t)\in(0,1)"><div class="math-tag">写入强度</div><div class="math-eq">\[\beta_t=\sigma(W_\beta x_t)\in(0,1)\]</div><div class="math-note">β=1 完全覆盖；β=0 记忆不变。</div></div><div class="math-panel span2" data-blob="伪 value（wy 视角） deltanet = 线性注意力，但 value 换成纠错后的 u。 u_t=\beta_t\bigl(v_t-s_{t-1}k_t\bigr),\quad s_t=\sum_{i=1}^{t} u_i k_i^\top"><div class="math-tag">伪 value（WY 视角）</div><div class="math-eq">\[u_t=\beta_t\bigl(v_t-S_{t-1}k_t\bigr),\quad S_t=\sum_{i=1}^{t} u_i k_i^\top\]</div><div class="math-note">DeltaNet = 线性注意力，但 value 换成纠错后的 u。</div></div></div></section>
+<section class="section" id="abstract"><h3>Abstract 摘要 <span>4 段</span></h3>
+<article class="card para" data-idx="1" data-blob="transformers with linear attention and state-space models have been suggested as linear-time alternatives to softmax attention, but still underperform especially on in-context retrieval. 线性注意力 transformer 与状态空间模型被当作 softmax 注意力的线性时间替代，但在上下文检索上仍明显偏弱。 问题：线性时间模型，检索仍跟不上全注意力。 linear attention in-context retrieval">
+<span class="pidx">§1</span>
+<div class="summary"><b>小结</b> · 问题：线性时间模型，检索仍跟不上全注意力。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Transformers with linear attention and state-space models have been suggested as linear-time alternatives to softmax attention, but still underperform especially on in-context retrieval.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">线性注意力 Transformer 与状态空间模型被当作 softmax 注意力的线性时间替代，但在上下文检索上仍明显偏弱。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="linear attention">linear attention</span><span class="term" data-term="in-context retrieval">in-context retrieval</span></div></article>
+<article class="card para" data-idx="2" data-blob="more expressive variants that replace the additive outer-product update with the delta rule (deltanet) are better at associative recall, yet prior training algorithms did not parallelize over sequence length and were inefficient on modern hardware. 把加性外积更新换成 delta rule 的变体（deltanet）更擅长联想回忆，但以往训练算法无法沿序列长度并行，硬件效率差。 矛盾：表达力有了，训练却串行。 deltanet delta rule">
+<span class="pidx">§2</span>
+<div class="summary"><b>小结</b> · 矛盾：表达力有了，训练却串行。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">More expressive variants that replace the additive outer-product update with the delta rule (DeltaNet) are better at associative recall, yet prior training algorithms did not parallelize over sequence length and were inefficient on modern hardware.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">把加性外积更新换成 delta rule 的变体（DeltaNet）更擅长联想回忆，但以往训练算法无法沿序列长度并行，硬件效率差。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="DeltaNet">DeltaNet</span><span class="term" data-term="delta rule">delta rule</span></div></article>
+<article class="card para" data-idx="3" data-blob="this work gives a hardware-efficient algorithm for training linear transformers with the delta rule via a memory-efficient representation of products of householder matrices, enabling scaling deltanet to standard lm settings. 本文给出硬件友好的 delta-rule 线性注意力训练算法：用 householder 乘积的省内存表示，使 deltanet 能扩到常规语言模型设定。 贡献一句话：把 deltanet 训到能上卡、能扩规模。 householder wy representation">
+<span class="pidx">§3</span>
+<div class="summary"><b>小结</b> · 贡献一句话：把 DeltaNet 训到能上卡、能扩规模。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">This work gives a hardware-efficient algorithm for training linear transformers with the delta rule via a memory-efficient representation of products of Householder matrices, enabling scaling DeltaNet to standard LM settings.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本文给出硬件友好的 delta-rule 线性注意力训练算法：用 Householder 乘积的省内存表示，使 DeltaNet 能扩到常规语言模型设定。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Householder">Householder</span><span class="term" data-term="WY representation">WY representation</span></div></article>
+<article class="card para" data-idx="4" data-blob="a 1.3b model trained on 100b tokens outperforms mamba and gla on perplexity and zero-shot downstream (including recall). hybrids with sliding-window or two global attention layers beat strong transformer baselines. 1.3b / 100b tokens 设定下，困惑度与零样本下游（含回忆）优于 mamba 与 gla；与滑窗或两层全局注意力的混合还超过强 transformer 基线。 结果数字：1.3b·100b；纯 deltanet 打赢线性族，混合打赢 transformer。 mamba gla hybrid">
+<span class="pidx">§4</span>
+<div class="summary"><b>小结</b> · 结果数字：1.3B·100B；纯 DeltaNet 打赢线性族，混合打赢 Transformer。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">A 1.3B model trained on 100B tokens outperforms Mamba and GLA on perplexity and zero-shot downstream (including recall). Hybrids with sliding-window or two global attention layers beat strong transformer baselines.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">1.3B / 100B tokens 设定下，困惑度与零样本下游（含回忆）优于 Mamba 与 GLA；与滑窗或两层全局注意力的混合还超过强 Transformer 基线。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Mamba">Mamba</span><span class="term" data-term="GLA">GLA</span><span class="term" data-term="hybrid">hybrid</span></div></article>
+</section>
+<section class="section" id="intro"><h3>1 Introduction 引言（关键） <span>3 段</span></h3>
+<article class="card para" data-idx="5" data-blob="softmax attention is accurate and matmul-friendly, but quadratic in length and requires a growing kv cache. linear attention rearranges into a matrix-valued rnn for constant-memory inference, yet historically lagged on language modeling until gated variants narrowed the gap. softmax 注意力准且吃 matmul，但长度二次且 kv cache 增长。线性注意力可重排成矩阵值 rnn 做常数内存推理，历史上语言模型偏弱，直到门控变体缩小差距。 场景：要线性时间，又要检索——两者一直难兼得。 kv cache linear attention">
+<span class="pidx">§5</span>
+<div class="summary"><b>小结</b> · 场景：要线性时间，又要检索——两者一直难兼得。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Softmax attention is accurate and matmul-friendly, but quadratic in length and requires a growing KV cache. Linear attention rearranges into a matrix-valued RNN for constant-memory inference, yet historically lagged on language modeling until gated variants narrowed the gap.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Softmax 注意力准且吃 matmul，但长度二次且 KV cache 增长。线性注意力可重排成矩阵值 RNN 做常数内存推理，历史上语言模型偏弱，直到门控变体缩小差距。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="KV cache">KV cache</span><span class="term" data-term="linear attention">linear attention</span></div></article>
+<article class="card para" data-idx="6" data-blob="gated linear transformers and time-varying ssms (e.g. mamba) remain weak on recall-intensive tasks. schlag et al. proposed deltanet: retrieve the value bound to the current key and update it with a delta-rule correction—effective on synthetic/small lm, but trained sequentially. 门控线性模型与时变 ssm（如 mamba）在回忆密集型任务仍弱。schlag 等提出 deltanet：用当前 key 取回绑定 value，再按 delta rule 纠错——合成/小模型有效，但训练是串行的。 前作 deltanet：语义对了，算法还没法大规模训。 deltanet associative recall">
+<span class="pidx">§6</span>
+<div class="summary"><b>小结</b> · 前作 DeltaNet：语义对了，算法还没法大规模训。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Gated linear transformers and time-varying SSMs (e.g. Mamba) remain weak on recall-intensive tasks. Schlag et al. proposed DeltaNet: retrieve the value bound to the current key and update it with a delta-rule correction—effective on synthetic/small LM, but trained sequentially.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">门控线性模型与时变 SSM（如 Mamba）在回忆密集型任务仍弱。Schlag 等提出 DeltaNet：用当前 key 取回绑定 value，再按 delta rule 纠错——合成/小模型有效，但训练是串行的。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="DeltaNet">DeltaNet</span><span class="term" data-term="associative recall">associative recall</span></div></article>
+<article class="card para" data-idx="7" data-blob="we reparameterize deltanet as a matrix rnn with generalized householder transitions, apply the wy representation so chunkwise parallel linear-attention training extends to deltanet, and scale to 1.3b / 100b tokens plus hybrid designs. 我们把 deltanet 重参数化为广义 householder 转移的矩阵 rnn，用 wy 表示把分块并行线性注意力训练推广到 deltanet，并扩到 1.3b/100b tokens 及混合设计。 本文路径：householder → wy → chunk 并行 → 规模化 + 混合。 chunkwise wy representation">
+<span class="pidx">§7</span>
+<div class="summary"><b>小结</b> · 本文路径：Householder → WY → chunk 并行 → 规模化 + 混合。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We reparameterize DeltaNet as a matrix RNN with generalized Householder transitions, apply the WY representation so chunkwise parallel linear-attention training extends to DeltaNet, and scale to 1.3B / 100B tokens plus hybrid designs.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们把 DeltaNet 重参数化为广义 Householder 转移的矩阵 RNN，用 WY 表示把分块并行线性注意力训练推广到 DeltaNet，并扩到 1.3B/100B tokens 及混合设计。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="chunkwise">chunkwise</span><span class="term" data-term="WY representation">WY representation</span></div></article>
+</section>
+<section class="section" id="linear"><h3>2.1 线性注意力回顾 <span>2 段</span></h3>
+<article class="card para" data-idx="8" data-blob="linear attention replaces the exp kernel with a feature-map dot product, enabling a recurrent state s_t that accumulates key–value associations without a kv cache. 线性注意力用特征映射点积替换 exp 核，得到累积 kv 关联的递推状态 s_t，无需 kv cache。 固定大小状态 = 线性时间推理的前提。 feature map s">
+<span class="pidx">§8</span>
+<div class="summary"><b>小结</b> · 固定大小状态 = 线性时间推理的前提。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="简化线性注意力 φ 常取恒等；分母归一化多项工作会去掉。 s_t=s_{t-1}+v_t k_t^\top,\quad o_t=s_t q_t"><div class="math-tag">简化线性注意力</div><div class="math-eq">\[S_t=S_{t-1}+v_t k_t^\top,\quad o_t=S_t q_t\]</div><div class="math-note">φ 常取恒等；分母归一化多项工作会去掉。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Linear attention replaces the exp kernel with a feature-map dot product, enabling a recurrent state S_t that accumulates key–value associations without a KV cache.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">线性注意力用特征映射点积替换 exp 核，得到累积 KV 关联的递推状态 S_t，无需 KV cache。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="feature map">feature map</span><span class="term" data-term="S">S</span></div></article>
+<article class="card para" data-idx="9" data-blob="fully parallel form is o(l²d) matmul-heavy; pure recurrence is o(ld²) but low arithmetic intensity. chunkwise parallel form interpolates: propagate s chunk-to-chunk, keep intra-chunk parallel. 全并行形式 o(l²d)、吃 matmul；纯递推 o(ld²) 但算术强度低。分块并行折中：块间传 s，块内并行。 训练工程母题：块大小 c 在并行度与 flops 之间插值。 chunkwise">
+<span class="pidx">§9</span>
+<div class="summary"><b>小结</b> · 训练工程母题：块大小 C 在并行度与 FLOPs 之间插值。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="块间状态 / 块内输出（线性）  s_{[t+1]}=s_{[t]}+v_{[t+1]}^\top k_{[t+1]},\quad o_{[t+1]}=q_{[t+1]}s_{[t]}^\top+(q_{[t+1]}k_{[t+1]}^\top\odot m_c)v_{[t+1]}"><div class="math-tag">块间状态 / 块内输出（线性）</div><div class="math-eq">\[S_{[t+1]}=S_{[t]}+V_{[t+1]}^\top K_{[t+1]},\quad O_{[t+1]}=Q_{[t+1]}S_{[t]}^\top+(Q_{[t+1]}K_{[t+1]}^\top\odot M_C)V_{[t+1]}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Fully parallel form is O(L²d) matmul-heavy; pure recurrence is O(Ld²) but low arithmetic intensity. Chunkwise parallel form interpolates: propagate S chunk-to-chunk, keep intra-chunk parallel.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">全并行形式 O(L²d)、吃 matmul；纯递推 O(Ld²) 但算术强度低。分块并行折中：块间传 S，块内并行。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="chunkwise">chunkwise</span></div></article>
+</section>
+<section class="section" id="delta"><h3>2.2 DeltaNet：delta 更新规则 <span>2 段</span></h3>
+<article class="card para" data-idx="10" data-blob="pure additive updates cannot deallocate old associations; when l&gt;d keys collide. deltanet retrieves the old value bound to the current key, mixes it with the new value by writing strength β_t, then removes-and-writes. 纯加性更新无法腾出旧关联；l&gt;d 时 key 碰撞。deltanet 用当前 key 取回旧 value，按写入强度 β_t 与新 value 插值，再「擦旧+写新」。 核心直觉：按地址纠错，而不是无脑累加。 delta rule β associative recall">
+<span class="pidx">§10</span>
+<div class="summary"><b>小结</b> · 核心直觉：按地址纠错，而不是无脑累加。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="读旧 / 混合新  v_t^{\mathrm{old}}=s_{t-1}k_t,\quad v_t^{\mathrm{new}}=\beta_t v_t+(1-\beta_t)v_t^{\mathrm{old}}"><div class="math-tag">读旧 / 混合新</div><div class="math-eq">\[v_t^{\mathrm{old}}=S_{t-1}k_t,\quad v_t^{\mathrm{new}}=\beta_t v_t+(1-\beta_t)v_t^{\mathrm{old}}\]</div></div><div class="math-panel span2" data-blob="擦写更新  s_t=s_{t-1}-\underbrace{v_t^{\mathrm{old}}k_t^\top}_{\mathrm{remove}}+\underbrace{v_t^{\mathrm{new}}k_t^\top}_{\mathrm{write}}"><div class="math-tag">擦写更新</div><div class="math-eq">\[S_t=S_{t-1}-\underbrace{v_t^{\mathrm{old}}k_t^\top}_{\mathrm{remove}}+\underbrace{v_t^{\mathrm{new}}k_t^\top}_{\mathrm{write}}\]</div></div><div class="math-panel span2" data-blob="紧凑递推 与后文 householder / wy 推导同一式。 s_t=s_{t-1}(i-\beta_t k_t k_t^\top)+\beta_t v_t k_t^\top"><div class="math-tag">紧凑递推</div><div class="math-eq">\[S_t=S_{t-1}(I-\beta_t k_t k_t^\top)+\beta_t v_t k_t^\top\]</div><div class="math-note">与后文 Householder / WY 推导同一式。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Pure additive updates cannot deallocate old associations; when L&gt;d keys collide. DeltaNet retrieves the old value bound to the current key, mixes it with the new value by writing strength β_t, then removes-and-writes.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">纯加性更新无法腾出旧关联；L&gt;d 时 key 碰撞。DeltaNet 用当前 key 取回旧 value，按写入强度 β_t 与新 value 插值，再「擦旧+写新」。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DeltaNet steps">
+  <rect width="820" height="210" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">DeltaNet 一步：读旧 → 混合 → 擦写 → 查询</text>
+    <rect x="20" y="55" width="175" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="107" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">1. 读旧</text>
+    <text x="107" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v_old ← S k</text>
+    <text x="107" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">按当前 key 取回</text>
+    <rect x="220" y="55" width="175" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="307" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">2. 混合</text>
+    <text x="307" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v_new ← βv+(1−β)v_old</text>
+    <text x="307" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">写入强度 β</text>
+    <rect x="420" y="55" width="175" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="507" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 擦写</text>
+    <text x="507" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">S ← S(I−βkkᵀ)+βvkᵀ</text>
+    <text x="507" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">Householder</text>
+    <rect x="620" y="55" width="175" height="90" rx="12" fill="#1c2420"/>
+    <text x="707" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">4. 查询</text>
+    <text x="707" y="108" text-anchor="middle" font-size="12" fill="#cfd8d3">o ← S q</text>
+    <text x="707" y="128" text-anchor="middle" font-size="11" fill="#9bb4ae">无通道遗忘门</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">相对 KDA：这里还没有 Diag(α)；遗忘靠 β 擦写本身</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · DeltaNet 单步擦写</div></div>
+<div class="terms"><span class="term" data-term="delta rule">delta rule</span><span class="term" data-term="β">β</span><span class="term" data-term="associative recall">associative recall</span></div></article>
+<article class="card para" data-idx="11" data-blob="β_t=σ(w_β x_t)∈(0,1) is writing strength: β=1 fully replaces the binding; β=0 leaves memory unchanged. output is still o_t=s_t q_t; recurrent cost matches vanilla linear attention o(ld²). β_t=σ(w_β x_t)∈(0,1) 是写入强度：β=1 完全替换绑定；β=0 记忆不动。输出仍是 o_t=s_t q_t；递推代价与普通线性注意力同为 o(ld²)。 多出来的几乎只有一个标量门 β。 β">
+<span class="pidx">§11</span>
+<div class="summary"><b>小结</b> · 多出来的几乎只有一个标量门 β。</div>
+<div class="math-stack"><div class="math-panel" data-blob="写入强度  \beta_t=\sigma(w_\beta x_t)\in(0,1)"><div class="math-tag">写入强度</div><div class="math-eq">\[\beta_t=\sigma(W_\beta x_t)\in(0,1)\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">β_t=σ(W_β x_t)∈(0,1) is writing strength: β=1 fully replaces the binding; β=0 leaves memory unchanged. Output is still o_t=S_t q_t; recurrent cost matches vanilla linear attention O(Ld²).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">β_t=σ(W_β x_t)∈(0,1) 是写入强度：β=1 完全替换绑定；β=0 记忆不动。输出仍是 o_t=S_t q_t；递推代价与普通线性注意力同为 O(Ld²)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="β">β</span></div></article>
+</section>
+<section class="section" id="parallel"><h3>3 沿序列并行：WY / 分块 <span>3 段</span></h3>
+<article class="card para" data-idx="12" data-blob="s_t admits an additive form σ u_i k_iᵀ with pseudo-values u_i=β_i(v_i−v_i^{old}). after building u, the rest is ordinary linear attention. naively forming u_t needs materializing s_{t−1}. s_t 可写成 σ u_i k_iᵀ，伪 value u_i=β_i(v_i−v_i^{old})。构造完 u 后其余同普通线性注意力。朴素算 u_t 却要物化 s_{t−1}。 观察：deltanet ≈ 换了 value 的线性注意力。 u wy representation">
+<span class="pidx">§12</span>
+<div class="summary"><b>小结</b> · 观察：DeltaNet ≈ 换了 value 的线性注意力。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="伪 value  u_t=\beta_t(v_t-s_{t-1}k_t),\quad s_t=\sum_{i=1}^{t}u_i k_i^\top"><div class="math-tag">伪 value</div><div class="math-eq">\[u_t=\beta_t(v_t-S_{t-1}k_t),\quad S_t=\sum_{i=1}^{t}u_i k_i^\top\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">S_t admits an additive form Σ u_i k_iᵀ with pseudo-values u_i=β_i(v_i−v_i^{old}). After building U, the rest is ordinary linear attention. Naively forming u_t needs materializing S_{t−1}.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">S_t 可写成 Σ u_i k_iᵀ，伪 value u_i=β_i(v_i−v_i^{old})。构造完 U 后其余同普通线性注意力。朴素算 u_t 却要物化 S_{t−1}。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="u">u</span><span class="term" data-term="WY representation">WY representation</span></div></article>
+<article class="card para" data-idx="13" data-blob="using the wy representation for products of householder matrices, u_t can be computed in o(d) memory without materializing s. chunkwise matrices u and w then unlock the same chunk-to-chunk parallel schedule as linear attention. 借助 householder 乘积的 wy 表示，可在 o(d) 内存算 u_t 而不物化 s。再构造分块矩阵 u、w，即可沿用线性注意力的块间并行日程。 算法关键：省内存表示 → 才能把 chunk 并行搬过来。 householder chunkwise wy representation">
+<span class="pidx">§13</span>
+<div class="summary"><b>小结</b> · 算法关键：省内存表示 → 才能把 chunk 并行搬过来。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="块间更新（示意）  s_{[t+1]}=s_{[t]}+(u_{[t+1]}-w_{[t+1]}s_{[t]}^\top)^\top k_{[t+1]}"><div class="math-tag">块间更新（示意）</div><div class="math-eq">\[S_{[t+1]}=S_{[t]}+(U_{[t+1]}-W_{[t+1]}S_{[t]}^\top)^\top K_{[t+1]}\]</div></div><div class="math-panel span2" data-blob="块内输出（示意）  o_{[t+1]}=q_{[t+1]}s_{[t]}^\top+(q_{[t+1]}k_{[t+1]}^\top\odot m)(u_{[t+1]}-w_{[t+1]}s_{[t]}^\top)"><div class="math-tag">块内输出（示意）</div><div class="math-eq">\[O_{[t+1]}=Q_{[t+1]}S_{[t]}^\top+(Q_{[t+1]}K_{[t+1]}^\top\odot M)(U_{[t+1]}-W_{[t+1]}S_{[t]}^\top)\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Using the WY representation for products of Householder matrices, u_t can be computed in O(d) memory without materializing S. Chunkwise matrices U and W then unlock the same chunk-to-chunk parallel schedule as linear attention.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">借助 Householder 乘积的 WY 表示，可在 O(d) 内存算 u_t 而不物化 S。再构造分块矩阵 U、W，即可沿用线性注意力的块间并行日程。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="chunkwise">
+  <rect width="820" height="200" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">分块并行：WY 构造 U/W → 块间传 S → 块内 matmul</text>
+    <rect x="40" y="60" width="200" height="80" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="140" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">构造 U, W</text>
+    <text x="140" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">O(d) 内存 / 块</text>
+    <path d="M250 100 H290" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="295" y="60" width="200" height="80" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="395" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">块间更新 S</text>
+    <text x="395" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">Eq.7 递推</text>
+    <path d="M505 100 H545" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="550" y="60" width="220" height="80" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="660" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">块内算 O</text>
+    <text x="660" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">Eq.8 · 吃 Tensor Core</text>
+    <text x="410" y="175" text-anchor="middle" font-size="12" fill="#7d8c84">相对纯递推：H100 上约 5.5×–13×（随 L、d_head 增大）</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应论文 §3 分块并行</div></div>
+<div class="terms"><span class="term" data-term="Householder">Householder</span><span class="term" data-term="chunkwise">chunkwise</span><span class="term" data-term="WY representation">WY representation</span></div></article>
+<article class="card para" data-idx="14" data-blob="on h100, the chunkwise kernel is substantially faster than recurrence (e.g. ~5.5×–13× across lengths/head dims in table 1); speedups grow with l and d_head. h100 上分块核相对递推明显加速（表 1：约 5.5×–13×，随 l 与 d_head 增大更明显）。 工程证据：不是纸上并行，卡上真更快。 flashlinearattention">
+<span class="pidx">§14</span>
+<div class="summary"><b>小结</b> · 工程证据：不是纸上并行，卡上真更快。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">On H100, the chunkwise kernel is substantially faster than recurrence (e.g. ~5.5×–13× across lengths/head dims in Table 1); speedups grow with L and d_head.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">H100 上分块核相对递推明显加速（表 1：约 5.5×–13×，随 L 与 d_head 增大更明显）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="FlashLinearAttention">FlashLinearAttention</span></div></article>
+</section>
+<section class="section" id="arch"><h3>3.3–3.4 架构与混合 <span>2 段</span></h3>
+<article class="card para" data-idx="15" data-blob="deltanet transformer follows llama-style blocks, swapping self-attention for deltanet. keys/queries use silu then l2-normalization (stable householder eigenvalues; l2 makes i−kkᵀ a true projection). deltanet transformer 沿用 llama 式块，自注意力换成 deltanet。q/k 用 silu 再 l2 归一化（稳住 householder 特征值；l2 使 i−kkᵀ 成为真正投影）。 实现细节：silu + l2norm，而不是早期的 elu+1 / l1。 silu l2norm">
+<span class="pidx">§15</span>
+<div class="summary"><b>小结</b> · 实现细节：SiLU + L2Norm，而不是早期的 ELU+1 / L1。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="q / k  k_t=\frac{\mathrm{silu}(w_k x_t)}{\|\mathrm{silu}(w_k x_t)\|_2},\quad q_t=\frac{\mathrm{silu}(w_q x_t)}{\|\mathrm{silu}(w_q x_t)\|_2}"><div class="math-tag">q / k</div><div class="math-eq">\[k_t=\frac{\mathrm{SiLU}(W_K x_t)}{\|\mathrm{SiLU}(W_K x_t)\|_2},\quad q_t=\frac{\mathrm{SiLU}(W_Q x_t)}{\|\mathrm{SiLU}(W_Q x_t)\|_2}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">DeltaNet Transformer follows LLaMA-style blocks, swapping self-attention for DeltaNet. Keys/queries use SiLU then L2-normalization (stable Householder eigenvalues; L2 makes I−kkᵀ a true projection).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">DeltaNet Transformer 沿用 LLaMA 式块，自注意力换成 DeltaNet。q/k 用 SiLU 再 L2 归一化（稳住 Householder 特征值；L2 使 I−kkᵀ 成为真正投影）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="SiLU">SiLU</span><span class="term" data-term="L2Norm">L2Norm</span></div></article>
+<article class="card para" data-idx="16" data-blob="practical hybrids: short convolution after qkv; interleave sliding-window mqa; or replace only two layers with global attention. these address local shifts and precise retrieval that pure content-based linear attention lacks. 实用混合：qkv 后加短卷积；交织滑窗 mqa；或仅两层换成全局注意力。用来补纯内容寻址线性注意力缺少的局部移位与精确检索。 混合不是投降，是给有限状态记忆配「局部/全局外挂」。 hybrid sliding window short convolution">
+<span class="pidx">§16</span>
+<div class="summary"><b>小结</b> · 混合不是投降，是给有限状态记忆配「局部/全局外挂」。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Practical hybrids: short convolution after QKV; interleave sliding-window MQA; or replace only two layers with global attention. These address local shifts and precise retrieval that pure content-based linear attention lacks.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">实用混合：QKV 后加短卷积；交织滑窗 MQA；或仅两层换成全局注意力。用来补纯内容寻址线性注意力缺少的局部移位与精确检索。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="hybrid">hybrid</span><span class="term" data-term="sliding window">sliding window</span><span class="term" data-term="short convolution">short convolution</span></div></article>
+</section>
+<section class="section" id="expts"><h3>4 实验要点 <span>2 段</span></h3>
+<article class="card para" data-idx="17" data-blob="synthetic: on hard mqar, deltanet is perfect even without convolution and beats mamba in low-dimension settings. regbench and mad also show strong recall (esp. fuzzy / noisy / selective copy), with a weaker memorize score. 合成：困难 mqar 上即便无卷积也满分，低维设定优于 mamba。regbench 与 mad 回忆项强（尤其 fuzzy/noisy/selective copy），memorize 偏弱。 画像：纠错写入擅长「找回来」，不等于全能记忆。 mqar regbench mad">
+<span class="pidx">§17</span>
+<div class="summary"><b>小结</b> · 画像：纠错写入擅长「找回来」，不等于全能记忆。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Synthetic: on hard MQAR, DeltaNet is perfect even without convolution and beats Mamba in low-dimension settings. RegBench and MAD also show strong recall (esp. Fuzzy / Noisy / Selective Copy), with a weaker Memorize score.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">合成：困难 MQAR 上即便无卷积也满分，低维设定优于 Mamba。RegBench 与 MAD 回忆项强（尤其 Fuzzy/Noisy/Selective Copy），Memorize 偏弱。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="MQAR">MQAR</span><span class="term" data-term="RegBench">RegBench</span><span class="term" data-term="MAD">MAD</span></div></article>
+<article class="card para" data-idx="18" data-blob="language modeling (1.3b / 100b tokens): deltanet beats mamba/gla/retnet on perplexity and zero-shot; hybrids with sliding or two global layers further beat transformer++ on several suites. 语言建模（1.3b / 100b tokens）：困惑度与零样本上 deltanet 优于 mamba/gla/retnet；滑窗或两层全局的混合在多项上进一步超过 transformer++。 规模结论：delta rule 可扩；混合往往更强。 transformer++ hybrid">
+<span class="pidx">§18</span>
+<div class="summary"><b>小结</b> · 规模结论：delta rule 可扩；混合往往更强。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Language modeling (1.3B / 100B tokens): DeltaNet beats Mamba/GLA/RetNet on perplexity and zero-shot; hybrids with sliding or two global layers further beat Transformer++ on several suites.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">语言建模（1.3B / 100B tokens）：困惑度与零样本上 DeltaNet 优于 Mamba/GLA/RetNet；滑窗或两层全局的混合在多项上进一步超过 Transformer++。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Transformer++">Transformer++</span><span class="term" data-term="hybrid">hybrid</span></div></article>
+</section>
+<section class="section" id="bridge"><h3>桥接到 GDN / KDA <span>2 段</span></h3>
+<article class="card para" data-idx="19" data-blob="this paper is the scalable deltanet (delta attention) baseline: error-correcting writes without a channel-wise forget gate. gated deltanet later adds a scalar decay α; kimi delta attention (kda) upgrades α to diag(α) and hybridizes with mla. 本文是可扩展的 deltanet（delta attention）基线：有纠错写入，尚无通道级遗忘门。随后 gated deltanet 加入标量衰减 α；kimi delta attention（kda）把 α 升级为 diag(α)，并与 mla 混合。 阅读地图：本文 → gdn → kda（本仓库 papers/kda/）。 gated deltanet kda">
+<span class="pidx">§19</span>
+<div class="summary"><b>小结</b> · 阅读地图：本文 → GDN → KDA（本仓库 papers/kda/）。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">This paper is the scalable DeltaNet (delta attention) baseline: error-correcting writes without a channel-wise forget gate. Gated DeltaNet later adds a scalar decay α; Kimi Delta Attention (KDA) upgrades α to Diag(α) and hybridizes with MLA.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本文是可扩展的 DeltaNet（delta attention）基线：有纠错写入，尚无通道级遗忘门。随后 Gated DeltaNet 加入标量衰减 α；Kimi Delta Attention（KDA）把 α 升级为 Diag(α)，并与 MLA 混合。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span><span class="term" data-term="KDA">KDA</span></div></article>
+<article class="card para" data-idx="20" data-blob="in this repo: read this page’s formulas first; then papers/kda/ for channel-wise gating + teaching code. do not conflate deltanet’s β-only update with kda’s diag(α) forget. 本仓库：先读本页公式；再读 papers/kda/ 看通道门控与教学代码。勿把 deltanet 仅含 β 的更新与 kda 的 diag(α) 遗忘混为一谈。 拆夹原因：两篇论文，两套公式。 kda">
+<span class="pidx">§20</span>
+<div class="summary"><b>小结</b> · 拆夹原因：两篇论文，两套公式。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In this repo: read this page’s formulas first; then papers/kda/ for channel-wise gating + teaching code. Do not conflate DeltaNet’s β-only update with KDA’s Diag(α) forget.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库：先读本页公式；再读 papers/kda/ 看通道门控与教学代码。勿把 DeltaNet 仅含 β 的更新与 KDA 的 Diag(α) 遗忘混为一谈。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="KDA">KDA</span></div></article>
+</section>
+<section class="section" id="glossary"><h3>名词重点解释 <span>28 条</span></h3><div class="refgrid">
+<div class="gitem" id="term-DeltaNet" data-blob="deltanet 使用 delta rule 更新矩阵状态 s 的线性 transformer 变体；本文给出可扩展并行训练。"><b>DeltaNet</b><p>使用 delta rule 更新矩阵状态 S 的线性 Transformer 变体；本文给出可扩展并行训练。</p></div>
+<div class="gitem" id="term-delta rule" data-blob="delta rule 按预测误差纠错写入：擦除旧绑定再写入新 value。"><b>delta rule</b><p>按预测误差纠错写入：擦除旧绑定再写入新 value。</p></div>
+<div class="gitem" id="term-linear attention" data-blob="linear attention 用特征点积替代 softmax，使注意力可写成固定大小状态递推。"><b>linear attention</b><p>用特征点积替代 softmax，使注意力可写成固定大小状态递推。</p></div>
+<div class="gitem" id="term-β" data-blob="β 写入强度 / 学习率门，控制本次纠错幅度。"><b>β</b><p>写入强度 / 学习率门，控制本次纠错幅度。</p></div>
+<div class="gitem" id="term-S" data-blob="s 矩阵值递推状态（联想记忆）。"><b>S</b><p>矩阵值递推状态（联想记忆）。</p></div>
+<div class="gitem" id="term-u" data-blob="u 伪 value：β(v−sold)，使 deltanet 外观像换了 v 的线性注意力。"><b>u</b><p>伪 value：β(v−Sold)，使 DeltaNet 外观像换了 V 的线性注意力。</p></div>
+<div class="gitem" id="term-Householder" data-blob="householder i−βkkᵀ 一类秩一修正；deltanet 转移的代数结构。"><b>Householder</b><p>I−βkkᵀ 一类秩一修正；DeltaNet 转移的代数结构。</p></div>
+<div class="gitem" id="term-WY representation" data-blob="wy representation 把一串 householder 乘积压成紧凑因子，避免物化 d×d 状态。"><b>WY representation</b><p>把一串 Householder 乘积压成紧凑因子，避免物化 d×d 状态。</p></div>
+<div class="gitem" id="term-chunkwise" data-blob="chunkwise 块间递推状态、块内并行 matmul 的训练日程。"><b>chunkwise</b><p>块间递推状态、块内并行 matmul 的训练日程。</p></div>
+<div class="gitem" id="term-associative recall" data-blob="associative recall 上下文中按 key 找回 value 的能力；mqar 等任务测量。"><b>associative recall</b><p>上下文中按 key 找回 value 的能力；MQAR 等任务测量。</p></div>
+<div class="gitem" id="term-KV cache" data-blob="kv cache softmax 注意力推理缓存的历史 k/v。"><b>KV cache</b><p>softmax 注意力推理缓存的历史 K/V。</p></div>
+<div class="gitem" id="term-MQAR" data-blob="mqar multi-query associative recall 合成任务。"><b>MQAR</b><p>Multi-query associative recall 合成任务。</p></div>
+<div class="gitem" id="term-RegBench" data-blob="regbench 基于概率有限自动机的上下文语言学习基准。"><b>RegBench</b><p>基于概率有限自动机的上下文语言学习基准。</p></div>
+<div class="gitem" id="term-MAD" data-blob="mad mechanistic architecture design 合成探针套件。"><b>MAD</b><p>Mechanistic Architecture Design 合成探针套件。</p></div>
+<div class="gitem" id="term-Mamba" data-blob="mamba 选择性状态空间模型基线。"><b>Mamba</b><p>选择性状态空间模型基线。</p></div>
+<div class="gitem" id="term-GLA" data-blob="gla gated linear attention 基线。"><b>GLA</b><p>Gated Linear Attention 基线。</p></div>
+<div class="gitem" id="term-RetNet" data-blob="retnet 带非数据相关指数衰减的线性注意力基线。"><b>RetNet</b><p>带非数据相关指数衰减的线性注意力基线。</p></div>
+<div class="gitem" id="term-Transformer++" data-blob="transformer++ llama 风格 transformer 基线。"><b>Transformer++</b><p>LLaMA 风格 Transformer 基线。</p></div>
+<div class="gitem" id="term-hybrid" data-blob="hybrid deltanet 与滑窗/全局注意力等混合堆叠。"><b>hybrid</b><p>DeltaNet 与滑窗/全局注意力等混合堆叠。</p></div>
+<div class="gitem" id="term-sliding window" data-blob="sliding window 局部滑窗 softmax 注意力。"><b>sliding window</b><p>局部滑窗 softmax 注意力。</p></div>
+<div class="gitem" id="term-short convolution" data-blob="short convolution qkv 后的轻量深度卷积。"><b>short convolution</b><p>QKV 后的轻量深度卷积。</p></div>
+<div class="gitem" id="term-SiLU" data-blob="silu 本文 q/k 非线性；相对早期 elu+1。"><b>SiLU</b><p>本文 q/k 非线性；相对早期 ELU+1。</p></div>
+<div class="gitem" id="term-L2Norm" data-blob="l2norm 对 q/k 的 l2 归一化，稳住并增强投影性质。"><b>L2Norm</b><p>对 q/k 的 L2 归一化，稳住并增强投影性质。</p></div>
+<div class="gitem" id="term-FlashLinearAttention" data-blob="flashlinearattention 作者开源的线性注意力/deltanet 算子库。"><b>FlashLinearAttention</b><p>作者开源的线性注意力/DeltaNet 算子库。</p></div>
+<div class="gitem" id="term-feature map" data-blob="feature map φ：把 q/k 映射到特征空间。"><b>feature map</b><p>φ：把 q/k 映射到特征空间。</p></div>
+<div class="gitem" id="term-in-context retrieval" data-blob="in-context retrieval 依赖当前上下文检索信息的能力。"><b>in-context retrieval</b><p>依赖当前上下文检索信息的能力。</p></div>
+<div class="gitem" id="term-Gated DeltaNet" data-blob="gated deltanet 在 deltanet 上加标量遗忘门 α 的后续工作。"><b>Gated DeltaNet</b><p>在 DeltaNet 上加标量遗忘门 α 的后续工作。</p></div>
+<div class="gitem" id="term-KDA" data-blob="kda kimi delta attention：通道级 diag(α) + delta rule（见 papers/kda/）。"><b>KDA</b><p>Kimi Delta Attention：通道级 Diag(α) + delta rule（见 papers/kda/）。</p></div>
+</div></section>
+<section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">
+<div class="ref" data-blob="deltanet（并行 delta rule） 逐段精读对象；可扩展 delta attention。"><span class="lv must">本篇</span><h4>DeltaNet（并行 delta rule）</h4><p>逐段精读对象；可扩展 Delta Attention。</p><a href="./paper.pdf" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2406.06484" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="kimi linear / kda 通道级遗忘门 + 与 mla 的 3:1 混合。"><span class="lv ">下游</span><h4>Kimi Linear / KDA</h4><p>通道级遗忘门 + 与 MLA 的 3:1 混合。</p><a href="../kda/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="gated deltanet 在 deltanet 上加标量门 α 的直接后续。"><span class="lv ">相关</span><h4>Gated DeltaNet</h4><p>在 DeltaNet 上加标量门 α 的直接后续。</p><a href="https://arxiv.org/abs/2412.06464" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="linear attention（transformers are rnns） 固定大小状态 s 的经典源头。"><span class="lv imp">前驱</span><h4>Linear Attention（Transformers are RNNs）</h4><p>固定大小状态 S 的经典源头。</p><a href="../linear-attention/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2006.16236" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="flash linear attention 官方并行 deltanet / 线性注意力算子。"><span class="lv imp">代码</span><h4>Flash Linear Attention</h4><p>官方并行 DeltaNet / 线性注意力算子。</p><a href="https://github.com/fla-org/flash-linear-attention" target="_blank" rel="noopener">打开 →</a></div>
+</div><p class="note" style="margin-top:28px">本页为学习用逐段精读；数字与公式以 PDF 为准。示意图为教学重绘。</p></section></main></div>
+
+<aside class="drawer" id="drawer"><button class="btn" id="closeDrawer">关闭</button>
+<h2>名词速查</h2><div id="drawerBody"></div></aside>
+<script>
+const body=document.body;const cards=[...document.querySelectorAll('.para')];let idx=0;
+const glossary={"DeltaNet":"\u4f7f\u7528 delta rule \u66f4\u65b0\u77e9\u9635\u72b6\u6001 S \u7684\u7ebf\u6027 Transformer \u53d8\u4f53\uff1b\u672c\u6587\u7ed9\u51fa\u53ef\u6269\u5c55\u5e76\u884c\u8bad\u7ec3\u3002",
+"delta rule":"\u6309\u9884\u6d4b\u8bef\u5dee\u7ea0\u9519\u5199\u5165\uff1a\u64e6\u9664\u65e7\u7ed1\u5b9a\u518d\u5199\u5165\u65b0 value\u3002",
+"linear attention":"\u7528\u7279\u5f81\u70b9\u79ef\u66ff\u4ee3 softmax\uff0c\u4f7f\u6ce8\u610f\u529b\u53ef\u5199\u6210\u56fa\u5b9a\u5927\u5c0f\u72b6\u6001\u9012\u63a8\u3002",
+"\u03b2":"\u5199\u5165\u5f3a\u5ea6 / \u5b66\u4e60\u7387\u95e8\uff0c\u63a7\u5236\u672c\u6b21\u7ea0\u9519\u5e45\u5ea6\u3002",
+"S":"\u77e9\u9635\u503c\u9012\u63a8\u72b6\u6001\uff08\u8054\u60f3\u8bb0\u5fc6\uff09\u3002",
+"u":"\u4f2a value\uff1a\u03b2(v\u2212Sold)\uff0c\u4f7f DeltaNet \u5916\u89c2\u50cf\u6362\u4e86 V \u7684\u7ebf\u6027\u6ce8\u610f\u529b\u3002",
+"Householder":"I\u2212\u03b2kk\u1d40 \u4e00\u7c7b\u79e9\u4e00\u4fee\u6b63\uff1bDeltaNet \u8f6c\u79fb\u7684\u4ee3\u6570\u7ed3\u6784\u3002",
+"WY representation":"\u628a\u4e00\u4e32 Householder \u4e58\u79ef\u538b\u6210\u7d27\u51d1\u56e0\u5b50\uff0c\u907f\u514d\u7269\u5316 d\u00d7d \u72b6\u6001\u3002",
+"chunkwise":"\u5757\u95f4\u9012\u63a8\u72b6\u6001\u3001\u5757\u5185\u5e76\u884c matmul \u7684\u8bad\u7ec3\u65e5\u7a0b\u3002",
+"associative recall":"\u4e0a\u4e0b\u6587\u4e2d\u6309 key \u627e\u56de value \u7684\u80fd\u529b\uff1bMQAR \u7b49\u4efb\u52a1\u6d4b\u91cf\u3002",
+"KV cache":"softmax \u6ce8\u610f\u529b\u63a8\u7406\u7f13\u5b58\u7684\u5386\u53f2 K/V\u3002",
+"MQAR":"Multi-query associative recall \u5408\u6210\u4efb\u52a1\u3002",
+"RegBench":"\u57fa\u4e8e\u6982\u7387\u6709\u9650\u81ea\u52a8\u673a\u7684\u4e0a\u4e0b\u6587\u8bed\u8a00\u5b66\u4e60\u57fa\u51c6\u3002",
+"MAD":"Mechanistic Architecture Design \u5408\u6210\u63a2\u9488\u5957\u4ef6\u3002",
+"Mamba":"\u9009\u62e9\u6027\u72b6\u6001\u7a7a\u95f4\u6a21\u578b\u57fa\u7ebf\u3002",
+"GLA":"Gated Linear Attention \u57fa\u7ebf\u3002",
+"RetNet":"\u5e26\u975e\u6570\u636e\u76f8\u5173\u6307\u6570\u8870\u51cf\u7684\u7ebf\u6027\u6ce8\u610f\u529b\u57fa\u7ebf\u3002",
+"Transformer++":"LLaMA \u98ce\u683c Transformer \u57fa\u7ebf\u3002",
+"hybrid":"DeltaNet \u4e0e\u6ed1\u7a97/\u5168\u5c40\u6ce8\u610f\u529b\u7b49\u6df7\u5408\u5806\u53e0\u3002",
+"sliding window":"\u5c40\u90e8\u6ed1\u7a97 softmax \u6ce8\u610f\u529b\u3002",
+"short convolution":"QKV \u540e\u7684\u8f7b\u91cf\u6df1\u5ea6\u5377\u79ef\u3002",
+"SiLU":"\u672c\u6587 q/k \u975e\u7ebf\u6027\uff1b\u76f8\u5bf9\u65e9\u671f ELU+1\u3002",
+"L2Norm":"\u5bf9 q/k \u7684 L2 \u5f52\u4e00\u5316\uff0c\u7a33\u4f4f\u5e76\u589e\u5f3a\u6295\u5f71\u6027\u8d28\u3002",
+"FlashLinearAttention":"\u4f5c\u8005\u5f00\u6e90\u7684\u7ebf\u6027\u6ce8\u610f\u529b/DeltaNet \u7b97\u5b50\u5e93\u3002",
+"feature map":"\u03c6\uff1a\u628a q/k \u6620\u5c04\u5230\u7279\u5f81\u7a7a\u95f4\u3002",
+"in-context retrieval":"\u4f9d\u8d56\u5f53\u524d\u4e0a\u4e0b\u6587\u68c0\u7d22\u4fe1\u606f\u7684\u80fd\u529b\u3002",
+"Gated DeltaNet":"\u5728 DeltaNet \u4e0a\u52a0\u6807\u91cf\u9057\u5fd8\u95e8 \u03b1 \u7684\u540e\u7eed\u5de5\u4f5c\u3002",
+"KDA":"Kimi Delta Attention\uff1a\u901a\u9053\u7ea7 Diag(\u03b1) + delta rule\uff08\u89c1 papers/kda/\uff09\u3002"};
+function setMode(m){body.classList.remove('mode-both','mode-zh','mode-en');body.classList.add('mode-'+m);
+document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));}
+document.getElementById('modeSeg').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.mode);};
+function focusCard(i){if(!cards.length)return;idx=(i+cards.length)%cards.length;cards.forEach(c=>c.classList.remove('active'));
+const c=cards[idx];c.classList.add('active');c.scrollIntoView({behavior:'smooth',block:'center'});}
+const q=document.getElementById('q');q.oninput=()=>{const s=q.value.trim().toLowerCase();
+document.querySelectorAll('[data-blob]').forEach(el=>{el.classList.toggle('hidden-by-search',s&&!(el.dataset.blob||'').includes(s));});};
+const drawer=document.getElementById('drawer');const drawerBody=document.getElementById('drawerBody');
+document.getElementById('btnGlossary').onclick=()=>{drawerBody.innerHTML=Object.entries(glossary).map(([k,v])=>`<div class="gitem"><b>${k}</b><p>${v}</p></div>`).join('');drawer.classList.add('open');};
+document.getElementById('closeDrawer').onclick=()=>drawer.classList.remove('open');
+document.body.onclick=e=>{const t=e.target.closest('.term');if(!t)return;
+drawerBody.innerHTML=`<div class="gitem"><b>${t.dataset.term}</b><p>${glossary[t.dataset.term]||'暂无'}</p></div>`;drawer.classList.add('open');};
+const tocLinks=[...document.querySelectorAll('#toc a')];
+const sections=tocLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io=new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const id='#'+en.target.id;
+tocLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===id));});},
+{rootMargin:'-20% 0px -65% 0px',threshold:0.01});
+sections.forEach(s=>io.observe(s));
+document.onkeydown=e=>{if(e.target.matches('input,textarea'))return;
+if(e.key==='1')setMode('both');if(e.key==='2')setMode('zh');if(e.key==='3')setMode('en');
+if(e.key==='j'||e.key==='J'){e.preventDefault();focusCard(idx+1);}
+if(e.key==='k'||e.key==='K'){e.preventDefault();focusCard(idx-1);}
+if(e.key==='g'||e.key==='G')document.getElementById('btnGlossary').click();
+if(e.key==='/'){e.preventDefault();q.focus();};};
+</script></body></html>

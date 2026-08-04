@@ -221,7 +221,8 @@ def build() -> str:
 </div>
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
-<a class="btn" href="../kimi-linear-delta-attention/index.html">KDA 精读 →</a>
+<a class="btn" href="../delta-attention/index.html">DeltaNet →</a>
+<a class="btn" href="../kda/index.html">KDA →</a>
 <a class="btn" href="https://linear-transformers.com/" target="_blank" rel="noopener">官网 →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
@@ -235,7 +236,7 @@ def build() -> str:
 <span class="chip">下游：<em>KDA / 混合架构</em></span>
 </div>
 </section>
-<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。学完建议接着读 <a href="../kimi-linear-delta-attention/index.html">Kimi Linear / KDA</a>。</p>
+<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。学完建议接着读 <a href="../delta-attention/index.html">DeltaNet</a> 与 <a href="../kda/index.html">KDA</a>。</p>
 """
     )
 

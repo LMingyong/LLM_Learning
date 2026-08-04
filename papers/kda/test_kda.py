@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import torch
 
-from delta_attention import KDAConfig, KimiDeltaAttention, chunked_kda, recurrent_kda
+from kda import KDAConfig, KimiDeltaAttention, chunked_kda, recurrent_kda
 
 
 def test_chunking_matches_recurrent_and_grads() -> None:

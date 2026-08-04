@@ -329,8 +329,8 @@ SECTIONS = [
                 "terms": ["delta rule", "KDA", "Gated DeltaNet"],
             },
             {
-                "en": "Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/kimi-linear-delta-attention/index.html for the gated-delta upgrade; step through papers/kimi-linear-delta-attention/delta_attention/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.",
-                "zh": "本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/kimi-linear-delta-attention/index.html 看门控-delta 升级；最后跟同夹 delta_attention/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。",
+                "en": "Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/delta-attention/index.html for DeltaNet, then papers/kda/index.html for KDA; step through papers/kda/kda/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.",
+                "zh": "本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/delta-attention/ 看 DeltaNet，再读 papers/kda/ 看 KDA；最后跟 papers/kda/kda/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。",
                 "summary": "学完这篇，再学 KDA 不会懵「S 从哪来」。",
                 "terms": ["KDA", "recurrent_kda"],
             },
@@ -391,7 +391,7 @@ REFS = [
         "level": "下游",
         "title": "Kimi Linear / KDA 逐段精读",
         "why": "在加性 S 上加入遗忘门与 delta rule 的现代升级。",
-        "url": "../kimi-linear-delta-attention/index.html",
+        "url": "../kda/index.html",
         "ext": "https://arxiv.org/abs/2510.26692",
     },
     {
@@ -403,9 +403,9 @@ REFS = [
     },
     {
         "level": "代码",
-        "title": "KDA 教学代码（同夹于 Kimi Linear）",
+        "title": "KDA 教学代码",
         "why": "看清「同一 S 状态」如何演变成 KDA。",
-        "url": "../kimi-linear-delta-attention/delta_attention/",
+        "url": "../kda/kda/",
         "ext": "",
     },
 ]

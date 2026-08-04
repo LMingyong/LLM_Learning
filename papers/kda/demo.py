@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import torch
 
-from delta_attention import KDAConfig, KimiDeltaAttention, recurrent_kda
+from kda import KDAConfig, KimiDeltaAttention, recurrent_kda
 
 
 def demo_layer() -> None:

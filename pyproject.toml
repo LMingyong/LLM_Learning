@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "llm-learning"
 version = "0.1.0"
-description = "LLM learning notes and educational implementations (Delta Attention / KDA)"
+description = "LLM learning notes and educational implementations (KDA / DeltaNet)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -21,9 +21,9 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["papers/kimi-linear-delta-attention"]
-include = ["delta_attention*"]
+where = ["papers/kda"]
+include = ["kda*"]
 
 [tool.pytest.ini_options]
-testpaths = ["papers/kimi-linear-delta-attention"]
-pythonpath = ["papers/kimi-linear-delta-attention"]
+testpaths = ["papers/kda"]
+pythonpath = ["papers/kda"]
