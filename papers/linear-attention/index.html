@@ -164,7 +164,8 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 </div>
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
-<a class="btn" href="../kimi-linear-delta-attention/index.html">KDA 精读 →</a>
+<a class="btn" href="../delta-attention/index.html">DeltaNet →</a>
+<a class="btn" href="../kda/index.html">KDA →</a>
 <a class="btn" href="https://linear-transformers.com/" target="_blank" rel="noopener">官网 →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
@@ -178,7 +179,7 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <span class="chip">下游：<em>KDA / 混合架构</em></span>
 </div>
 </section>
-<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。学完建议接着读 <a href="../kimi-linear-delta-attention/index.html">Kimi Linear / KDA</a>。</p>
+<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。学完建议接着读 <a href="../delta-attention/index.html">DeltaNet</a> 与 <a href="../kda/index.html">KDA</a>。</p>
 <section class="section" id="abstract"><h3>Abstract 摘要 <span>4 段</span></h3>
 <article class="card para" data-idx="1" data-blob="transformers achieve remarkable performance in several tasks but due to their quadratic complexity, with respect to the input’s length, they are prohibitively slow for very long sequences. transformer 在多项任务上表现卓越，但由于相对输入长度的二次复杂度，对很长序列而言慢得难以接受。 痛点：全注意力 o(n²)，长序列吃不消。 quadratic complexity">
 <span class="pidx">§1</span>
@@ -298,30 +299,30 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <div class="zh-block"><div class="label">译文</div><div class="zh">令 x∈R^{N×F} 为 N 个 F 维特征向量组成的序列。Transformer 由 L 层复合：T_l(x)=f_l(A_l(x)+x)，其中 f_l 逐位置作用（FFN），A_l 是跨序列的自注意力。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="Transformer">Transformer</span></div></article>
-<article class="card para" data-idx="15" data-blob="the input is projected to q = x w_q, k = x w_k, v = x w_v. softmax attention computes a_l(x) = softmax(q kᵀ / √d) v, with softmax applied row-wise. 输入投影为 q=xw_q、k=xw_k、v=xw_v。softmax 注意力计算 a_l(x)=softmax(qkᵀ/√d)v，softmax 按行作用。 标准式：先物化 n×n 相似度，再加权 v。 softmax attention q k v">
+<article class="card para" data-idx="15" data-blob="the input is projected to q = x w_q, k = x w_k, v = x w_v. softmax attention computes a_l(x) = softmax(q kᵀ / √d) v, with softmax applied row-wise. 输入投影为 q、k、v。softmax 注意力对缩放点积按行 softmax，再加权 v。 标准式：先物化 n×n 相似度，再加权 v。 softmax attention q k v">
 <span class="pidx">§15</span>
 <div class="summary"><b>小结</b> · 标准式：先物化 N×N 相似度，再加权 V。</div>
-<div class="pair lang">
+<div class="math-stack"><div class="math-panel span2" data-blob="softmax 注意力 完整注意力矩阵 → o(n²)。 a_\ell(x)=\mathrm{softmax}\!\left(\frac{qk^\top}{\sqrt{d}}\right)v"><div class="math-tag">Softmax 注意力</div><div class="math-eq">\[A_\ell(x)=\mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{D}}\right)V\]</div><div class="math-note">完整注意力矩阵 → O(N²)。</div></div></div><div class="pair lang">
 <div class="en-block"><div class="label">Original</div><div class="en">The input is projected to Q = x W_Q, K = x W_K, V = x W_V. Softmax attention computes A_l(x) = softmax(Q Kᵀ / √D) V, with softmax applied row-wise.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">输入投影为 Q=xW_Q、K=xW_K、V=xW_V。Softmax 注意力计算 A_l(x)=softmax(QKᵀ/√D)V，softmax 按行作用。</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">输入投影为 Q、K、V。Softmax 注意力对缩放点积按行 softmax，再加权 V。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="softmax attention">softmax attention</span><span class="term" data-term="Q">Q</span><span class="term" data-term="K">K</span><span class="term" data-term="V">V</span></div></article>
-<article class="card para" data-idx="16" data-blob="generalized attention for any similarity: v&#x27;_i = σ_j sim(q_i, k_j) v_j / σ_j sim(q_i, k_j). softmax attention is the special case sim(q,k) = exp(qᵀ k / √d). 对任意相似度的广义注意力：v&#x27;_i = σ_j sim(q_i,k_j)v_j / σ_j sim(q_i,k_j)。softmax 是特例 sim(q,k)=exp(qᵀk/√d)。 抽象接口：只要 sim≥0，就能定义注意力。 similarity function">
+<article class="card para" data-idx="16" data-blob="generalized attention for any similarity: v&#x27;_i = σ_j sim(q_i, k_j) v_j / σ_j sim(q_i, k_j). softmax attention is the special case sim(q,k) = exp(qᵀ k / √d). 对任意相似度的广义注意力见公式卡。softmax 是指数点积相似度的特例。 抽象接口：只要 sim≥0，就能定义注意力。 similarity function">
 <span class="pidx">§16</span>
 <div class="summary"><b>小结</b> · 抽象接口：只要 sim≥0，就能定义注意力。</div>
-<div class="pair lang">
+<div class="math-stack"><div class="math-panel span2" data-blob="广义注意力  v&#x27;_i=\frac{\sum_j \mathrm{sim}(q_i,k_j)v_j}{\sum_j \mathrm{sim}(q_i,k_j)}"><div class="math-tag">广义注意力</div><div class="math-eq">\[V'_i=\frac{\sum_j \mathrm{sim}(Q_i,K_j)V_j}{\sum_j \mathrm{sim}(Q_i,K_j)}\]</div></div></div><div class="pair lang">
 <div class="en-block"><div class="label">Original</div><div class="en">Generalized attention for any similarity: V&#x27;_i = Σ_j sim(Q_i, K_j) V_j / Σ_j sim(Q_i, K_j). Softmax attention is the special case sim(q,k) = exp(qᵀ k / √D).</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">对任意相似度的广义注意力：V&#x27;_i = Σ_j sim(Q_i,K_j)V_j / Σ_j sim(Q_i,K_j)。Softmax 是特例 sim(q,k)=exp(qᵀk/√D)。</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">对任意相似度的广义注意力见公式卡。Softmax 是指数点积相似度的特例。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="similarity function">similarity function</span></div></article>
 </section>
 <section class="section" id="linearize"><h3>3.2 线性化注意力（核心推导） <span>5 段</span></h3>
-<article class="card para" data-idx="17" data-blob="the only constraint on sim(·) for eq.3 to define attention is non-negativity. this includes all kernels k(x,y): r^{2}→r₊. given a kernel with feature map φ(x), we can write v&#x27;_i = σ_j φ(q_i)ᵀ φ(k_j) v_j / σ_j φ(q_i)ᵀ φ(k_j). 式 (3) 要成为注意力，对 sim(·) 的唯一约束是非负。这包含所有核 k(x,y):r²→r₊。给定特征映射 φ(x)，可写 v&#x27;_i=σ_j φ(q_i)ᵀφ(k_j)v_j / σ_j φ(q_i)ᵀφ(k_j)。 第一步：用 φ(q)ᵀφ(k) 代替 softmax 相似度。 kernel feature maps φ">
+<article class="card para" data-idx="17" data-blob="the only constraint on sim(·) for eq.3 to define attention is non-negativity. this includes all kernels k(x,y): r^{2}→r₊. given a kernel with feature map φ(x), similarity becomes an inner product in feature space. 式 (3) 要成为注意力，对 sim(·) 的唯一约束是非负。给定特征映射 φ，相似度变成特征空间内积。 第一步：用 φ(q)ᵀφ(k) 代替 softmax 相似度。 kernel feature maps φ">
 <span class="pidx">§17</span>
 <div class="summary"><b>小结</b> · 第一步：用 φ(q)ᵀφ(k) 代替 softmax 相似度。</div>
-<div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">The only constraint on sim(·) for Eq.3 to define attention is non-negativity. This includes all kernels k(x,y): R^{2}→R₊. Given a kernel with feature map φ(x), we can write V&#x27;_i = Σ_j φ(Q_i)ᵀ φ(K_j) V_j / Σ_j φ(Q_i)ᵀ φ(K_j).</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">式 (3) 要成为注意力，对 sim(·) 的唯一约束是非负。这包含所有核 k(x,y):R²→R₊。给定特征映射 φ(x)，可写 V&#x27;_i=Σ_j φ(Q_i)ᵀφ(K_j)V_j / Σ_j φ(Q_i)ᵀφ(K_j)。</div></div>
+<div class="math-stack"><div class="math-panel span2" data-blob="核特征形式  v&#x27;_i=\frac{\sum_j \phi(q_i)^\top\phi(k_j)\,v_j}{\sum_j \phi(q_i)^\top\phi(k_j)}"><div class="math-tag">核特征形式</div><div class="math-eq">\[V'_i=\frac{\sum_j \phi(Q_i)^\top\phi(K_j)\,V_j}{\sum_j \phi(Q_i)^\top\phi(K_j)}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The only constraint on sim(·) for Eq.3 to define attention is non-negativity. This includes all kernels k(x,y): R^{2}→R₊. Given a kernel with feature map φ(x), similarity becomes an inner product in feature space.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">式 (3) 要成为注意力，对 sim(·) 的唯一约束是非负。给定特征映射 φ，相似度变成特征空间内积。</div></div>
 </div><div class="figure">
 <svg viewBox="0 0 820 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="associativity">
   <rect width="820" height="220" fill="#fffcf5"/>
@@ -342,28 +343,28 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 </svg>
 <div class="cap">教学示意 · 对应论文 §3.2 结合律重排</div></div>
 <div class="terms"><span class="term" data-term="kernel feature maps">kernel feature maps</span><span class="term" data-term="φ">φ</span></div></article>
-<article class="card para" data-idx="18" data-blob="using associativity of matrix multiplication: v&#x27;_i = φ(q_i)ᵀ (σ_j φ(k_j) v_jᵀ) / (φ(q_i)ᵀ σ_j φ(k_j)). vectorized: φ(q) (φ(k)ᵀ v) instead of (φ(q) φ(k)ᵀ) v. 利用矩阵乘法结合律：v&#x27;_i = φ(q_i)ᵀ(σ_j φ(k_j)v_jᵀ) / (φ(q_i)ᵀ σ_j φ(k_j))。向量化即用 φ(q)(φ(k)ᵀv) 代替 (φ(q)φ(k)ᵀ)v。 关键重排：先聚合成 kv 状态，再对每个 query 读出。 associativity linear attention">
+<article class="card para" data-idx="18" data-blob="using associativity of matrix multiplication, we aggregate keys/values once and reuse them for every query—avoiding the n×n matrix. 利用矩阵乘法结合律：先聚合 kv 状态，再对每个 query 读出——避免 n×n 矩阵。 关键重排：先聚合成 kv 状态，再对每个 query 读出。 associativity linear attention">
 <span class="pidx">§18</span>
 <div class="summary"><b>小结</b> · 关键重排：先聚合成 KV 状态，再对每个 query 读出。</div>
-<div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">Using associativity of matrix multiplication: V&#x27;_i = φ(Q_i)ᵀ (Σ_j φ(K_j) V_jᵀ) / (φ(Q_i)ᵀ Σ_j φ(K_j)). Vectorized: φ(Q) (φ(K)ᵀ V) instead of (φ(Q) φ(K)ᵀ) V.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">利用矩阵乘法结合律：V&#x27;_i = φ(Q_i)ᵀ(Σ_j φ(K_j)V_jᵀ) / (φ(Q_i)ᵀ Σ_j φ(K_j))。向量化即用 φ(Q)(φ(K)ᵀV) 代替 (φ(Q)φ(K)ᵀ)V。</div></div>
+<div class="math-stack"><div class="math-panel span2" data-blob="结合律重排  v&#x27;_i=\frac{\phi(q_i)^\top\bigl(\sum_j \phi(k_j)v_j^\top\bigr)}{\phi(q_i)^\top\bigl(\sum_j \phi(k_j)\bigr)}"><div class="math-tag">结合律重排</div><div class="math-eq">\[V'_i=\frac{\phi(Q_i)^\top\bigl(\sum_j \phi(K_j)V_j^\top\bigr)}{\phi(Q_i)^\top\bigl(\sum_j \phi(K_j)\bigr)}\]</div></div><div class="math-panel span2" data-blob="向量化对照 左：o(n)；右：o(n²)。 \phi(q)\,(\phi(k)^\top v)\;\;\text{vs}\;\;(\phi(q)\phi(k)^\top)\,v"><div class="math-tag">向量化对照</div><div class="math-eq">\[\phi(Q)\,(\phi(K)^\top V)\;\;\text{vs}\;\;(\phi(Q)\phi(K)^\top)\,V\]</div><div class="math-note">左：O(N)；右：O(N²)。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Using associativity of matrix multiplication, we aggregate keys/values once and reuse them for every query—avoiding the N×N matrix.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">利用矩阵乘法结合律：先聚合 KV 状态，再对每个 query 读出——避免 N×N 矩阵。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="associativity">associativity</span><span class="term" data-term="linear attention">linear attention</span></div></article>
-<article class="card para" data-idx="19" data-blob="softmax attention costs o(n²) time and memory because the full attention matrix must be stored for gradients. linear attention from eq.5 is o(n) time and memory because σ_j φ(k_j) v_jᵀ and σ_j φ(k_j) can be computed once and reused for every query. softmax 注意力因需存储完整注意力矩阵以算梯度，时空皆 o(n²)。式 (5) 的线性注意力为 o(n)：σ_j φ(k_j)v_jᵀ 与 σ_j φ(k_j) 只需算一次，供所有 query 复用。 复杂度跳跃：共享两个累加器，不再物化 n×n。 o(n)">
+<article class="card para" data-idx="19" data-blob="softmax attention costs o(n²) time and memory because the full attention matrix must be stored for gradients. linear attention from eq.5 is o(n) time and memory because σ_j φ(k_j) v_jᵀ and σ_j φ(k_j) can be computed once and reused for every query. softmax 注意力因需存储完整注意力矩阵以算梯度，时空皆 o(n²)。式 (5) 的线性注意力为 o(n)：两个累加器只需算一次，供所有 query 复用。 复杂度跳跃：共享两个累加器，不再物化 n×n。 o(n)">
 <span class="pidx">§19</span>
 <div class="summary"><b>小结</b> · 复杂度跳跃：共享两个累加器，不再物化 N×N。</div>
 <div class="pair lang">
 <div class="en-block"><div class="label">Original</div><div class="en">Softmax attention costs O(N²) time and memory because the full attention matrix must be stored for gradients. Linear attention from Eq.5 is O(N) time and memory because Σ_j φ(K_j) V_jᵀ and Σ_j φ(K_j) can be computed once and reused for every query.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">Softmax 注意力因需存储完整注意力矩阵以算梯度，时空皆 O(N²)。式 (5) 的线性注意力为 O(N)：Σ_j φ(K_j)V_jᵀ 与 Σ_j φ(K_j) 只需算一次，供所有 query 复用。</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Softmax 注意力因需存储完整注意力矩阵以算梯度，时空皆 O(N²)。式 (5) 的线性注意力为 O(N)：两个累加器只需算一次，供所有 query 复用。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="O(N)">O(N)</span></div></article>
-<article class="card para" data-idx="20" data-blob="feature maps and cost: exact softmax corresponds to an infinite-dimensional feature map, so exact linearization is infeasible. a degree-2 polynomial map costs o(n d² m), favorable when n &gt; d². for experiments they use φ(x) = elu(x) + 1, yielding positive similarities and o(n d m) cost. 特征映射与代价：精确 softmax 对应无穷维特征，无法精确线性化。二次多项式映射代价 o(n d² m)，当 n&gt;d² 时更划算。实验采用 φ(x)=elu(x)+1，保证相似度非负，代价 o(n d m)。 实践选择：elu+1 既正定友好，又避免 relu 把负梯度打死。 elu+1 feature map">
+<article class="card para" data-idx="20" data-blob="feature maps and cost: exact softmax corresponds to an infinite-dimensional feature map, so exact linearization is infeasible. for experiments they use φ(x) = elu(x) + 1, yielding positive similarities and o(n d m) cost. 精确 softmax 对应无穷维特征，无法精确线性化。实验采用 φ(x)=elu(x)+1，保证相似度非负。 实践选择：elu+1 既正定友好，又避免 relu 把负梯度打死。 elu+1 feature map">
 <span class="pidx">§20</span>
 <div class="summary"><b>小结</b> · 实践选择：elu+1 既正定友好，又避免 ReLU 把负梯度打死。</div>
-<div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">Feature maps and cost: exact softmax corresponds to an infinite-dimensional feature map, so exact linearization is infeasible. A degree-2 polynomial map costs O(N D² M), favorable when N &gt; D². For experiments they use φ(x) = elu(x) + 1, yielding positive similarities and O(N D M) cost.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">特征映射与代价：精确 softmax 对应无穷维特征，无法精确线性化。二次多项式映射代价 O(N D² M)，当 N&gt;D² 时更划算。实验采用 φ(x)=elu(x)+1，保证相似度非负，代价 O(N D M)。</div></div>
+<div class="math-stack"><div class="math-panel" data-blob="特征映射  \phi(x)=\mathrm{elu}(x)+1"><div class="math-tag">特征映射</div><div class="math-eq">\[\phi(x)=\mathrm{elu}(x)+1\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Feature maps and cost: exact softmax corresponds to an infinite-dimensional feature map, so exact linearization is infeasible. For experiments they use φ(x) = elu(x) + 1, yielding positive similarities and O(N D M) cost.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">精确 softmax 对应无穷维特征，无法精确线性化。实验采用 φ(x)=elu(x)+1，保证相似度非负。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="elu+1">elu+1</span><span class="term" data-term="feature map">feature map</span></div></article>
 <article class="card para" data-idx="21" data-blob="we prefer elu(·) over relu(·) to avoid setting gradients to 0 when x is negative. empirically this feature map performs on par with the full transformer while significantly reducing compute and memory. 相对 relu，更偏好 elu，以免 x 为负时梯度被置零。经验上该特征映射性能与全 transformer 相当，同时显著降低计算与内存。 消融动机：正值相似度 + 可训练梯度。 elu+1">
@@ -376,20 +377,20 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <div class="terms"><span class="term" data-term="elu+1">elu+1</span></div></article>
 </section>
 <section class="section" id="causal"><h3>3.3 因果掩码：线性时间 + 常数内存 <span>4 段</span></h3>
-<article class="card para" data-idx="22" data-blob="causal masking ensures position i is influenced only by positions j ≤ i. softmax form becomes v&#x27;_i = σ_{j=1..i} sim(q_i,k_j) v_j / σ_{j=1..i} sim(q_i,k_j). 因果掩码保证位置 i 只受 j≤i 影响。softmax 形式变为 v&#x27;_i=σ_{j=1..i} sim(q_i,k_j)v_j / σ_{j=1..i} sim(q_i,k_j)。 自回归训练的标准掩码约束。 causal masking">
+<article class="card para" data-idx="22" data-blob="causal masking ensures position i is influenced only by positions j ≤ i. softmax form becomes a prefix sum over similarities. 因果掩码保证位置 i 只受 j≤i 影响。 自回归训练的标准掩码约束。 causal masking">
 <span class="pidx">§22</span>
 <div class="summary"><b>小结</b> · 自回归训练的标准掩码约束。</div>
-<div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">Causal masking ensures position i is influenced only by positions j ≤ i. Softmax form becomes V&#x27;_i = Σ_{j=1..i} sim(Q_i,K_j) V_j / Σ_{j=1..i} sim(Q_i,K_j).</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">因果掩码保证位置 i 只受 j≤i 影响。Softmax 形式变为 V&#x27;_i=Σ_{j=1..i} sim(Q_i,K_j)V_j / Σ_{j=1..i} sim(Q_i,K_j)。</div></div>
+<div class="math-stack"><div class="math-panel span2" data-blob="因果 softmax  v&#x27;_i=\frac{\sum_{j=1}^{i}\mathrm{sim}(q_i,k_j)v_j}{\sum_{j=1}^{i}\mathrm{sim}(q_i,k_j)}"><div class="math-tag">因果 Softmax</div><div class="math-eq">\[V'_i=\frac{\sum_{j=1}^{i}\mathrm{sim}(Q_i,K_j)V_j}{\sum_{j=1}^{i}\mathrm{sim}(Q_i,K_j)}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Causal masking ensures position i is influenced only by positions j ≤ i. Softmax form becomes a prefix sum over similarities.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">因果掩码保证位置 i 只受 j≤i 影响。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="causal masking">causal masking</span></div></article>
-<article class="card para" data-idx="23" data-blob="linearized causal attention: v&#x27;_i = φ(q_i)ᵀ s_i / (φ(q_i)ᵀ z_i), where s_i = σ_{j≤i} φ(k_j) v_jᵀ and z_i = σ_{j≤i} φ(k_j). s_i and z_i update from the previous step in constant time. 线性化因果注意力：v&#x27;_i=φ(q_i)ᵀs_i/(φ(q_i)ᵀz_i)，其中 s_i=σ_{j≤i}φ(k_j)v_jᵀ，z_i=σ_{j≤i}φ(k_j)。s_i、z_i 可由前一步常数时间更新。 两个状态：内容记忆 s + 归一化记忆 z。 s z">
+<article class="card para" data-idx="23" data-blob="linearized causal attention maintains two recurrent states—content memory s and normalizer z—updated in constant time per step. 线性化因果注意力维护两个递推状态——内容记忆 s 与归一化记忆 z——每步常数时间更新。 两个状态：内容记忆 s + 归一化记忆 z。 s z">
 <span class="pidx">§23</span>
 <div class="summary"><b>小结</b> · 两个状态：内容记忆 S + 归一化记忆 Z。</div>
-<div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">Linearized causal attention: V&#x27;_i = φ(Q_i)ᵀ S_i / (φ(Q_i)ᵀ Z_i), where S_i = Σ_{j≤i} φ(K_j) V_jᵀ and Z_i = Σ_{j≤i} φ(K_j). S_i and Z_i update from the previous step in constant time.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">线性化因果注意力：V&#x27;_i=φ(Q_i)ᵀS_i/(φ(Q_i)ᵀZ_i)，其中 S_i=Σ_{j≤i}φ(K_j)V_jᵀ，Z_i=Σ_{j≤i}φ(K_j)。S_i、Z_i 可由前一步常数时间更新。</div></div>
+<div class="math-stack"><div class="math-panel" data-blob="因果线性读出  v&#x27;_i=\frac{\phi(q_i)^\top s_i}{\phi(q_i)^\top z_i}"><div class="math-tag">因果线性读出</div><div class="math-eq">\[V'_i=\frac{\phi(Q_i)^\top S_i}{\phi(Q_i)^\top Z_i}\]</div></div><div class="math-panel span2" data-blob="状态定义  s_i=\sum_{j\le i}\phi(k_j)v_j^\top,\quad z_i=\sum_{j\le i}\phi(k_j)"><div class="math-tag">状态定义</div><div class="math-eq">\[S_i=\sum_{j\le i}\phi(K_j)V_j^\top,\quad Z_i=\sum_{j\le i}\phi(K_j)\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Linearized causal attention maintains two recurrent states—content memory S and normalizer Z—updated in constant time per step.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">线性化因果注意力维护两个递推状态——内容记忆 S 与归一化记忆 Z——每步常数时间更新。</div></div>
 </div><div class="figure">
 <svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RNN form">
   <rect width="820" height="210" fill="#fffcf5"/>
@@ -443,12 +444,12 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <div class="zh-block"><div class="label">译文</div><div class="zh">任何带因果掩码的 Transformer 层都可写成：给定输入、修改内部状态、再预测输出——即 RNN（时间维递推，而非 Universal Transformers 那种深度维递推）。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="RNN">RNN</span></div></article>
-<article class="card para" data-idx="27" data-blob="rnn form with two hidden states (attention memory s and normalizer z): s_0=0, z_0=0; s_i = s_{i−1} + φ(x_i w_k)(x_i w_v)ᵀ; z_i = z_{i−1} + φ(x_i w_k); y_i = f_l( φ(x_i w_q)ᵀ s_i / (φ(x_i w_q)ᵀ z_i) + x_i ). 双隐状态 rnn 形式（注意力记忆 s 与归一化记忆 z）：s_0=z_0=0；s_i=s_{i−1}+φ(x_i w_k)(x_i w_v)ᵀ；z_i=z_{i−1}+φ(x_i w_k)；y_i=f_l( φ(x_i w_q)ᵀs_i/(φ(x_i w_q)ᵀz_i) + x_i )。 必背递推：累加 kv 外积与 k 特征，再用 q 特征归一化读出。 s z φ">
+<article class="card para" data-idx="27" data-blob="rnn form with two hidden states (attention memory s and normalizer z). see formula panels for the exact recurrence. 双隐状态 rnn 形式（注意力记忆 s 与归一化记忆 z）。精确递推见下方公式卡。 必背递推：累加 kv 外积与 k 特征，再用 q 特征归一化读出。 s z φ">
 <span class="pidx">§27</span>
 <div class="summary"><b>小结</b> · 必背递推：累加 KV 外积与 K 特征，再用 q 特征归一化读出。</div>
-<div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">RNN form with two hidden states (attention memory s and normalizer z): s_0=0, z_0=0; s_i = s_{i−1} + φ(x_i W_K)(x_i W_V)ᵀ; z_i = z_{i−1} + φ(x_i W_K); y_i = f_l( φ(x_i W_Q)ᵀ s_i / (φ(x_i W_Q)ᵀ z_i) + x_i ).</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">双隐状态 RNN 形式（注意力记忆 s 与归一化记忆 z）：s_0=z_0=0；s_i=s_{i−1}+φ(x_i W_K)(x_i W_V)ᵀ；z_i=z_{i−1}+φ(x_i W_K)；y_i=f_l( φ(x_i W_Q)ᵀs_i/(φ(x_i W_Q)ᵀz_i) + x_i )。</div></div>
+<div class="math-stack"><div class="math-panel span2" data-blob="状态更新  s_i=s_{i-1}+\phi(x_i w_k)(x_i w_v)^\top,\quad z_i=z_{i-1}+\phi(x_i w_k)"><div class="math-tag">状态更新</div><div class="math-eq">\[s_i=s_{i-1}+\phi(x_i W_K)(x_i W_V)^\top,\quad z_i=z_{i-1}+\phi(x_i W_K)\]</div></div><div class="math-panel span2" data-blob="输出  y_i=f_\ell\!\left(\frac{\phi(x_i w_q)^\top s_i}{\phi(x_i w_q)^\top z_i}+x_i\right)"><div class="math-tag">输出</div><div class="math-eq">\[y_i=f_\ell\!\left(\frac{\phi(x_i W_Q)^\top s_i}{\phi(x_i W_Q)^\top z_i}+x_i\right)\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">RNN form with two hidden states (attention memory s and normalizer z). See formula panels for the exact recurrence.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">双隐状态 RNN 形式（注意力记忆 s 与归一化记忆 z）。精确递推见下方公式卡。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="s">s</span><span class="term" data-term="Z">Z</span><span class="term" data-term="φ">φ</span></div></article>
 <article class="card para" data-idx="28" data-blob="this formulation imposes no constraint on the feature function and can represent any transformer in theory—even softmax ones (though exact softmax needs infinite features). it is a step toward understanding how transformers store and retrieve information relative to lstms. 该形式对特征函数无额外约束，理论上可表示任意 transformer——甚至 softmax 版（尽管精确 softmax 需要无穷维特征）。这是理解 transformer 相对 lstm 如何存取信息的一步。 理论视野：线性化不只是加速技巧，也是统一视角。 feature map">
@@ -503,12 +504,12 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <div class="zh-block"><div class="label">译文</div><div class="zh">后续工作攻击的局限：(1) 无遗忘——旧关联互相干扰；(2) 加性更新不能纠正错误的 key→value 绑定（故有 DeltaNet 的 delta rule）；(3) 标量/通道门（GDN/GLA/KDA）加入数据相关衰减；(4) 纯有限状态检索仍吃力，催生 Kimi Linear 这类混合（KDA:MLA=3:1）。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="delta rule">delta rule</span><span class="term" data-term="KDA">KDA</span><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span></div></article>
-<article class="card para" data-idx="34" data-blob="suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/kimi-linear-delta-attention/index.html for the gated-delta upgrade; step through papers/kimi-linear-delta-attention/delta_attention/recurrent.py to see channel-wise forget + delta write on top of the same s-state idea. 本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/kimi-linear-delta-attention/index.html 看门控-delta 升级；最后跟同夹 delta_attention/recurrent.py，看在同一 s 状态思想上的通道遗忘 + delta 写入。 学完这篇，再学 kda 不会懵「s 从哪来」。 kda recurrent_kda">
+<article class="card para" data-idx="34" data-blob="suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/delta-attention/index.html for deltanet, then papers/kda/index.html for kda; step through papers/kda/kda/recurrent.py to see channel-wise forget + delta write on top of the same s-state idea. 本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/delta-attention/ 看 deltanet，再读 papers/kda/ 看 kda；最后跟 papers/kda/kda/recurrent.py，看在同一 s 状态思想上的通道遗忘 + delta 写入。 学完这篇，再学 kda 不会懵「s 从哪来」。 kda recurrent_kda">
 <span class="pidx">§34</span>
 <div class="summary"><b>小结</b> · 学完这篇，再学 KDA 不会懵「S 从哪来」。</div>
 <div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/kimi-linear-delta-attention/index.html for the gated-delta upgrade; step through papers/kimi-linear-delta-attention/delta_attention/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/kimi-linear-delta-attention/index.html 看门控-delta 升级；最后跟同夹 delta_attention/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。</div></div>
+<div class="en-block"><div class="label">Original</div><div class="en">Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/delta-attention/index.html for DeltaNet, then papers/kda/index.html for KDA; step through papers/kda/kda/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/delta-attention/ 看 DeltaNet，再读 papers/kda/ 看 KDA；最后跟 papers/kda/kda/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="KDA">KDA</span><span class="term" data-term="recurrent_kda">recurrent_kda</span></div></article>
 </section>
@@ -548,9 +549,9 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">
 <div class="ref" data-blob="transformers are rnns (linear attention) 逐段精读对象；线性注意力经典源头。"><span class="lv must">本篇</span><h4>Transformers are RNNs (Linear Attention)</h4><p>逐段精读对象；线性注意力经典源头。</p><a href="./paper.pdf" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2006.16236" target="_blank" rel="noopener">外链</a></div>
 <div class="ref" data-blob="linear-transformers.com 作者页：公式演示与代码入口。"><span class="lv imp">官网</span><h4>linear-transformers.com</h4><p>作者页：公式演示与代码入口。</p><a href="https://linear-transformers.com/" target="_blank" rel="noopener">打开 →</a></div>
-<div class="ref" data-blob="kimi linear / kda 逐段精读 在加性 s 上加入遗忘门与 delta rule 的现代升级。"><span class="lv imp">下游</span><h4>Kimi Linear / KDA 逐段精读</h4><p>在加性 S 上加入遗忘门与 delta rule 的现代升级。</p><a href="../kimi-linear-delta-attention/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="kimi linear / kda 逐段精读 在加性 s 上加入遗忘门与 delta rule 的现代升级。"><span class="lv imp">下游</span><h4>Kimi Linear / KDA 逐段精读</h4><p>在加性 S 上加入遗忘门与 delta rule 的现代升级。</p><a href="../kda/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noopener">外链</a></div>
 <div class="ref" data-blob="reformer 同期高效注意力；训练可扩但解码约束不同。"><span class="lv ">对照</span><h4>Reformer</h4><p>同期高效注意力；训练可扩但解码约束不同。</p><a href="https://arxiv.org/abs/2001.04451" target="_blank" rel="noopener">打开 →</a></div>
-<div class="ref" data-blob="kda 教学代码（同夹于 kimi linear） 看清「同一 s 状态」如何演变成 kda。"><span class="lv ">代码</span><h4>KDA 教学代码（同夹于 Kimi Linear）</h4><p>看清「同一 S 状态」如何演变成 KDA。</p><a href="../kimi-linear-delta-attention/delta_attention/" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="kda 教学代码 看清「同一 s 状态」如何演变成 kda。"><span class="lv ">代码</span><h4>KDA 教学代码</h4><p>看清「同一 S 状态」如何演变成 KDA。</p><a href="../kda/kda/" target="_blank" rel="noopener">打开 →</a></div>
 </div><p class="note" style="margin-top:28px">本页为学习用逐段精读；公式以 PDF 为准。示意图为教学重绘。</p></section></main></div>
 
 <aside class="drawer" id="drawer"><button class="btn" id="closeDrawer">关闭</button>

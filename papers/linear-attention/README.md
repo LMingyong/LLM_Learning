@@ -16,7 +16,7 @@
 - 重点：§3.2 线性化推导、§3.3 因果常数内存、§3.4 RNN 形式
 - 末节桥接 DeltaNet / GDN / KDA
 
-接着读：[Kimi Linear / KDA](../kimi-linear-delta-attention/)
+接着读：[DeltaNet](../delta-attention/) · [KDA](../kda/)
 
 ## 文件
 

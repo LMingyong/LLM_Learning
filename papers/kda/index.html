@@ -138,7 +138,7 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <aside class="side">
 <div class="brand">LLM Learning · Paper Reader</div>
 <h1>Kimi Linear / KDA</h1>
-<div class="meta">arXiv:2510.26692<br/>每段 = 小结 + Original + 译文<br/>公式独立成卡 · 对照本夹代码</div>
+<div class="meta">arXiv:2510.26692<br/>每段 = 小结 + Original + 译文<br/>公式独立成卡 · 教学代码在本夹 kda/</div>
 <nav id="toc">
 <a href="#formulas">公式墙（速查）</a>
 <a href="#abstract">Abstract 摘要</a>
@@ -167,23 +167,23 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
 <a class="btn" href="#formulas">公式墙</a>
 <a class="btn" href="./notes.md">公式笔记 →</a>
-<a class="btn" href="./delta_attention/recurrent.py">recurrent.py →</a>
+<a class="btn" href="./kda/recurrent.py">recurrent.py →</a>
 <a class="btn" href="./demo.py">demo.py →</a>
+<a class="btn" href="../delta-attention/index.html">DeltaNet →</a>
 <a class="btn" href="../linear-attention/index.html">Linear Attention →</a>
-<a class="btn" href="../attention-residuals/index.html">AttnRes →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">
-<h2>Kimi Linear · Kimi Delta Attention</h2>
-<p>本夹统一存放 PDF、精读页、公式笔记与教学代码。精读按 BigBird 同款：小结 → Original → 译文；关键公式<strong>提出来单独成卡</strong>（KaTeX），不再挤进段落正文。</p>
+<h2>Kimi Linear · Kimi Delta Attention（KDA）</h2>
+<p>本夹对应 <strong>arXiv:2510.26692</strong>。与 <a href="../delta-attention/">DeltaNet / Delta Attention</a> 分开放：那边是可扩展 delta rule 基线，这里是通道级门控 + 混合架构。精读含独立公式卡（KaTeX）。</p>
 <div class="chips">
 <span class="chip">核心：<em>KDA = GDN + Diag(α)</em></span>
 <span class="chip">架构：<em>KDA:MLA = 3:1</em></span>
 <span class="chip">收益：<em>−75% cache · ~6× 解码</em></span>
-<span class="chip">代码：<em>./delta_attention/</em></span>
+<span class="chip">代码：<em>./kda/</em></span>
 </div>
 </section>
-<p class="note">英文贴近技术报告；分块 WY/UT 细节以 PDF §3.1 为准。建议：先扫 <a href="#formulas">公式墙</a>，再读谱系段落，最后打开 <a href="./delta_attention/recurrent.py">recurrent.py</a> 对四步。</p>
+<p class="note">建议：先读 <a href="../delta-attention/index.html">DeltaNet</a> 搞清擦写，再扫本页 <a href="#formulas">公式墙</a>，最后打开 <a href="./kda/recurrent.py">recurrent.py</a>。</p>
 <section class="section" id="formulas"><h3>公式墙（速查） <span>谱系一览</span></h3>
 <p class="inline-math-hint">以下公式从正文抽出，便于对照；段内还有更细的展开卡。</p>
 <div class="formula-wall"><div class="math-panel" data-blob="linear · 只加不改 固定大小状态；旧关联永不擦除。 s_t = s_{t-1} + k_t v_t^\top,\quad o_t = s_t^\top q_t"><div class="math-tag">Linear · 只加不改</div><div class="math-eq">\[S_t = S_{t-1} + k_t v_t^\top,\quad o_t = S_t^\top q_t\]</div><div class="math-note">固定大小状态；旧关联永不擦除。</div></div><div class="math-panel" data-blob="deltanet · delta rule 先按 key 擦旧，再写入新 value。 s_t=(i-\beta_t k_t k_t^\top)s_{t-1}+\beta_t k_t v_t^\top"><div class="math-tag">DeltaNet · delta rule</div><div class="math-eq">\[S_t=(I-\beta_t k_t k_t^\top)S_{t-1}+\beta_t k_t v_t^\top\]</div><div class="math-note">先按 key 擦旧，再写入新 value。</div></div><div class="math-panel" data-blob="gdn · 标量遗忘 整头共用一个 α。 s_t=\alpha_t\,(i-\beta_t k_t k_t^\top)s_{t-1}+\beta_t k_t v_t^\top"><div class="math-tag">GDN · 标量遗忘</div><div class="math-eq">\[S_t=\alpha_t\,(I-\beta_t k_t k_t^\top)S_{t-1}+\beta_t k_t v_t^\top\]</div><div class="math-note">整头共用一个 α。</div></div><div class="math-panel span2" data-blob="式 (1) · kda 通道级对角门；本页必背。 s_t=\bigl(i-\beta_t k_t k_t^\top\bigr)\,\mathrm{diag}(\alpha_t)\,s_{t-1}+\beta_t k_t v_t^\top"><div class="math-tag">式 (1) · KDA</div><div class="math-eq">\[S_t=\bigl(I-\beta_t k_t k_t^\top\bigr)\,\mathrm{Diag}(\alpha_t)\,S_{t-1}+\beta_t k_t v_t^\top\]</div><div class="math-note">通道级对角门；本页必背。</div></div></div></section>
@@ -391,7 +391,7 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
     <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">状态 S ∈ R^{d×d}/head，不随序列长度增长</text>
   </g>
 </svg>
-<div class="cap">教学示意 · 与本夹 delta_attention/recurrent.py 对齐</div></div>
+<div class="cap">教学示意 · 与本夹 kda/recurrent.py 对齐</div></div>
 <div class="terms"><span class="term" data-term="Eq.1">Eq.1</span><span class="term" data-term="β">β</span><span class="term" data-term="α">α</span></div></article>
 <article class="card para" data-idx="20" data-blob="teaching expansion (aligned with this repo’s recurrent_kda): four explicit steps—forget, predict, correct, read—matching the formula panels below. 教学展开（与本仓库 recurrent_kda 对齐）：四步——遗忘、预测、纠错、读取——见下方公式卡。 四步口诀：忘 → 读预测 → 写误差 → 用 q 查。 recurrent_kda log_decay">
 <span class="pidx">§20</span>
@@ -555,20 +555,20 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <div class="terms"><span class="term" data-term="KV cache">KV cache</span><span class="term" data-term="DPLR">DPLR</span></div></article>
 </section>
 <section class="section" id="code"><h3>对照本仓库代码（学习桥接） <span>4 段</span></h3>
-<article class="card para" data-idx="38" data-blob="code bridge (study note): delta_attention/recurrent.py (same folder as this html) implements the token-wise gold recurrence—channel forget, predict, delta write, query—matching eq.1’s teaching expansion. prefer this file when checking numerical correctness. 代码桥接（学习笔记）：与本页同夹的 delta_attention/recurrent.py 实现逐步金标准递推——通道遗忘、预测、delta 写入、查询——对应式 (1) 的教学展开。核对数值正确性时优先看此文件。 正确性锚点：先读 recurrent_kda，再谈 chunk / 融合核。 recurrent_kda">
+<article class="card para" data-idx="38" data-blob="code bridge (study note): kda/recurrent.py (same folder as this html) implements the token-wise gold recurrence—channel forget, predict, delta write, query—matching eq.1’s teaching expansion. prefer this file when checking numerical correctness. 代码桥接（学习笔记）：与本页同夹的 kda/recurrent.py 实现逐步金标准递推——通道遗忘、预测、delta 写入、查询——对应式 (1) 的教学展开。核对数值正确性时优先看此文件。 正确性锚点：先读 recurrent_kda，再谈 chunk / 融合核。 recurrent_kda">
 <span class="pidx">§38</span>
 <div class="summary"><b>小结</b> · 正确性锚点：先读 recurrent_kda，再谈 chunk / 融合核。</div>
 <div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">Code bridge (study note): delta_attention/recurrent.py (same folder as this HTML) implements the token-wise gold recurrence—channel forget, predict, delta write, query—matching Eq.1’s teaching expansion. Prefer this file when checking numerical correctness.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">代码桥接（学习笔记）：与本页同夹的 delta_attention/recurrent.py 实现逐步金标准递推——通道遗忘、预测、delta 写入、查询——对应式 (1) 的教学展开。核对数值正确性时优先看此文件。</div></div>
+<div class="en-block"><div class="label">Original</div><div class="en">Code bridge (study note): kda/recurrent.py (same folder as this HTML) implements the token-wise gold recurrence—channel forget, predict, delta write, query—matching Eq.1’s teaching expansion. Prefer this file when checking numerical correctness.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">代码桥接（学习笔记）：与本页同夹的 kda/recurrent.py 实现逐步金标准递推——通道遗忘、预测、delta 写入、查询——对应式 (1) 的教学展开。核对数值正确性时优先看此文件。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="recurrent_kda">recurrent_kda</span></div></article>
-<article class="card para" data-idx="39" data-blob="delta_attention/layer.py wraps projections, short convolution, gate parameterization, and output gating around the recurrence—mirroring §4 neural parameterization at teaching scale. delta_attention/layer.py 在递推外包投影、短卷积、门控参数化与输出门，对应 §4 神经参数化的教学尺度实现。 层包装：公式之外的「工程零件」都在 layer.py。 shortconv output gate">
+<article class="card para" data-idx="39" data-blob="kda/layer.py wraps projections, short convolution, gate parameterization, and output gating around the recurrence—mirroring §4 neural parameterization at teaching scale. kda/layer.py 在递推外包投影、短卷积、门控参数化与输出门，对应 §4 神经参数化的教学尺度实现。 层包装：公式之外的「工程零件」都在 layer.py。 shortconv output gate">
 <span class="pidx">§39</span>
 <div class="summary"><b>小结</b> · 层包装：公式之外的「工程零件」都在 layer.py。</div>
 <div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">delta_attention/layer.py wraps projections, short convolution, gate parameterization, and output gating around the recurrence—mirroring §4 neural parameterization at teaching scale.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">delta_attention/layer.py 在递推外包投影、短卷积、门控参数化与输出门，对应 §4 神经参数化的教学尺度实现。</div></div>
+<div class="en-block"><div class="label">Original</div><div class="en">kda/layer.py wraps projections, short convolution, gate parameterization, and output gating around the recurrence—mirroring §4 neural parameterization at teaching scale.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">kda/layer.py 在递推外包投影、短卷积、门控参数化与输出门，对应 §4 神经参数化的教学尺度实现。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="ShortConv">ShortConv</span><span class="term" data-term="output gate">output gate</span></div></article>
 <article class="card para" data-idx="40" data-blob="demo.py shows shapes and stateful cache continuation; test_kda.py checks chunk equivalence, β=0 decay-only behavior, causality, and cache consistency. production should use official flashkda / fla kernels. 同夹 demo.py 演示形状与带状态 cache 续写；test_kda.py 检查 chunk 等价、β=0 仅衰减、因果性与 cache 一致性。生产请用官方 flashkda / fla 核。 学习路径：公式墙 → recurrent → layer → demo → tests → 官方 kernel。 flashkda">
@@ -634,7 +634,8 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">
 <div class="ref" data-blob="kimi linear / kda 逐段精读对象；公式以 pdf 为准。"><span class="lv must">本篇</span><h4>Kimi Linear / KDA</h4><p>逐段精读对象；公式以 PDF 为准。</p><a href="./paper.pdf" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noopener">外链</a></div>
 <div class="ref" data-blob="本夹 notes.md 更短的公式卡片与读码顺序。"><span class="lv imp">笔记</span><h4>本夹 notes.md</h4><p>更短的公式卡片与读码顺序。</p><a href="./notes.md" target="_blank" rel="noopener">打开 →</a></div>
-<div class="ref" data-blob="本夹 delta_attention/ 教学向 pytorch：recurrent / layer；同夹还有 demo.py 与 test_kda.py。"><span class="lv imp">代码</span><h4>本夹 delta_attention/</h4><p>教学向 PyTorch：recurrent / layer；同夹还有 demo.py 与 test_kda.py。</p><a href="./delta_attention/" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="本夹 kda/ 教学向 pytorch：recurrent / layer；同夹还有 demo.py 与 test_kda.py。"><span class="lv imp">代码</span><h4>本夹 kda/</h4><p>教学向 PyTorch：recurrent / layer；同夹还有 demo.py 与 test_kda.py。</p><a href="./kda/" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="deltanet / delta attention 可扩展 delta rule 基线；kda 在其上加通道门。"><span class="lv imp">前驱</span><h4>DeltaNet / Delta Attention</h4><p>可扩展 delta rule 基线；KDA 在其上加通道门。</p><a href="../delta-attention/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2406.06484" target="_blank" rel="noopener">外链</a></div>
 <div class="ref" data-blob="linear attention（transformers are rnns） 固定大小状态 s / 因果 rnn 形式的经典源头。"><span class="lv imp">前驱</span><h4>Linear Attention（Transformers are RNNs）</h4><p>固定大小状态 S / 因果 RNN 形式的经典源头。</p><a href="../linear-attention/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2006.16236" target="_blank" rel="noopener">外链</a></div>
 <div class="ref" data-blob="gated deltanet 标量门 + delta rule 的直接前驱。"><span class="lv imp">前驱</span><h4>Gated DeltaNet</h4><p>标量门 + delta rule 的直接前驱。</p><a href="https://arxiv.org/abs/2412.06464" target="_blank" rel="noopener">打开 →</a></div>
 <div class="ref" data-blob="flash linear attention · kda ops 官方分块/融合核与 vllm 集成入口。"><span class="lv ">内核</span><h4>Flash Linear Attention · KDA ops</h4><p>官方分块/融合核与 vLLM 集成入口。</p><a href="https://github.com/fla-org/flash-linear-attention/tree/main/fla/ops/kda" target="_blank" rel="noopener">打开 →</a></div>

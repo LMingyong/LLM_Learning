@@ -1,4 +1,4 @@
-"""教学向 Kimi Delta Attention（KDA）实现。
+"""教学向 Kimi Delta Attention（KDA）实现（本包位于 papers/kda/）。
 
 本包优先可读性与公式对应关系，不追求生产级 Triton kernel 性能。
 """

@@ -16,36 +16,37 @@ papers/<slug>/
 
 | 单元 | 入口 |
 |------|------|
-| **Longformer**（局部+全局） | [`papers/longformer/index.html`](./papers/longformer/index.html) |
-| **BigBird**（局部+全局+随机） | [`papers/bigbird/index.html`](./papers/bigbird/index.html) |
-| Attention Residuals | [`papers/attention-residuals/index.html`](./papers/attention-residuals/index.html) |
-| **Linear Attention**（Transformers are RNNs） | [`papers/linear-attention/index.html`](./papers/linear-attention/index.html) |
-| **Kimi Linear / Delta Attention** | [`papers/kimi-linear-delta-attention/`](./papers/kimi-linear-delta-attention/) |
-| Watts–Strogatz（小世界） | [`papers/watts-strogatz/index.html`](./papers/watts-strogatz/index.html) |
-| Native Sparse Attention (NSA) | [`papers/nsa/`](./papers/nsa/) |
+| **Longformer** | [`papers/longformer/`](./papers/longformer/) |
+| **BigBird** | [`papers/bigbird/`](./papers/bigbird/) |
+| Attention Residuals | [`papers/attention-residuals/`](./papers/attention-residuals/) |
+| **Linear Attention** | [`papers/linear-attention/`](./papers/linear-attention/) |
+| **DeltaNet / Delta Attention** | [`papers/delta-attention/`](./papers/delta-attention/) |
+| **Kimi Linear / KDA** | [`papers/kda/`](./papers/kda/) |
+| Watts–Strogatz | [`papers/watts-strogatz/`](./papers/watts-strogatz/) |
+| NSA | [`papers/nsa/`](./papers/nsa/) |
 | Sparse Transformer | [`papers/sparse-transformer/`](./papers/sparse-transformer/) |
-| **稀疏注意力专题** | [`papers/sparse-attention/index.html`](./papers/sparse-attention/index.html) |
-| **Flash Attention 专题** | [`papers/flash-attention/index.html`](./papers/flash-attention/index.html) |
+| 稀疏注意力专题 | [`papers/sparse-attention/`](./papers/sparse-attention/) |
+| Flash Attention 专题 | [`papers/flash-attention/`](./papers/flash-attention/) |
 
-## Kimi Linear / KDA 教学代码
+> **Delta Attention ≠ KDA**：前者是 DeltaNet（arXiv:2406.06484）；后者是 Kimi Linear 里的 Kimi Delta Attention（arXiv:2510.26692）。两篇分夹存放。
 
-代码与论文材料同夹，不再放在仓库根 `src/`：
+## KDA 教学代码
 
 | 路径 | 说明 |
 |------|------|
-| [`papers/kimi-linear-delta-attention/delta_attention/`](./papers/kimi-linear-delta-attention/delta_attention/) | 教学向 PyTorch |
-| [`papers/kimi-linear-delta-attention/demo.py`](./papers/kimi-linear-delta-attention/demo.py) | 形状与 cache 演示 |
-| [`papers/kimi-linear-delta-attention/test_kda.py`](./papers/kimi-linear-delta-attention/test_kda.py) | 方程级测试 |
+| [`papers/kda/kda/`](./papers/kda/kda/) | 教学向 PyTorch |
+| [`papers/kda/demo.py`](./papers/kda/demo.py) | 形状与 cache 演示 |
+| [`papers/kda/test_kda.py`](./papers/kda/test_kda.py) | 方程级测试 |
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-python3 papers/kimi-linear-delta-attention/demo.py
+python3 papers/kda/demo.py
 pytest -q
 ```
 
 ## 参考
 
-- [Attention Residuals](https://arxiv.org/abs/2603.15031)
+- [DeltaNet](https://arxiv.org/abs/2406.06484)
 - [Kimi Linear](https://arxiv.org/abs/2510.26692)
 - [FLA / Flash Linear Attention](https://github.com/fla-org/flash-linear-attention)

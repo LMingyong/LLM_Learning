@@ -4,7 +4,7 @@ Paper: Kimi Linear: An Expressive, Efficient Attention Architecture
 arXiv:2510.26692 (Kimi Team / Moonshot).
 
 Focus: Abstract, Intro, §2 lineage, §3 KDA, §4 architecture, key experiments,
-plus a code-bridge section aligned with ./delta_attention/.
+plus a code-bridge section aligned with ./kda/.
 """
 
 FORMULA_WALL = [
@@ -417,14 +417,14 @@ SECTIONS = [
         "title": "对照本仓库代码（学习桥接）",
         "paras": [
             {
-                "en": "Code bridge (study note): delta_attention/recurrent.py (same folder as this HTML) implements the token-wise gold recurrence—channel forget, predict, delta write, query—matching Eq.1’s teaching expansion. Prefer this file when checking numerical correctness.",
-                "zh": "代码桥接（学习笔记）：与本页同夹的 delta_attention/recurrent.py 实现逐步金标准递推——通道遗忘、预测、delta 写入、查询——对应式 (1) 的教学展开。核对数值正确性时优先看此文件。",
+                "en": "Code bridge (study note): kda/recurrent.py (same folder as this HTML) implements the token-wise gold recurrence—channel forget, predict, delta write, query—matching Eq.1’s teaching expansion. Prefer this file when checking numerical correctness.",
+                "zh": "代码桥接（学习笔记）：与本页同夹的 kda/recurrent.py 实现逐步金标准递推——通道遗忘、预测、delta 写入、查询——对应式 (1) 的教学展开。核对数值正确性时优先看此文件。",
                 "summary": "正确性锚点：先读 recurrent_kda，再谈 chunk / 融合核。",
                 "terms": ["recurrent_kda"],
             },
             {
-                "en": "delta_attention/layer.py wraps projections, short convolution, gate parameterization, and output gating around the recurrence—mirroring §4 neural parameterization at teaching scale.",
-                "zh": "delta_attention/layer.py 在递推外包投影、短卷积、门控参数化与输出门，对应 §4 神经参数化的教学尺度实现。",
+                "en": "kda/layer.py wraps projections, short convolution, gate parameterization, and output gating around the recurrence—mirroring §4 neural parameterization at teaching scale.",
+                "zh": "kda/layer.py 在递推外包投影、短卷积、门控参数化与输出门，对应 §4 神经参数化的教学尺度实现。",
                 "summary": "层包装：公式之外的「工程零件」都在 layer.py。",
                 "terms": ["ShortConv", "output gate"],
             },
@@ -505,10 +505,17 @@ REFS = [
     },
     {
         "level": "代码",
-        "title": "本夹 delta_attention/",
+        "title": "本夹 kda/",
         "why": "教学向 PyTorch：recurrent / layer；同夹还有 demo.py 与 test_kda.py。",
-        "url": "./delta_attention/",
+        "url": "./kda/",
         "ext": "",
+    },
+    {
+        "level": "前驱",
+        "title": "DeltaNet / Delta Attention",
+        "why": "可扩展 delta rule 基线；KDA 在其上加通道门。",
+        "url": "../delta-attention/index.html",
+        "ext": "https://arxiv.org/abs/2406.06484",
     },
     {
         "level": "前驱",

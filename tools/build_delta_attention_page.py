@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build fine-grained Kimi Linear / KDA study page."""
+"""Build fine-grained DeltaNet / Delta Attention study page."""
 
 from __future__ import annotations
 
@@ -7,107 +7,72 @@ import html
 import json
 from pathlib import Path
 
-from kimi_linear_paragraphs import FORMULA_WALL, GLOSSARY, REFS, SECTIONS
+from delta_attention_paragraphs import FORMULA_WALL, GLOSSARY, REFS, SECTIONS
 from reader_math import KATEX_HEAD, MATH_CSS, render_formulas
 
-OUT = Path(__file__).resolve().parents[1] / "papers/kda/index.html"
+OUT = Path(__file__).resolve().parents[1] / "papers/delta-attention/index.html"
 
 
 def esc(s: str) -> str:
     return html.escape(s)
 
 
-def fig_pipeline() -> str:
+def fig_delta_steps() -> str:
     return """
-<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="lineage">
-  <rect width="820" height="200" fill="#fffcf5"/>
-  <g font-family="Manrope,sans-serif">
-    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">谱系：Linear → DeltaNet → GDN → KDA</text>
-    <rect x="30" y="60" width="160" height="70" rx="12" fill="#efe9dc" stroke="#5a6a62"/>
-    <text x="110" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Linear Attn</text>
-    <text x="110" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">S+=kvᵀ · 只加不改</text>
-    <path d="M195 95 H225" stroke="#0f6e56" stroke-width="2"/>
-    <rect x="230" y="60" width="160" height="70" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
-    <text x="310" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#1f4e79">DeltaNet</text>
-    <text x="310" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">delta 擦写纠错</text>
-    <path d="M395 95 H425" stroke="#0f6e56" stroke-width="2"/>
-    <rect x="430" y="60" width="160" height="70" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
-    <text x="510" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">GDN</text>
-    <text x="510" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">标量门 α</text>
-    <path d="M595 95 H625" stroke="#0f6e56" stroke-width="2"/>
-    <rect x="630" y="60" width="160" height="70" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
-    <text x="710" y="90" text-anchor="middle" font-size="13" font-weight="700" fill="#b85c38">KDA</text>
-    <text x="710" y="110" text-anchor="middle" font-size="11" fill="#5a6a62">Diag(α) 通道门</text>
-    <text x="410" y="170" text-anchor="middle" font-size="12" fill="#7d8c84">每一步都保留前一步能力，只把「遗忘」做得更细</text>
-  </g>
-</svg>
-"""
-
-
-def fig_kda_steps() -> str:
-    return """
-<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KDA four steps">
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DeltaNet steps">
   <rect width="820" height="210" fill="#fffcf5"/>
   <g font-family="Manrope,sans-serif">
-    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">KDA 逐步递推（与 recurrent_kda 对齐）</text>
-    <rect x="20" y="55" width="170" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
-    <text x="105" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">1. 遗忘</text>
-    <text x="105" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">S ← Diag(e^{g}) S</text>
-    <text x="105" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">逐通道 α</text>
-    <rect x="220" y="55" width="170" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
-    <text x="305" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">2. 预测</text>
-    <text x="305" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v̂ ← kᵀ S</text>
-    <text x="305" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">按地址读出</text>
-    <rect x="420" y="55" width="180" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
-    <text x="510" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 纠错写入</text>
-    <text x="510" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">S += β k (v−v̂)ᵀ</text>
-    <text x="510" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">delta rule</text>
-    <rect x="630" y="55" width="170" height="90" rx="12" fill="#1c2420"/>
-    <text x="715" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">4. 查询</text>
-    <text x="715" y="108" text-anchor="middle" font-size="12" fill="#cfd8d3">o ← (q/√d)ᵀ S</text>
-    <text x="715" y="128" text-anchor="middle" font-size="11" fill="#9bb4ae">固定大小状态</text>
-    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">状态 S ∈ R^{d×d}/head，不随序列长度增长</text>
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">DeltaNet 一步：读旧 → 混合 → 擦写 → 查询</text>
+    <rect x="20" y="55" width="175" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="107" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">1. 读旧</text>
+    <text x="107" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v_old ← S k</text>
+    <text x="107" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">按当前 key 取回</text>
+    <rect x="220" y="55" width="175" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="307" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">2. 混合</text>
+    <text x="307" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v_new ← βv+(1−β)v_old</text>
+    <text x="307" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">写入强度 β</text>
+    <rect x="420" y="55" width="175" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="507" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 擦写</text>
+    <text x="507" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">S ← S(I−βkkᵀ)+βvkᵀ</text>
+    <text x="507" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">Householder</text>
+    <rect x="620" y="55" width="175" height="90" rx="12" fill="#1c2420"/>
+    <text x="707" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">4. 查询</text>
+    <text x="707" y="108" text-anchor="middle" font-size="12" fill="#cfd8d3">o ← S q</text>
+    <text x="707" y="128" text-anchor="middle" font-size="11" fill="#9bb4ae">无通道遗忘门</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">相对 KDA：这里还没有 Diag(α)；遗忘靠 β 擦写本身</text>
   </g>
 </svg>
 """
 
 
-def fig_hybrid() -> str:
-    boxes = []
-    labels = ["KDA", "KDA", "KDA", "MLA", "KDA", "KDA", "KDA", "MLA"]
-    x = 40
-    for i, lab in enumerate(labels):
-        if lab == "KDA":
-            fill, stroke, tc = "#d8efe6", "#0f6e56", "#0f6e56"
-        else:
-            fill, stroke, tc = "#f3e0d6", "#b85c38", "#b85c38"
-        boxes.append(
-            f'<rect x="{x}" y="70" width="80" height="56" rx="10" fill="{fill}" stroke="{stroke}"/>'
-            f'<text x="{x+40}" y="103" text-anchor="middle" font-size="13" font-weight="700" fill="{tc}">{lab}</text>'
-        )
-        if i < len(labels) - 1:
-            boxes.append(
-                f'<path d="M{x+82} 98 H{x+95}" stroke="#5a6a62" stroke-width="2"/>'
-            )
-        x += 95
-    return f"""
-<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="hybrid 3:1">
+def fig_chunk() -> str:
+    return """
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="chunkwise">
   <rect width="820" height="200" fill="#fffcf5"/>
   <g font-family="Manrope,sans-serif">
-    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">层间混合 3:1 · 每层后接 MoE FFN（示意）</text>
-    {''.join(boxes)}
-    <text x="410" y="165" text-anchor="middle" font-size="12" fill="#5a6a62">绿 = KDA 线性层（压 cache） · 橙 = MLA 全注意力（补检索） · MLA 用 NoPE</text>
-    <text x="410" y="188" text-anchor="middle" font-size="12" fill="#7d8c84">长生成时 KV cache 约只剩全注意力层的 1/4</text>
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">分块并行：WY 构造 U/W → 块间传 S → 块内 matmul</text>
+    <rect x="40" y="60" width="200" height="80" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="140" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">构造 U, W</text>
+    <text x="140" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">O(d) 内存 / 块</text>
+    <path d="M250 100 H290" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="295" y="60" width="200" height="80" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="395" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">块间更新 S</text>
+    <text x="395" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">Eq.7 递推</text>
+    <path d="M505 100 H545" stroke="#0f6e56" stroke-width="2"/>
+    <rect x="550" y="60" width="220" height="80" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="660" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">块内算 O</text>
+    <text x="660" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">Eq.8 · 吃 Tensor Core</text>
+    <text x="410" y="175" text-anchor="middle" font-size="12" fill="#7d8c84">相对纯递推：H100 上约 5.5×–13×（随 L、d_head 增大）</text>
   </g>
 </svg>
 """
 
 
 FIGURES = {
-    "pipeline": ("教学示意 · 从线性注意力到 KDA", fig_pipeline()),
-    "kda_steps": ("教学示意 · 与本夹 kda/recurrent.py 对齐", fig_kda_steps()),
-    "hybrid": ("教学示意 · 对应论文 Fig.3 的 3:1 交织", fig_hybrid()),
+    "delta_steps": ("教学示意 · DeltaNet 单步擦写", fig_delta_steps()),
+    "chunk": ("教学示意 · 对应论文 §3 分块并行", fig_chunk()),
 }
+
 
 
 CSS = r"""
@@ -225,7 +190,7 @@ def build() -> str:
 <html lang="zh-CN"><head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Kimi Linear / KDA 逐段精读 · Delta Attention</title>
+<title>DeltaNet / Delta Attention 逐段精读</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
@@ -234,8 +199,8 @@ def build() -> str:
 <body class="mode-both"><div class="app">
 <aside class="side">
 <div class="brand">LLM Learning · Paper Reader</div>
-<h1>Kimi Linear / KDA</h1>
-<div class="meta">arXiv:2510.26692<br/>每段 = 小结 + Original + 译文<br/>公式独立成卡 · 教学代码在本夹 kda/</div>
+<h1>DeltaNet / Delta Attention</h1>
+<div class="meta">arXiv:2406.06484<br/>每段 = 小结 + Original + 译文<br/>公式独立成卡 · 与 KDA 分夹</div>
 <nav id="toc">
 <a href="#formulas">公式墙（速查）</a>
 """
@@ -260,24 +225,22 @@ def build() -> str:
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
 <a class="btn" href="#formulas">公式墙</a>
-<a class="btn" href="./notes.md">公式笔记 →</a>
-<a class="btn" href="./kda/recurrent.py">recurrent.py →</a>
-<a class="btn" href="./demo.py">demo.py →</a>
-<a class="btn" href="../delta-attention/index.html">DeltaNet →</a>
+<a class="btn" href="../kda/index.html">KDA 精读 →</a>
 <a class="btn" href="../linear-attention/index.html">Linear Attention →</a>
+<a class="btn" href="https://github.com/fla-org/flash-linear-attention" target="_blank" rel="noopener">FLA 算子 →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">
-<h2>Kimi Linear · Kimi Delta Attention（KDA）</h2>
-<p>本夹对应 <strong>arXiv:2510.26692</strong>。与 <a href="../delta-attention/">DeltaNet / Delta Attention</a> 分开放：那边是可扩展 delta rule 基线，这里是通道级门控 + 混合架构。精读含独立公式卡（KaTeX）。</p>
+<h2>DeltaNet · Delta Attention</h2>
+<p>本夹对应 <strong>arXiv:2406.06484</strong>（可扩展 DeltaNet），与 <a href="../kda/">Kimi Linear / KDA</a> 分开放。精读：小结 → Original → 译文；关键公式<strong>独立成卡</strong>（KaTeX）。</p>
 <div class="chips">
-<span class="chip">核心：<em>KDA = GDN + Diag(α)</em></span>
-<span class="chip">架构：<em>KDA:MLA = 3:1</em></span>
-<span class="chip">收益：<em>−75% cache · ~6× 解码</em></span>
-<span class="chip">代码：<em>./kda/</em></span>
+<span class="chip">核心：<em>delta rule 擦写</em></span>
+<span class="chip">算法：<em>WY + 分块并行</em></span>
+<span class="chip">规模：<em>1.3B / 100B tokens</em></span>
+<span class="chip">下游：<em>→ GDN → KDA</em></span>
 </div>
 </section>
-<p class="note">建议：先读 <a href="../delta-attention/index.html">DeltaNet</a> 搞清擦写，再扫本页 <a href="#formulas">公式墙</a>，最后打开 <a href="./kda/recurrent.py">recurrent.py</a>。</p>
+<p class="note">英文贴近 NeurIPS 2024 论文。建议：先扫 <a href="#formulas">公式墙</a>，再读 §2.2 擦写与 §3 并行；学完接 <a href="../kda/index.html">KDA</a>。</p>
 <section class="section" id="formulas"><h3>公式墙（速查） <span>谱系一览</span></h3>
 <p class="inline-math-hint">以下公式从正文抽出，便于对照；段内还有更细的展开卡。</p>
 """
