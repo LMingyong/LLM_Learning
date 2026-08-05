@@ -20,7 +20,9 @@ papers/<slug>/
 | **BigBird** | [`papers/bigbird/`](./papers/bigbird/) |
 | Attention Residuals | [`papers/attention-residuals/`](./papers/attention-residuals/) |
 | **Linear Attention** | [`papers/linear-attention/`](./papers/linear-attention/) |
-| **DeltaNet / Delta Attention** | [`papers/delta-attention/`](./papers/delta-attention/) |
+| **DeltaNet 原点（理论）** | [`papers/deltanet/`](./papers/deltanet/) |
+| **并行训练 DeltaNet** | [`papers/deltanet-parallel/`](./papers/deltanet-parallel/) |
+| **Gated DeltaNet** | [`papers/gated-deltanet/`](./papers/gated-deltanet/) |
 | **Kimi Linear / KDA** | [`papers/kda/`](./papers/kda/) |
 | Watts–Strogatz | [`papers/watts-strogatz/`](./papers/watts-strogatz/) |
 | NSA | [`papers/nsa/`](./papers/nsa/) |
@@ -28,7 +30,7 @@ papers/<slug>/
 | 稀疏注意力专题 | [`papers/sparse-attention/`](./papers/sparse-attention/) |
 | Flash Attention 专题 | [`papers/flash-attention/`](./papers/flash-attention/) |
 
-> **Delta Attention ≠ KDA**：前者是 DeltaNet（arXiv:2406.06484）；后者是 Kimi Linear 里的 Kimi Delta Attention（arXiv:2510.26692）。两篇分夹存放。
+> **谱系**：Linear Attention（2006）→ **DeltaNet 原点**（2102）→ 并行训练（2406）→ Gated DeltaNet（2412）→ KDA（2510）。
 
 ## KDA 教学代码
 
@@ -39,14 +41,17 @@ papers/<slug>/
 | [`papers/kda/test_kda.py`](./papers/kda/test_kda.py) | 方程级测试 |
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python3 papers/kda/demo.py
-pytest -q
+pytest -q papers/kda
 ```
 
-## 参考
+## 重建精读页
 
-- [DeltaNet](https://arxiv.org/abs/2406.06484)
-- [Kimi Linear](https://arxiv.org/abs/2510.26692)
-- [FLA / Flash Linear Attention](https://github.com/fla-org/flash-linear-attention)
+```bash
+python3 tools/build_deltanet_page.py
+python3 tools/build_delta_attention_page.py   # → deltanet-parallel/
+python3 tools/build_gated_deltanet_page.py
+python3 tools/build_kimi_linear_page.py
+python3 tools/build_linear_attention_page.py
+```

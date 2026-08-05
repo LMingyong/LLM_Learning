@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build fine-grained DeltaNet / Delta Attention study page."""
+"""Build fine-grained Gated DeltaNet study page."""
 
 from __future__ import annotations
 
@@ -7,70 +7,93 @@ import html
 import json
 from pathlib import Path
 
-from delta_attention_paragraphs import FORMULA_WALL, GLOSSARY, REFS, SECTIONS
+from gated_deltanet_paragraphs import FORMULA_WALL, GLOSSARY, REFS, SECTIONS
 from reader_math import KATEX_HEAD, MATH_CSS, render_formulas
 
-OUT = Path(__file__).resolve().parents[1] / "papers/deltanet-parallel/index.html"
+OUT = Path(__file__).resolve().parents[1] / "papers/gated-deltanet/index.html"
 
 
 def esc(s: str) -> str:
     return html.escape(s)
 
 
-def fig_delta_steps() -> str:
+
+def fig_compare() -> str:
     return """
-<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DeltaNet steps">
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="compare">
   <rect width="820" height="210" fill="#fffcf5"/>
   <g font-family="Manrope,sans-serif">
-    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">DeltaNet 一步：读旧 → 混合 → 擦写 → 查询</text>
-    <rect x="20" y="55" width="175" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
-    <text x="107" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">1. 读旧</text>
-    <text x="107" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v_old ← S k</text>
-    <text x="107" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">按当前 key 取回</text>
-    <rect x="220" y="55" width="175" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
-    <text x="307" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">2. 混合</text>
-    <text x="307" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v_new ← βv+(1−β)v_old</text>
-    <text x="307" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">写入强度 β</text>
-    <rect x="420" y="55" width="175" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
-    <text x="507" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 擦写</text>
-    <text x="507" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">S ← S(I−βkkᵀ)+βvkᵀ</text>
-    <text x="507" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">Householder</text>
-    <rect x="620" y="55" width="175" height="90" rx="12" fill="#1c2420"/>
-    <text x="707" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">4. 查询</text>
-    <text x="707" y="108" text-anchor="middle" font-size="12" fill="#cfd8d3">o ← S q</text>
-    <text x="707" y="128" text-anchor="middle" font-size="11" fill="#9bb4ae">无通道遗忘门</text>
-    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">相对 KDA：这里还没有 Diag(α)；遗忘靠 β 擦写本身</text>
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">互补：全局门 α × 定点擦写 β</text>
+    <rect x="40" y="55" width="220" height="100" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="150" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">Mamba2</text>
+    <text x="150" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">α · S + vkᵀ</text>
+    <text x="150" y="138" text-anchor="middle" font-size="11" fill="#7d8c84">清空快 · 不定点</text>
+    <rect x="300" y="55" width="220" height="100" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="410" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">DeltaNet</text>
+    <text x="410" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">(I−βkkᵀ)S + βvkᵀ</text>
+    <text x="410" y="138" text-anchor="middle" font-size="11" fill="#7d8c84">定点准 · 难整页清</text>
+    <rect x="560" y="55" width="220" height="100" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="670" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">Gated DeltaNet</text>
+    <text x="670" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">α(I−βkkᵀ)S + βvkᵀ</text>
+    <text x="670" y="138" text-anchor="middle" font-size="11" fill="#7d8c84">两者兼得</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">下一跳：KDA 把 α 换成 Diag(α) 做通道级遗忘</text>
   </g>
 </svg>
 """
 
 
-def fig_chunk() -> str:
+def fig_gdn_steps() -> str:
     return """
-<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="chunkwise">
-  <rect width="820" height="200" fill="#fffcf5"/>
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GDN steps">
+  <rect width="820" height="210" fill="#fffcf5"/>
   <g font-family="Manrope,sans-serif">
-    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">分块并行：WY 构造 U/W → 块间传 S → 块内 matmul</text>
-    <rect x="40" y="60" width="200" height="80" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
-    <text x="140" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">构造 U, W</text>
-    <text x="140" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">O(d) 内存 / 块</text>
-    <path d="M250 100 H290" stroke="#0f6e56" stroke-width="2"/>
-    <rect x="295" y="60" width="200" height="80" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
-    <text x="395" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">块间更新 S</text>
-    <text x="395" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">Eq.7 递推</text>
-    <path d="M505 100 H545" stroke="#0f6e56" stroke-width="2"/>
-    <rect x="550" y="60" width="220" height="80" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
-    <text x="660" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">块内算 O</text>
-    <text x="660" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">Eq.8 · 吃 Tensor Core</text>
-    <text x="410" y="175" text-anchor="middle" font-size="12" fill="#7d8c84">相对纯递推：H100 上约 5.5×–13×（随 L、d_head 增大）</text>
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Gated Delta Rule 一步（式 10）</text>
+    <rect x="30" y="55" width="170" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="115" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">1. 门控</text>
+    <text x="115" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">乘 α</text>
+    <text x="115" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">全局寿命</text>
+    <rect x="225" y="55" width="170" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="310" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">2. 擦旧</text>
+    <text x="310" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">(I−βkkᵀ)</text>
+    <text x="310" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">按地址</text>
+    <rect x="420" y="55" width="170" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="505" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 写新</text>
+    <text x="505" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">+ β v kᵀ</text>
+    <text x="505" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">纠错写入</text>
+    <rect x="615" y="55" width="170" height="90" rx="12" fill="#1c2420"/>
+    <text x="700" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">4. 读出</text>
+    <text x="700" y="115" text-anchor="middle" font-size="12" fill="#cfd8d3">o ← S q</text>
+    <text x="700" y="135" text-anchor="middle" font-size="11" fill="#9bb4ae">固定状态</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">α→0 整页清空 · α→1 退化为纯 DeltaNet</text>
+  </g>
+</svg>
+"""
+
+
+def fig_hybrid() -> str:
+    return """
+<svg viewBox="0 0 820 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="hybrid">
+  <rect width="820" height="180" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">混合示意：GDN + 滑窗 / Mamba2</text>
+    <rect x="60" y="60" width="140" height="56" rx="10" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="130" y="93" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">GDN</text>
+    <rect x="240" y="60" width="140" height="56" rx="10" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="310" y="93" text-anchor="middle" font-size="13" font-weight="700" fill="#b85c38">SWA / Mamba2</text>
+    <rect x="420" y="60" width="140" height="56" rx="10" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="490" y="93" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">GDN</text>
+    <rect x="600" y="60" width="140" height="56" rx="10" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="670" y="93" text-anchor="middle" font-size="13" font-weight="700" fill="#b85c38">SWA / Mamba2</text>
+    <text x="410" y="150" text-anchor="middle" font-size="12" fill="#7d8c84">互补归纳偏置 + 更高训练吞吐</text>
   </g>
 </svg>
 """
 
 
 FIGURES = {
-    "delta_steps": ("教学示意 · DeltaNet 单步擦写", fig_delta_steps()),
-    "chunk": ("教学示意 · 对应论文 §3 分块并行", fig_chunk()),
+    "compare": ("教学示意 · Mamba2 / DeltaNet / GDN 互补", fig_compare()),
+    "gdn_steps": ("教学示意 · 对应论文式 (10)", fig_gdn_steps()),
+    "hybrid": ("教学示意 · 混合架构选项", fig_hybrid()),
 }
 
 
@@ -190,7 +213,7 @@ def build() -> str:
 <html lang="zh-CN"><head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>DeltaNet / Delta Attention 逐段精读</title>
+<title>Gated DeltaNet 逐段精读</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
@@ -199,8 +222,8 @@ def build() -> str:
 <body class="mode-both"><div class="app">
 <aside class="side">
 <div class="brand">LLM Learning · Paper Reader</div>
-<h1>DeltaNet / Delta Attention</h1>
-<div class="meta">arXiv:2406.06484<br/>每段 = 小结 + Original + 译文<br/>公式独立成卡 · 与 KDA 分夹</div>
+<h1>Gated DeltaNet</h1>
+<div class="meta">arXiv:2412.06464<br/>每段 = 小结 + Original + 译文<br/>公式独立成卡 · α + δ</div>
 <nav id="toc">
 <a href="#formulas">公式墙（速查）</a>
 """
@@ -225,25 +248,23 @@ def build() -> str:
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
 <a class="btn" href="#formulas">公式墙</a>
-<a class="btn" href="./notes.md">公式笔记 →</a>
-<a class="btn" href="../deltanet/index.html">← 理论原点</a>
-<a class="btn" href="../gated-deltanet/index.html">Gated DeltaNet →</a>
+<a class="btn" href="../deltanet/index.html">DeltaNet 原点 →</a>
+<a class="btn" href="../deltanet-parallel/index.html">并行训练 →</a>
 <a class="btn" href="../kda/index.html">KDA →</a>
-<a class="btn" href="../linear-attention/index.html">Linear →</a>
+<a class="btn" href="https://github.com/NVlabs/GatedDeltaNet" target="_blank" rel="noopener">官方代码 →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">
-<h2>并行训练 DeltaNet（2024）</h2>
-<p>本夹对应 <strong>arXiv:2406.06484</strong>：给同一套 delta rule 做硬件高效的分块并行训练。
-理论（为何用 delta）在 <a href="../deltanet/">deltanet/</a>（arXiv:2102.11174）；本夹讲怎么练得动。</p>
+<h2>Gated DeltaNet</h2>
+<p>本夹对应 <strong>arXiv:2412.06464</strong>：把 Mamba2 的标量门 α 与 DeltaNet 的 delta rule 合成 <em>gated delta rule</em>。精读含独立公式卡；上游读 <a href="../deltanet/">理论原点</a> / <a href="../deltanet-parallel/">并行训练</a>，下游读 <a href="../kda/">KDA</a>。</p>
 <div class="chips">
-<span class="chip">核心：<em>delta rule 擦写</em></span>
-<span class="chip">算法：<em>WY + 分块并行</em></span>
-<span class="chip">规模：<em>1.3B / 100B tokens</em></span>
-<span class="chip">下游：<em>→ GDN → KDA</em></span>
+<span class="chip">核心：<em>α(I−βkkᵀ)</em></span>
+<span class="chip">对照：<em>Mamba2 · DeltaNet</em></span>
+<span class="chip">训练：<em>WY 分块 + 门控</em></span>
+<span class="chip">下游：<em>→ KDA</em></span>
 </div>
 </section>
-<p class="note">英文贴近 NeurIPS 2024 论文。建议：先读 <a href="../deltanet/">理论原点</a>，再扫本页 <a href="#formulas">公式墙</a> 与 §3 并行；学完接 <a href="../gated-deltanet/index.html">Gated DeltaNet</a>，再进 <a href="../kda/index.html">KDA</a>。</p>
+<p class="note">英文贴近 ICLR 2025 论文。建议：先扫 <a href="#formulas">公式墙</a> 看三式对照，再读 §3.1；然后进 <a href="../kda/index.html">KDA</a> 看通道门。</p>
 <section class="section" id="formulas"><h3>公式墙（速查） <span>谱系一览</span></h3>
 <p class="inline-math-hint">以下公式从正文抽出，便于对照；段内还有更细的展开卡。</p>
 """

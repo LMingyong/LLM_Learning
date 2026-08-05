@@ -6,7 +6,9 @@
 
 | 夹 | 论文 | 要点 |
 |----|------|------|
-| [`../delta-attention/`](../delta-attention/) | arXiv:2406.06484 | delta rule 擦写 + 可扩展并行训练 |
+| [`../deltanet/`](../deltanet/) | arXiv:2102.11174 | 理论：FWP / 容量 / delta |
+| [`../deltanet-parallel/`](../deltanet-parallel/) | arXiv:2406.06484 | 并行训练同一套 delta |
+| [`../gated-deltanet/`](../gated-deltanet/) | arXiv:2412.06464 | 标量门 α + delta |
 | **本夹** | arXiv:2510.26692 | 通道级 `Diag(α)` + KDA:MLA=3:1 |
 
 精读与公式墙：[`index.html`](./index.html)

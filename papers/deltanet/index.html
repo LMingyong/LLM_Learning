@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>DeltaNet 原点 · 逐段精读（Schlag 2021）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"/>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+
+<style>
+:root{
+  --bg:#f6f3ec; --bg2:#efe9dc; --paper:#fffcf5; --ink:#1c2420; --muted:#5a6a62;
+  --faint:#7d8c84; --line:#d8d0c0; --accent:#0f6e56; --accent-soft:#d8efe6;
+  --warm:#b85c38; --warm-soft:#f3e0d6; --blue:#1f4e79; --blue-soft:#dce8f3;
+  --shadow:0 12px 40px rgba(40,50,40,.08);
+  --serif:"Literata",Georgia,"Noto Serif SC",serif;
+  --sans:"Manrope",system-ui,"Noto Sans SC",sans-serif;
+  --mono:ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.75;
+background:radial-gradient(900px 500px at 0% 0%,rgba(15,110,86,.07),transparent 55%),
+radial-gradient(700px 400px at 100% 8%,rgba(184,92,56,.06),transparent 50%),
+linear-gradient(180deg,var(--bg),var(--bg2));min-height:100vh}
+a{color:var(--accent);text-underline-offset:3px}
+a:hover{color:var(--warm)}
+.app{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow:auto;padding:22px 16px 28px;
+border-right:1px solid var(--line);background:rgba(255,252,245,.85);backdrop-filter:blur(10px)}
+.brand{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--accent);letter-spacing:.04em;margin:0 0 8px}
+.side h1{font-family:var(--sans);font-size:20px;line-height:1.25;margin:0 0 8px}
+.side .meta{font-family:var(--sans);font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+.side nav a{display:block;padding:8px 10px;border-radius:10px;color:var(--muted);
+font-family:var(--sans);font-size:13px;text-decoration:none;margin-bottom:2px}
+.side nav a:hover,.side nav a.active{background:var(--accent-soft);color:var(--ink)}
+.side .hint{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:12px;
+font-family:var(--sans);font-size:12px;color:var(--faint);line-height:1.55;background:var(--paper)}
+.main{padding:22px 28px 80px;max-width:1080px}
+.topbar{position:sticky;top:0;z-index:20;margin:0 -28px 22px;padding:14px 28px;
+display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+background:rgba(246,243,236,.9);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.seg{display:inline-flex;padding:4px;border-radius:999px;background:var(--paper);border:1px solid var(--line)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;
+font-family:var(--sans);font-size:12px;padding:8px 12px;border-radius:999px}
+.seg button.on{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.btn{font-family:var(--sans);font-size:12px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);border-radius:999px;padding:8px 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.search{flex:1;min-width:180px}
+.search input{width:100%;border-radius:999px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);padding:9px 14px;font-family:var(--sans);font-size:13px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.hero{border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:22px;
+background:linear-gradient(135deg,rgba(15,110,86,.08),transparent 45%),var(--paper);
+box-shadow:var(--shadow)}
+.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:26px}
+.hero p{margin:0;color:var(--muted);font-family:var(--sans);font-size:14px;line-height:1.65}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-family:var(--sans);font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.chip em{color:var(--warm);font-style:normal;font-weight:600}
+.section{margin:28px 0 10px;scroll-margin-top:78px}
+.section h3{font-family:var(--sans);font-size:18px;margin:0 0 12px;padding-bottom:8px;
+border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:10px}
+.section h3 span{font-size:12px;color:var(--faint);font-weight:500}
+.card{border:1px solid var(--line);background:var(--paper);border-radius:16px;padding:14px 16px;margin:0 0 12px;
+transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover{border-color:rgba(15,110,86,.35);transform:translateY(-1px);box-shadow:var(--shadow)}
+.card.active{border-color:var(--accent);box-shadow:0 0 0 1px rgba(15,110,86,.2),var(--shadow)}
+.pidx{font-family:var(--sans);font-size:11px;color:var(--faint);float:right;margin-left:8px}
+.summary{font-family:var(--sans);font-size:13px;color:#0b3d30;background:var(--accent-soft);
+border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 10px 10px 0;margin:0 0 12px;line-height:1.55}
+.lang{font-size:15.5px;line-height:1.8}
+.lang .en{color:#24312c}
+.lang .zh{color:#1c2420}
+.lang .label{font-family:var(--sans);font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+body.mode-zh .en-block,body.mode-en .zh-block{display:none}
+body.mode-zh .pair,body.mode-en .pair{grid-template-columns:1fr}
+.terms{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;clear:both}
+.term{font-family:var(--sans);font-size:11px;padding:4px 8px;border-radius:999px;cursor:pointer;
+background:var(--warm-soft);color:#6a2f18;border:1px solid rgba(184,92,56,.25)}
+.term:hover{background:#efd2c2}
+.figure{margin:12px 0 4px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fffcf5}
+.figure .cap{font-family:var(--sans);font-size:12px;color:var(--faint);padding:8px 12px;border-top:1px solid var(--line)}
+.figure svg{display:block;width:100%;height:auto}
+.hidden-by-search{display:none !important}
+.drawer{position:fixed;top:0;right:0;width:min(420px,100%);height:100vh;overflow:auto;z-index:40;
+background:var(--paper);border-left:1px solid var(--line);
+transform:translateX(100%);transition:transform .28s ease;padding:18px 16px 40px;box-shadow:var(--shadow)}
+.drawer.open{transform:none}
+.drawer h2{font-family:var(--sans);margin:8px 0 6px;font-size:18px}
+.gitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff}
+.gitem b{font-family:var(--sans);color:var(--warm)}
+.gitem p{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.55}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ref{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--paper);
+display:flex;flex-direction:column;gap:8px;min-height:140px}
+.ref .lv{font-family:var(--sans);font-size:11px;align-self:start;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.ref .lv.must{color:#fff;background:var(--accent);border-color:transparent;font-weight:700}
+.ref .lv.imp{color:#fff;background:var(--warm);border-color:transparent;font-weight:700}
+.ref h4{margin:0;font-family:var(--sans);font-size:15px;line-height:1.35}
+.ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint);background:#fff}
+.note{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+.bridge-callout{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:0 14px 14px 0;
+background:var(--paper);padding:14px 16px;margin:0 0 18px;font-family:var(--sans);font-size:14px;color:var(--muted);line-height:1.65}
+.bridge-callout strong{color:var(--ink)}
+
+.math-stack{display:flex;flex-direction:column;gap:10px;margin:12px 0 4px}
+.math-panel{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#fff,#fffcf5);
+padding:12px 14px;box-shadow:0 8px 24px rgba(40,50,40,.04)}
+.math-panel .math-tag{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.04em;
+color:var(--accent);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.math-panel .math-tag::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--accent);flex:0 0 auto}
+.math-panel .math-eq{overflow-x:auto;padding:4px 0 2px;font-size:1.05em;line-height:1.6;color:var(--ink)}
+.math-panel .math-eq .katex-display{margin:0.4em 0}
+.math-panel .math-note{font-family:var(--sans);font-size:12px;color:var(--muted);margin-top:8px;
+padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
+.formula-wall{display:grid;grid-template-columns:1fr;gap:12px;margin:0 0 18px}
+@media (min-width:820px){.formula-wall{grid-template-columns:1fr 1fr}}
+.formula-wall .math-panel{min-height:100%}
+.formula-wall .math-panel.span2{grid-column:1 / -1}
+.inline-math-hint{font-family:var(--sans);font-size:12px;color:var(--faint);margin:0 0 10px}
+
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .pair{grid-template-columns:1fr}
+  .main{padding:16px 14px 70px}
+  .topbar{margin:0 -14px 16px;padding:12px 14px}
+}
+</style></head>
+<body class="mode-both"><div class="app">
+<aside class="side">
+<div class="brand">LLM Learning · Paper Reader</div>
+<h1>DeltaNet 原点</h1>
+<div class="meta">arXiv:2102.11174 · ICML 2021<br/>Linear Transformers Are Secretly FWPs<br/>理论：等价 · 容量 · delta 指令</div>
+<nav id="toc">
+<a href="#formulas">公式墙（速查）</a>
+<a href="#bridge">先补缺口：从 Linear Attention 到 DeltaNet（导读）</a>
+<a href="#abstract">Abstract 摘要</a>
+<a href="#fwp">2–3 快权重视角：Linear Attn 到底在干什么</a>
+<a href="#capacity">4.1 理论核心①：容量上限为什么要命</a>
+<a href="#delta">4.2 理论核心②：Delta 编程指令</a>
+<a href="#phi">5 特征映射 φ（简述）</a>
+<a href="#expts">6 实验要点（极简）</a>
+<a href="#next">读完之后去哪</a>
+<a href="#glossary">名词重点解释</a>
+<a href="#refs">重点引用</a>
+</nav>
+<div class="hint">
+<div><span class="kbd">1</span>对照 <span class="kbd">2</span>译文 <span class="kbd">3</span>原文</div>
+<div style="margin-top:6px"><span class="kbd">J</span>/<span class="kbd">K</span>跳段 <span class="kbd">G</span>名词 <span class="kbd">/</span>搜索</div>
+</div></aside>
+<main class="main">
+<div class="topbar">
+<div class="seg" id="modeSeg">
+<button data-mode="both" class="on">对照</button>
+<button data-mode="zh">仅译文</button>
+<button data-mode="en">仅原文</button>
+</div>
+<button class="btn" id="btnGlossary">名词表</button>
+<a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+<a class="btn" href="#formulas">公式墙</a>
+<a class="btn" href="../linear-attention/index.html">← Linear Attn</a>
+<a class="btn" href="../deltanet-parallel/index.html">并行训练 →</a>
+<a class="btn" href="../gated-deltanet/index.html">Gated DeltaNet →</a>
+<div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
+</div>
+<section class="hero">
+<h2>DeltaNet 原点（Schlag et al., 2021）</h2>
+<p>本夹对应 <strong>arXiv:2102.11174</strong>：证明 Linear Attention ≡ Fast Weight Programmer，推出加性写入的容量上限，并把写入指令换成 delta rule。
+这是理论原点，不是 2024 并行训练文——训练加速见 <a href="../deltanet-parallel/">deltanet-parallel</a>。</p>
+<div class="chips">
+<span class="chip">核心：<em>β(v−v̄)⊗φ(k)</em></span>
+<span class="chip">桥：<em>Linear → FWP → 容量 → δ</em></span>
+<span class="chip">后续：<em>并行 · GDN · KDA</em></span>
+</div>
+</section>
+<div class="bridge-callout">
+<strong>读之前先认缺口：</strong>从 Linear Attention 直接跳到「用 delta 更新」会觉得中间空一截。
+空的是：① 固定矩阵 W 是联想记忆；② 加法写入在超容量下必然串扰；③ 因此指令集要从「只加」升级到「先读再改」。
+请先读下面「导读」节，再进正文。
+</div>
+<p class="note">英文贴近 ICML 2021 论文；导读节为学习笔记。建议路径：
+<a href="../linear-attention/">Linear Attention</a> → 本页 →
+<a href="../deltanet-parallel/">并行训练</a> →
+<a href="../gated-deltanet/">Gated DeltaNet</a> →
+<a href="../kda/">KDA</a>。</p>
+<section class="section" id="formulas"><h3>公式墙（速查） <span>理论三板斧</span></h3>
+<p class="inline-math-hint">加性 FWP → 容量界 → delta 纠错；段内还有更细展开。</p>
+<div class="formula-wall"><div class="math-panel span2" data-blob="linear attn = 加性快权重 只加不改：每来一对 (k,v) 就叠一层外积。 w_i = w_{i-1} + v_i\otimes\phi(k_i),\quad y_i = w_i\,\phi(q_i)"><div class="math-tag">Linear Attn = 加性快权重</div><div class="math-eq">\[W_i = W_{i-1} + v_i\otimes\phi(k_i),\quad y_i = W_i\,\phi(q_i)\]</div><div class="math-note">只加不改：每来一对 (k,v) 就叠一层外积。</div></div><div class="math-panel span2" data-blob="容量直觉 l &gt; d_dot 时必然串扰；这就是「超容量」体制。 \#\{\text{可互不干扰的 key}\} \le d_{\mathrm{dot}}=\dim\phi(k)"><div class="math-tag">容量直觉</div><div class="math-eq">\[\#\{\text{可互不干扰的 key}\} \le d_{\mathrm{dot}}=\dim\phi(k)\]</div><div class="math-note">L &gt; d_dot 时必然串扰；这就是「超容量」体制。</div></div><div class="math-panel span2" data-blob="deltanet · 纠错写入 先读出旧绑定，再按误差改写——经典 delta rule。 w_i = w_{i-1} + \beta_i\,(v_i-\bar v_i)\otimes\phi(k_i),\quad \bar v_i=w_{i-1}\phi(k_i)"><div class="math-tag">DeltaNet · 纠错写入</div><div class="math-eq">\[W_i = W_{i-1} + \beta_i\,(v_i-\bar v_i)\otimes\phi(k_i),\quad \bar v_i=W_{i-1}\phi(k_i)\]</div><div class="math-note">先读出旧绑定，再按误差改写——经典 delta rule。</div></div><div class="math-panel" data-blob="写入强度 模型自己学「这次要改多狠」。 \beta_i=\sigma(w_\beta x_i)\in(0,1)"><div class="math-tag">写入强度</div><div class="math-eq">\[\beta_i=\sigma(W_\beta x_i)\in(0,1)\]</div><div class="math-note">模型自己学「这次要改多狠」。</div></div></div></section>
+<section class="section" id="bridge"><h3>先补缺口：从 Linear Attention 到 DeltaNet（导读） <span>4 段</span></h3>
+<article class="card para" data-idx="1" data-blob="teaching bridge (study note). start from katharopoulos linear attention: after feature map φ, causal attention becomes a fixed-size matrix state that accumulates outer products and reads with the query. 导读（学习笔记）。从 katharopoulos 线性注意力出发：加了特征映射 φ 之后，因果注意力变成一块固定大小的矩阵状态——不断累加外积，再用 query 去读。 你已经会的：s/w 是固定大小「便签本」，每步往上贴一张 kv 外积。 linear attention φ">
+<span class="pidx">§1</span>
+<div class="summary"><b>小结</b> · 你已经会的：S/W 是固定大小「便签本」，每步往上贴一张 kv 外积。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="你熟悉的线性注意力 分母 z 是归一化累加器；分子就是快权重矩阵 w。 w_i=w_{i-1}+v_i\otimes\phi(k_i),\quad y_i=\frac{w_i\phi(q_i)}{z_i\cdot\phi(q_i)},\quad z_i=z_{i-1}+\phi(k_i)"><div class="math-tag">你熟悉的线性注意力</div><div class="math-eq">\[W_i=W_{i-1}+v_i\otimes\phi(k_i),\quad y_i=\frac{W_i\phi(q_i)}{z_i\cdot\phi(q_i)},\quad z_i=z_{i-1}+\phi(k_i)\]</div><div class="math-note">分母 z 是归一化累加器；分子就是快权重矩阵 W。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Teaching bridge (study note). Start from Katharopoulos linear attention: after feature map φ, causal attention becomes a fixed-size matrix state that accumulates outer products and reads with the query.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">导读（学习笔记）。从 Katharopoulos 线性注意力出发：加了特征映射 φ 之后，因果注意力变成一块固定大小的矩阵状态——不断累加外积，再用 query 去读。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="bridge">
+  <rect width="820" height="220" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">缺口补齐：Linear Attn → 容量墙 → Delta</text>
+    <rect x="30" y="50" width="170" height="100" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="115" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">1. 加性写入</text>
+    <text x="115" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">W ← W + v⊗φ(k)</text>
+    <text x="115" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">Linear Attn / FWP</text>
+    <text x="215" y="105" font-size="20" fill="#0f6e56">→</text>
+    <rect x="240" y="50" width="170" height="100" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="325" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">2. 容量墙</text>
+    <text x="325" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">L &gt; d_dot</text>
+    <text x="325" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">串扰不可避免</text>
+    <text x="425" y="105" font-size="20" fill="#0f6e56">→</text>
+    <rect x="450" y="50" width="170" height="100" rx="12" fill="#fff3d6" stroke="#8a6a20"/>
+    <text x="535" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#8a6a20">3. 需要改写</text>
+    <text x="535" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">只会叠加不够</text>
+    <text x="535" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">指令集要升级</text>
+    <text x="635" y="105" font-size="20" fill="#0f6e56">→</text>
+    <rect x="660" y="50" width="130" height="100" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="725" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">4. Delta</text>
+    <text x="725" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">β(v−v̄)⊗φ(k)</text>
+    <text x="725" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">先读再改</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">不是换核函数，而是换「写入指令」</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 从 Linear Attention 到 Delta 的四步缺口</div></div>
+<div class="terms"><span class="term" data-term="linear attention">linear attention</span><span class="term" data-term="φ">φ</span></div></article>
+<article class="card para" data-idx="2" data-blob="the missing intuition: that matrix w is exactly a fast weight programmer memory—keys are addresses, values are contents. additive updates never erase; when too many keys share a finite address space, retrieval mixes several values (crosstalk). 缺的直觉：矩阵 w 就是一块快权重记忆——key 是地址，value 是内容。加性更新从不擦除；当地址空间有限、key 太多时，读出来会混进多个 value（串扰）。 卡点不在公式符号，而在「有限便签本会被写爆」。 fwp associative memory crosstalk">
+<span class="pidx">§2</span>
+<div class="summary"><b>小结</b> · 卡点不在公式符号，而在「有限便签本会被写爆」。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="理想检索（正交 key）  \phi(k_a)^\top\phi(k_b)=0\ (a\neq b)\;\rightarrow\;\text{读 }k_a\text{ 只拿到 }v_a"><div class="math-tag">理想检索（正交 key）</div><div class="math-eq">\[\phi(k_a)^\top\phi(k_b)=0\ (a\neq b)\;\Rightarrow\;\text{读 }k_a\text{ 只拿到 }v_a\]</div></div><div class="math-panel span2" data-blob="超容量  l &gt; d_{\mathrm{dot}}\;\rightarrow\;\text{无法再保证全体正交}\;\rightarrow\;\text{串扰不可避免}"><div class="math-tag">超容量</div><div class="math-eq">\[L &gt; d_{\mathrm{dot}}\;\Rightarrow\;\text{无法再保证全体正交}\;\Rightarrow\;\text{串扰不可避免}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The missing intuition: that matrix W is exactly a Fast Weight Programmer memory—keys are addresses, values are contents. Additive updates never erase; when too many keys share a finite address space, retrieval mixes several values (crosstalk).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">缺的直觉：矩阵 W 就是一块快权重记忆——key 是地址，value 是内容。加性更新从不擦除；当地址空间有限、key 太多时，读出来会混进多个 value（串扰）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="FWP">FWP</span><span class="term" data-term="associative memory">associative memory</span><span class="term" data-term="crosstalk">crosstalk</span></div></article>
+<article class="card para" data-idx="3" data-blob="deltanet’s one idea: before writing, read what is already stored at the current key; write only the correction, scaled by a learned β. same finite w, but now editable. deltanet 的一个点子：写入前，先读当前 key 上已经存了什么；只把「误差」按可学习的 β 写回去。还是同一块有限 w，但变成可编辑的了。 一句话跨越缺口：从「只许粘贴」升级到「先读再改」。 delta rule β">
+<span class="pidx">§3</span>
+<div class="summary"><b>小结</b> · 一句话跨越缺口：从「只许粘贴」升级到「先读再改」。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="四步口诀 合并后即 w ← w + β(v−v̄)⊗φ(k)。 \bar v\leftarrow w\phi(k);\; v_{\mathrm{new}}\leftarrow\beta v+(1-\beta)\bar v;\; w\leftarrow w+v_{\mathrm{new}}\otimes\phi(k)-\bar v\otimes\phi(k)"><div class="math-tag">四步口诀</div><div class="math-eq">\[\bar v\leftarrow W\phi(k);\; v_{\mathrm{new}}\leftarrow\beta v+(1-\beta)\bar v;\; W\leftarrow W+v_{\mathrm{new}}\otimes\phi(k)-\bar v\otimes\phi(k)\]</div><div class="math-note">合并后即 W ← W + β(v−v̄)⊗φ(k)。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">DeltaNet’s one idea: before writing, read what is already stored at the current key; write only the correction, scaled by a learned β. Same finite W, but now editable.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">DeltaNet 的一个点子：写入前，先读当前 key 上已经存了什么；只把「误差」按可学习的 β 写回去。还是同一块有限 W，但变成可编辑的了。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="delta rule">delta rule</span><span class="term" data-term="β">β</span></div></article>
+<article class="card para" data-idx="4" data-blob="where later papers sit: this 2021 paper is the theory/origin. 2024 “parallel deltanet” makes training fast; gated deltanet adds scalar forget α; kda makes forget channel-wise. 后文位置：2021 这篇是理论原点；2024「并行 deltanet」解决训练速度；gated deltanet 加标量遗忘 α；kda 再把遗忘做成逐通道。 先把原点读懂，再看训练技巧与门控升级才不晕。 gated deltanet kda">
+<span class="pidx">§4</span>
+<div class="summary"><b>小结</b> · 先把原点读懂，再看训练技巧与门控升级才不晕。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Where later papers sit: this 2021 paper is the theory/origin. 2024 “parallel DeltaNet” makes training fast; Gated DeltaNet adds scalar forget α; KDA makes forget channel-wise.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">后文位置：2021 这篇是理论原点；2024「并行 DeltaNet」解决训练速度；Gated DeltaNet 加标量遗忘 α；KDA 再把遗忘做成逐通道。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span><span class="term" data-term="KDA">KDA</span></div></article>
+</section>
+<section class="section" id="abstract"><h3>Abstract 摘要 <span>3 段</span></h3>
+<article class="card para" data-idx="5" data-blob="we show the formal equivalence of linearised self-attention and fast weight controllers from the early ’90s: a slow net programs fast weights via additive outer products of keys and values. 我们证明：线性化自注意力与上世纪 90 年代初的快权重控制器形式等价——慢网络通过 key/value 的加性外积去编程快权重。 第一主张：linear attention ≡ fast weight programmer。 fwp linear attention">
+<span class="pidx">§5</span>
+<div class="summary"><b>小结</b> · 第一主张：Linear Attention ≡ Fast Weight Programmer。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We show the formal equivalence of linearised self-attention and fast weight controllers from the early ’90s: a slow net programs fast weights via additive outer products of keys and values.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们证明：线性化自注意力与上世纪 90 年代初的快权重控制器形式等价——慢网络通过 key/value 的加性外积去编程快权重。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="FWP">FWP</span><span class="term" data-term="linear attention">linear attention</span></div></article>
+<article class="card para" data-idx="6" data-blob="we infer a memory capacity limit of additive linear attention, and replace pure addition by a delta-rule-like instruction so the model can correct key→value mappings, with learned dynamic learning rates β. 我们推出加性线性注意力的记忆容量上限，并把纯加性指令换成类似 delta rule 的指令，使模型能纠正 key→value 映射，且学习率 β 动态可学。 第二主张：容量有限 ⇒ 必须学会改写，不能只会叠加。 delta rule β capacity">
+<span class="pidx">§6</span>
+<div class="summary"><b>小结</b> · 第二主张：容量有限 ⇒ 必须学会改写，不能只会叠加。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We infer a memory capacity limit of additive linear attention, and replace pure addition by a delta-rule-like instruction so the model can correct key→value mappings, with learned dynamic learning rates β.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们推出加性线性注意力的记忆容量上限，并把纯加性指令换成类似 delta rule 的指令，使模型能纠正 key→value 映射，且学习率 β 动态可学。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="delta rule">delta rule</span><span class="term" data-term="β">β</span><span class="term" data-term="capacity">capacity</span></div></article>
+<article class="card para" data-idx="7" data-blob="we also propose a new kernel φ (dpfp) balancing simplicity and effectiveness, and show gains on synthetic retrieval, wmt14 en–de, and wikitext-103. 我们还提出平衡简洁与效果的新核 φ（dpfp），并在合成检索、wmt14 英德、wikitext-103 上展示收益。 第三块：更好的 φ + 实验验证。 dpfp φ">
+<span class="pidx">§7</span>
+<div class="summary"><b>小结</b> · 第三块：更好的 φ + 实验验证。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We also propose a new kernel φ (DPFP) balancing simplicity and effectiveness, and show gains on synthetic retrieval, WMT14 En–De, and WikiText-103.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们还提出平衡简洁与效果的新核 φ（DPFP），并在合成检索、WMT14 英德、WikiText-103 上展示收益。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="DPFP">DPFP</span><span class="term" data-term="φ">φ</span></div></article>
+</section>
+<section class="section" id="fwp"><h3>2–3 快权重视角：Linear Attn 到底在干什么 <span>3 段</span></h3>
+<article class="card para" data-idx="8" data-blob="classic fwp (schmidhuber ’91/’92): slow weights invent patterns a,b; fast weight matrix w is updated by outer products and then multiplies the input—associative memory with write=sum, read=matvec. 经典 fwp（schmidhuber 91/92）：慢权重发明模式 a,b；快权重矩阵 w 靠外积更新，再乘输入——写=求和、读=矩阵向量乘的联想记忆。 老故事：慢网写程序，快网当内存。 fwp outer product">
+<span class="pidx">§8</span>
+<div class="summary"><b>小结</b> · 老故事：慢网写程序，快网当内存。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="经典 fwp（示意）  w_i=\sigma\!\bigl(w_{i-1}+a_i\otimes b_i\bigr),\quad y_i=w_i x_i"><div class="math-tag">经典 FWP（示意）</div><div class="math-eq">\[W_i=\sigma\!\bigl(W_{i-1}+a_i\otimes b_i\bigr),\quad y_i=W_i x_i\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Classic FWP (Schmidhuber ’91/’92): slow weights invent patterns a,b; fast weight matrix W is updated by outer products and then multiplies the input—associative memory with write=sum, read=matvec.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">经典 FWP（Schmidhuber 91/92）：慢权重发明模式 a,b；快权重矩阵 W 靠外积更新，再乘输入——写=求和、读=矩阵向量乘的联想记忆。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="FWP">FWP</span><span class="term" data-term="outer product">outer product</span></div></article>
+<article class="card para" data-idx="9" data-blob="drop softmax from autoregressive self-attention and rearrange: y = (σ v⊗k) q. that sum is exactly the fast weight matrix w built additively—same as linear attention without φ. 自回归自注意力去掉 softmax 再重排：y=(σ v⊗k) q。这个求和正是加性构造的快权重矩阵 w——也就是不加 φ 的线性注意力。 等价证明的起点：无 softmax 注意力 = 加性 fwp。 self-attention">
+<span class="pidx">§9</span>
+<div class="summary"><b>小结</b> · 等价证明的起点：无 softmax 注意力 = 加性 FWP。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="无 softmax 自注意力  y_i=\bigl(\sum_{j\le i}v_j\otimes k_j\bigr)q_i"><div class="math-tag">无 Softmax 自注意力</div><div class="math-eq">\[y_i=\Bigl(\sum_{j\le i}v_j\otimes k_j\Bigr)q_i\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Drop softmax from autoregressive self-attention and rearrange: y = (Σ v⊗k) q. That sum is exactly the fast weight matrix W built additively—same as linear attention without φ.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">自回归自注意力去掉 softmax 再重排：y=(Σ v⊗k) q。这个求和正是加性构造的快权重矩阵 W——也就是不加 φ 的线性注意力。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="self-attention">self-attention</span></div></article>
+<article class="card para" data-idx="10" data-blob="put φ back for softmax linearisation: w accumulates v⊗φ(k), z accumulates φ(k), readout divides by z·φ(q). this is linear transformer = fwp + normalisation. 为线性化 softmax 再引入 φ：w 累加 v⊗φ(k)，z 累加 φ(k)，读出时除以 z·φ(q)。这就是线性 transformer = fwp + 归一化。 和你在 papers/linear-attention 读到的，是同一套东西。 φ linear attention">
+<span class="pidx">§10</span>
+<div class="summary"><b>小结</b> · 和你在 papers/linear-attention 读到的，是同一套东西。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="线性 transformer 递推  w_i=w_{i-1}+v_i\otimes\phi(k_i),\quad z_i=z_{i-1}+\phi(k_i),\quad y_i=\frac{w_i\phi(q_i)}{z_i\cdot\phi(q_i)}"><div class="math-tag">线性 Transformer 递推</div><div class="math-eq">\[W_i=W_{i-1}+v_i\otimes\phi(k_i),\quad z_i=z_{i-1}+\phi(k_i),\quad y_i=\frac{W_i\phi(q_i)}{z_i\cdot\phi(q_i)}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Put φ back for softmax linearisation: W accumulates v⊗φ(k), z accumulates φ(k), readout divides by z·φ(q). This is linear Transformer = FWP + normalisation.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">为线性化 softmax 再引入 φ：W 累加 v⊗φ(k)，z 累加 φ(k)，读出时除以 z·φ(q)。这就是线性 Transformer = FWP + 归一化。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="equiv">
+  <rect width="820" height="200" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">形式等价：Linear Transformer = FWP + 归一化</text>
+    <rect x="60" y="55" width="300" height="100" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="210" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">因果 Linear Attention</text>
+    <text x="210" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">累加 v⊗φ(k)，用 φ(q) 读</text>
+    <text x="210" y="138" text-anchor="middle" font-size="11" fill="#7d8c84">固定大小状态</text>
+    <text x="410" y="110" text-anchor="middle" font-size="22" font-weight="700" fill="#0f6e56">≡</text>
+    <rect x="460" y="55" width="300" height="100" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="610" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">Fast Weight Programmer</text>
+    <text x="610" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">慢网写快权重 W</text>
+    <text x="610" y="138" text-anchor="middle" font-size="11" fill="#7d8c84">联想记忆读写</text>
+    <text x="410" y="180" text-anchor="middle" font-size="12" fill="#7d8c84">同一套 W；差别在后来把「加」换成「delta」</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · Linear Attention ≡ Fast Weight Programmer</div></div>
+<div class="terms"><span class="term" data-term="φ">φ</span><span class="term" data-term="linear attention">linear attention</span></div></article>
+</section>
+<section class="section" id="capacity"><h3>4.1 理论核心①：容量上限为什么要命 <span>3 段</span></h3>
+<article class="card para" data-idx="11" data-blob="endlessly adding associations into a finite matrix hits a wall. retrieval is a matvec; to avoid interference, keys in φ-space should be orthogonal. in dimension d_dot you get at most d_dot orthogonal keys. 往有限矩阵里无尽叠加关联必然撞墙。检索是矩阵向量乘；要避免干扰，φ 空间里的 key 应尽量正交。d_dot 维最多只有 d_dot 个正交 key。 容量 ≈ 特征维数；不是「无限便签」。 capacity d_dot crosstalk">
+<span class="pidx">§11</span>
+<div class="summary"><b>小结</b> · 容量 ≈ 特征维数；不是「无限便签」。</div>
+<div class="math-stack"><div class="math-panel" data-blob="容量界（直觉） l&gt;d_dot ⇒ 进入 overcapacity，串扰成为常态。 \#\text{互不干扰绑定} \le d_{\mathrm{dot}}"><div class="math-tag">容量界（直觉）</div><div class="math-eq">\[\#\text{互不干扰绑定} \le d_{\mathrm{dot}}\]</div><div class="math-note">L&gt;d_dot ⇒ 进入 overcapacity，串扰成为常态。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Endlessly adding associations into a finite matrix hits a wall. Retrieval is a matvec; to avoid interference, keys in φ-space should be orthogonal. In dimension d_dot you get at most d_dot orthogonal keys.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">往有限矩阵里无尽叠加关联必然撞墙。检索是矩阵向量乘；要避免干扰，φ 空间里的 key 应尽量正交。d_dot 维最多只有 d_dot 个正交 key。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="capacity">capacity</span><span class="term" data-term="d_dot">d_dot</span><span class="term" data-term="crosstalk">crosstalk</span></div></article>
+<article class="card para" data-idx="12" data-blob="this is the basic (order-2) tensor-product representation story: smolensky’s tpr theorems on crosstalk transfer here. difference: classic tpr assumes known roles/fillers; fwps learn the vectors. 这就是最基本的（二阶）张量积表示：smolensky 关于串扰的 tpr 定理可迁移过来。差别在于：经典 tpr 假定角色/填充已知；fwp 的向量是学出来的。 理论血统：联想记忆 / tpr，不是拍脑袋调参。 tpr associative memory">
+<span class="pidx">§12</span>
+<div class="summary"><b>小结</b> · 理论血统：联想记忆 / TPR，不是拍脑袋调参。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">This is the basic (order-2) tensor-product representation story: Smolensky’s TPR theorems on crosstalk transfer here. Difference: classic TPR assumes known roles/fillers; FWPs learn the vectors.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">这就是最基本的（二阶）张量积表示：Smolensky 关于串扰的 TPR 定理可迁移过来。差别在于：经典 TPR 假定角色/填充已知；FWP 的向量是学出来的。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="TPR">TPR</span><span class="term" data-term="associative memory">associative memory</span></div></article>
+<article class="card para" data-idx="13" data-blob="softmax attention sidesteps this by growing storage (concatenate all kv). linear models keep |w| fixed—so they must learn to delete/replace, not only append. softmax 注意力靠「拼接全部 kv」让存储随长度涨，从而躲开这个问题。线性模型坚持 |w| 固定——所以必须学会删除/替换，而不能只会追加。 和全注意力的本质分工：固定内存 vs 无限档案柜。 kv cache">
+<span class="pidx">§13</span>
+<div class="summary"><b>小结</b> · 和全注意力的本质分工：固定内存 vs 无限档案柜。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Softmax attention sidesteps this by growing storage (concatenate all KV). Linear models keep |W| fixed—so they must learn to delete/replace, not only append.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Softmax 注意力靠「拼接全部 KV」让存储随长度涨，从而躲开这个问题。线性模型坚持 |W| 固定——所以必须学会删除/替换，而不能只会追加。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="KV cache">KV cache</span></div></article>
+</section>
+<section class="section" id="delta"><h3>4.2 理论核心②：Delta 编程指令 <span>4 段</span></h3>
+<article class="card para" data-idx="14" data-blob="in overcapacity, the model must selectively keep or forget associations. pure addition (eq. 17) is the wrong instruction set. we need an editable write. 超容量下，模型必须有选择地保留或遗忘关联。纯加性（式 17）是错误的指令集。我们需要可编辑的写入。 动机句：不会改写的内存，写爆了就废了。 delta rule">
+<span class="pidx">§14</span>
+<div class="summary"><b>小结</b> · 动机句：不会改写的内存，写爆了就废了。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In overcapacity, the model must selectively keep or forget associations. Pure addition (Eq. 17) is the wrong instruction set. We need an editable write.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">超容量下，模型必须有选择地保留或遗忘关联。纯加性（式 17）是错误的指令集。我们需要可编辑的写入。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="delta steps">
+  <rect width="820" height="210" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Delta 编程指令一步（式 23–24）</text>
+    <rect x="30" y="55" width="170" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="115" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">1. 读旧</text>
+    <text x="115" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">v̄ = W φ(k)</text>
+    <text x="115" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">当前地址内容</text>
+    <rect x="225" y="55" width="170" height="90" rx="12" fill="#fff3d6" stroke="#8a6a20"/>
+    <text x="310" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#8a6a20">2. 定强度</text>
+    <text x="310" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">β = σ(W_β x)</text>
+    <text x="310" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">改多狠</text>
+    <rect x="420" y="55" width="170" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="505" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 算误差</text>
+    <text x="505" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">β(v − v̄)</text>
+    <text x="505" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">只写纠正量</text>
+    <rect x="615" y="55" width="170" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="700" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">4. 写回</text>
+    <text x="700" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">W ← W + …⊗φ(k)</text>
+    <text x="700" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">定点擦写</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">β=1 完全覆盖该 key；β=0 完全不改 · 后文再加 α / Diag(α)</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应原文式 (23)–(24)</div></div>
+<div class="terms"><span class="term" data-term="delta rule">delta rule</span></div></article>
+<article class="card para" data-idx="15" data-blob="delta update: retrieve ar v = w φ(k); set write-strength β=σ(w_β x); form v_new = β v + (1−β)ar v; then remove old and write new—equivalent to w ← w + β(v−ar v)⊗φ(k). delta 更新：读出 v̄=w φ(k)；写入强度 β=σ(w_β x)；混合 v_new=βv+(1−β)v̄；再擦旧写新——等价于 w←w+β(v−v̄)⊗φ(k)。 这就是后来所有 deltanet / gdn / kda 的共同祖先公式。 β delta rule">
+<span class="pidx">§15</span>
+<div class="summary"><b>小结</b> · 这就是后来所有 DeltaNet / GDN / KDA 的共同祖先公式。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="读旧 / 混合  \bar v_i=w_{i-1}\phi(k_i),\quad \beta_i=\sigma(w_\beta x_i),\quad v^{\mathrm{new}}_i=\beta_i v_i+(1-\beta_i)\bar v_i"><div class="math-tag">读旧 / 混合</div><div class="math-eq">\[\bar v_i=W_{i-1}\phi(k_i),\quad \beta_i=\sigma(W_\beta x_i),\quad v^{\mathrm{new}}_i=\beta_i v_i+(1-\beta_i)\bar v_i\]</div></div><div class="math-panel span2" data-blob="擦写（式 23–24） β=1 完全覆盖该地址；β=0 完全不改。 w_i=w_{i-1}+v^{\mathrm{new}}_i\otimes\phi(k_i)-\bar v_i\otimes\phi(k_i)=w_{i-1}+\beta_i(v_i-\bar v_i)\otimes\phi(k_i)"><div class="math-tag">擦写（式 23–24）</div><div class="math-eq">\[W_i=W_{i-1}+v^{\mathrm{new}}_i\otimes\phi(k_i)-\bar v_i\otimes\phi(k_i)=W_{i-1}+\beta_i(v_i-\bar v_i)\otimes\phi(k_i)\]</div><div class="math-note">β=1 完全覆盖该地址；β=0 完全不改。</div></div><div class="math-panel" data-blob="读出  y_i=w_i\phi(q_i)"><div class="math-tag">读出</div><div class="math-eq">\[y_i=W_i\phi(q_i)\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Delta update: retrieve ar v = W φ(k); set write-strength β=σ(W_β x); form v_new = β v + (1−β)ar v; then remove old and write new—equivalent to W ← W + β(v−ar v)⊗φ(k).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Delta 更新：读出 v̄=W φ(k)；写入强度 β=σ(W_β x)；混合 v_new=βv+(1−β)v̄；再擦旧写新——等价于 W←W+β(v−v̄)⊗φ(k)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="β">β</span><span class="term" data-term="delta rule">delta rule</span></div></article>
+<article class="card para" data-idx="16" data-blob="β is a dynamic learning rate for the classical widrow–hoff delta rule, invented by the network itself. later gated deltanet multiplies a global α in front; kda replaces α by diag(α). β 就是经典 widrow–hoff delta rule 的动态学习率，由网络自己生成。后来的 gated deltanet 再在前面乘全局 α；kda 把 α 换成 diag(α)。 谱系锚点：本页只有 β；α / diag(α) 是后话。 widrow-hoff gated deltanet kda">
+<span class="pidx">§16</span>
+<div class="summary"><b>小结</b> · 谱系锚点：本页只有 β；α / Diag(α) 是后话。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">β is a dynamic learning rate for the classical Widrow–Hoff delta rule, invented by the network itself. Later Gated DeltaNet multiplies a global α in front; KDA replaces α by Diag(α).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">β 就是经典 Widrow–Hoff delta rule 的动态学习率，由网络自己生成。后来的 Gated DeltaNet 再在前面乘全局 α；KDA 把 α 换成 Diag(α)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Widrow-Hoff">Widrow-Hoff</span><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span><span class="term" data-term="KDA">KDA</span></div></article>
+<article class="card para" data-idx="17" data-blob="normalisation caveat: running-sum attention normalisation can blow up and imbalance write/remove. the paper prefers sum-normalising φ(k), φ(q) components (sum normalisation). 归一化注意：累加式 attention 归一化可能爆炸，且让擦/写失衡。本文更倾向对 φ(k)、φ(q) 做分量求和归一化（sum normalisation）。 实现细节：deltanet 早期对「怎么归一化」很敏感。 sum normalisation">
+<span class="pidx">§17</span>
+<div class="summary"><b>小结</b> · 实现细节：DeltaNet 早期对「怎么归一化」很敏感。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Normalisation caveat: running-sum attention normalisation can blow up and imbalance write/remove. The paper prefers sum-normalising φ(k), φ(q) components (sum normalisation).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">归一化注意：累加式 attention 归一化可能爆炸，且让擦/写失衡。本文更倾向对 φ(k)、φ(q) 做分量求和归一化（sum normalisation）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="sum normalisation">sum normalisation</span></div></article>
+</section>
+<section class="section" id="phi"><h3>5 特征映射 φ（简述） <span>1 段</span></h3>
+<article class="card para" data-idx="18" data-blob="φ must be nonnegative for attention weights. its output dim d_dot sets capacity. elu+1 is simple but keeps d_dot=d_key; favor+ can raise dim via random features but adds noise; dpfp raises dim deterministically without sampling. φ 需非负才能当注意力权重；其输出维 d_dot 决定容量。elu+1 简单但 d_dot=d_key；favor+ 可用随机特征抬维但有噪声；dpfp 确定性抬维、不采样。 φ 不只是「激活」，它直接买容量。 φ elu+1 favor+ dpfp">
+<span class="pidx">§18</span>
+<div class="summary"><b>小结</b> · φ 不只是「激活」，它直接买容量。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">φ must be nonnegative for attention weights. Its output dim d_dot sets capacity. ELU+1 is simple but keeps d_dot=d_key; FAVOR+ can raise dim via random features but adds noise; DPFP raises dim deterministically without sampling.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">φ 需非负才能当注意力权重；其输出维 d_dot 决定容量。ELU+1 简单但 d_dot=d_key；FAVOR+ 可用随机特征抬维但有噪声；DPFP 确定性抬维、不采样。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="φ">φ</span><span class="term" data-term="ELU+1">ELU+1</span><span class="term" data-term="FAVOR+">FAVOR+</span><span class="term" data-term="DPFP">DPFP</span></div></article>
+</section>
+<section class="section" id="expts"><h3>6 实验要点（极简） <span>2 段</span></h3>
+<article class="card para" data-idx="19" data-blob="synthetic retrieval: under overcapacity, delta updates beat pure additive linear attention—exactly the regime sec. 4.1 predicts. 合成检索：在超容量体制下，delta 更新明显强于纯加性线性注意力——正是 §4.1 预言的场景。 理论不是空话：写爆之后，会不会改写成了胜负手。 capacity">
+<span class="pidx">§19</span>
+<div class="summary"><b>小结</b> · 理论不是空话：写爆之后，会不会改写成了胜负手。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Synthetic retrieval: under overcapacity, delta updates beat pure additive linear attention—exactly the regime Sec. 4.1 predicts.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">合成检索：在超容量体制下，delta 更新明显强于纯加性线性注意力——正是 §4.1 预言的场景。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="capacity">capacity</span></div></article>
+<article class="card para" data-idx="20" data-blob="real tasks: gains on wmt14 en–de and wikitext-103 versus strong linear-attention baselines; setting details in the paper. 真实任务：相对强线性注意力基线，在 wmt14 英德与 wikitext-103 有收益；细节见原文。 原点论文已在 mt/lm 上站住脚，不只是玩具。 ">
+<span class="pidx">§20</span>
+<div class="summary"><b>小结</b> · 原点论文已在 MT/LM 上站住脚，不只是玩具。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Real tasks: gains on WMT14 En–De and WikiText-103 versus strong linear-attention baselines; setting details in the paper.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">真实任务：相对强线性注意力基线，在 WMT14 英德与 WikiText-103 有收益；细节见原文。</div></div>
+</div>
+<div class="terms"></div></article>
+</section>
+<section class="section" id="next"><h3>读完之后去哪 <span>1 段</span></h3>
+<article class="card para" data-idx="21" data-blob="next in this repo: papers/deltanet-parallel (hardware-efficient chunkwise training of the same delta rule) → papers/gated-deltanet (add α) → papers/kda (diag(α)+hybrid). 本仓库下一步：papers/deltanet-parallel（同一 delta rule 的硬件高效分块训练）→ papers/gated-deltanet（加 α）→ papers/kda（diag(α)+混合）。 原点 → 练得动 → 忘得快 → 忘得细。 chunkwise gated deltanet kda">
+<span class="pidx">§21</span>
+<div class="summary"><b>小结</b> · 原点 → 练得动 → 忘得快 → 忘得细。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Next in this repo: papers/deltanet-parallel (hardware-efficient chunkwise training of the same delta rule) → papers/gated-deltanet (add α) → papers/kda (Diag(α)+hybrid).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库下一步：papers/deltanet-parallel（同一 delta rule 的硬件高效分块训练）→ papers/gated-deltanet（加 α）→ papers/kda（Diag(α)+混合）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="chunkwise">chunkwise</span><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span><span class="term" data-term="KDA">KDA</span></div></article>
+</section>
+<section class="section" id="glossary"><h3>名词重点解释 <span>22 条</span></h3><div class="refgrid">
+<div class="gitem" id="term-FWP" data-blob="fwp fast weight programmer：慢网络通过指令改写另一套快权重/记忆。"><b>FWP</b><p>Fast Weight Programmer：慢网络通过指令改写另一套快权重/记忆。</p></div>
+<div class="gitem" id="term-linear attention" data-blob="linear attention 用 φ 线性化 softmax 后，注意力等价于固定大小状态递推。"><b>linear attention</b><p>用 φ 线性化 softmax 后，注意力等价于固定大小状态递推。</p></div>
+<div class="gitem" id="term-φ" data-blob="φ 特征映射；其输出维 d_dot 决定联想记忆容量上界。"><b>φ</b><p>特征映射；其输出维 d_dot 决定联想记忆容量上界。</p></div>
+<div class="gitem" id="term-d_dot" data-blob="d_dot φ(k) 的维度；正交 key 的最大个数。"><b>d_dot</b><p>φ(k) 的维度；正交 key 的最大个数。</p></div>
+<div class="gitem" id="term-capacity" data-blob="capacity 有限状态可稳定存储、互不干扰的 kv 关联数量上界。"><b>capacity</b><p>有限状态可稳定存储、互不干扰的 KV 关联数量上界。</p></div>
+<div class="gitem" id="term-crosstalk" data-blob="crosstalk 非正交 key 导致读出混叠多个 value。"><b>crosstalk</b><p>非正交 key 导致读出混叠多个 value。</p></div>
+<div class="gitem" id="term-overcapacity" data-blob="overcapacity 序列长度超过 d_dot、必然出现串扰的工作区。"><b>overcapacity</b><p>序列长度超过 d_dot、必然出现串扰的工作区。</p></div>
+<div class="gitem" id="term-associative memory" data-blob="associative memory 按 key 写入/读出 value 的记忆（此处即 w）。"><b>associative memory</b><p>按 key 写入/读出 value 的记忆（此处即 W）。</p></div>
+<div class="gitem" id="term-outer product" data-blob="outer product v⊗k：把一对 kv 写成秩一更新加到 w 上。"><b>outer product</b><p>v⊗k：把一对 KV 写成秩一更新加到 W 上。</p></div>
+<div class="gitem" id="term-delta rule" data-blob="delta rule w ← w + β(v−v̄)⊗φ(k)：按预测误差纠错。"><b>delta rule</b><p>W ← W + β(v−v̄)⊗φ(k)：按预测误差纠错。</p></div>
+<div class="gitem" id="term-β" data-blob="β 写入强度 / 动态学习率，β∈(0,1)。"><b>β</b><p>写入强度 / 动态学习率，β∈(0,1)。</p></div>
+<div class="gitem" id="term-Widrow-Hoff" data-blob="widrow-hoff 经典误差纠正学习规则；本文将其可微地嵌入 fwp。"><b>Widrow-Hoff</b><p>经典误差纠正学习规则；本文将其可微地嵌入 FWP。</p></div>
+<div class="gitem" id="term-TPR" data-blob="tpr tensor product representation；容量/串扰理论来源之一。"><b>TPR</b><p>Tensor Product Representation；容量/串扰理论来源之一。</p></div>
+<div class="gitem" id="term-self-attention" data-blob="self-attention 序列内部 qkv 注意力；去掉 softmax 后显出 fwp 结构。"><b>self-attention</b><p>序列内部 QKV 注意力；去掉 softmax 后显出 FWP 结构。</p></div>
+<div class="gitem" id="term-KV cache" data-blob="kv cache softmax 注意力存下全部历史 kv；线性模型用固定 w 代替。"><b>KV cache</b><p>Softmax 注意力存下全部历史 KV；线性模型用固定 W 代替。</p></div>
+<div class="gitem" id="term-ELU+1" data-blob="elu+1 katharopoulos 的简单 φ；不抬维。"><b>ELU+1</b><p>Katharopoulos 的简单 φ；不抬维。</p></div>
+<div class="gitem" id="term-FAVOR+" data-blob="favor+ 随机特征近似 softmax 的 φ；可抬维但有采样方差。"><b>FAVOR+</b><p>随机特征近似 softmax 的 φ；可抬维但有采样方差。</p></div>
+<div class="gitem" id="term-DPFP" data-blob="dpfp 本文提出的确定性无参投影 φ，用于抬维。"><b>DPFP</b><p>本文提出的确定性无参投影 φ，用于抬维。</p></div>
+<div class="gitem" id="term-sum normalisation" data-blob="sum normalisation 对 φ(k)/φ(q) 分量求和归一化，稳定擦写。"><b>sum normalisation</b><p>对 φ(k)/φ(q) 分量求和归一化，稳定擦写。</p></div>
+<div class="gitem" id="term-Gated DeltaNet" data-blob="gated deltanet 在 delta 前乘标量 α 的后续工作。"><b>Gated DeltaNet</b><p>在 delta 前乘标量 α 的后续工作。</p></div>
+<div class="gitem" id="term-KDA" data-blob="kda 把 α 换成 diag(α) 的后续工作（kimi）。"><b>KDA</b><p>把 α 换成 Diag(α) 的后续工作（Kimi）。</p></div>
+<div class="gitem" id="term-chunkwise" data-blob="chunkwise 后文并行训练用的分块日程；原点论文仍偏顺序更新。"><b>chunkwise</b><p>后文并行训练用的分块日程；原点论文仍偏顺序更新。</p></div>
+</div></section>
+<section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">
+<div class="ref" data-blob="linear transformers are secretly fwps deltanet 理论原点：等价性、容量、delta 指令。"><span class="lv must">本篇</span><h4>Linear Transformers Are Secretly FWPs</h4><p>DeltaNet 理论原点：等价性、容量、delta 指令。</p><a href="./paper.pdf" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2102.11174" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="linear attention（transformers are rnns） 加性固定状态 s/w 的直接前作。"><span class="lv imp">前驱</span><h4>Linear Attention（Transformers are RNNs）</h4><p>加性固定状态 S/W 的直接前作。</p><a href="../linear-attention/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2006.16236" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="并行 deltanet 训练 同一 delta rule 的 wy/分块并行（2024）。"><span class="lv ">后续</span><h4>并行 DeltaNet 训练</h4><p>同一 delta rule 的 WY/分块并行（2024）。</p><a href="../deltanet-parallel/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2406.06484" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="gated deltanet 再加标量遗忘门 α。"><span class="lv ">后续</span><h4>Gated DeltaNet</h4><p>再加标量遗忘门 α。</p><a href="../gated-deltanet/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2412.06464" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="kimi linear / kda 通道级 diag(α) + 混合架构。"><span class="lv ">后续</span><h4>Kimi Linear / KDA</h4><p>通道级 Diag(α) + 混合架构。</p><a href="../kda/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noopener">外链</a></div>
+</div><p class="note" style="margin-top:28px">本页为学习用逐段精读；数字与公式以 PDF 为准。示意图为教学重绘。</p></section></main></div>
+
+<aside class="drawer" id="drawer"><button class="btn" id="closeDrawer">关闭</button>
+<h2>名词速查</h2><div id="drawerBody"></div></aside>
+<script>
+const body=document.body;const cards=[...document.querySelectorAll('.para')];let idx=0;
+const glossary={"FWP":"Fast Weight Programmer\uff1a\u6162\u7f51\u7edc\u901a\u8fc7\u6307\u4ee4\u6539\u5199\u53e6\u4e00\u5957\u5feb\u6743\u91cd/\u8bb0\u5fc6\u3002",
+"linear attention":"\u7528 \u03c6 \u7ebf\u6027\u5316 softmax \u540e\uff0c\u6ce8\u610f\u529b\u7b49\u4ef7\u4e8e\u56fa\u5b9a\u5927\u5c0f\u72b6\u6001\u9012\u63a8\u3002",
+"\u03c6":"\u7279\u5f81\u6620\u5c04\uff1b\u5176\u8f93\u51fa\u7ef4 d_dot \u51b3\u5b9a\u8054\u60f3\u8bb0\u5fc6\u5bb9\u91cf\u4e0a\u754c\u3002",
+"d_dot":"\u03c6(k) \u7684\u7ef4\u5ea6\uff1b\u6b63\u4ea4 key \u7684\u6700\u5927\u4e2a\u6570\u3002",
+"capacity":"\u6709\u9650\u72b6\u6001\u53ef\u7a33\u5b9a\u5b58\u50a8\u3001\u4e92\u4e0d\u5e72\u6270\u7684 KV \u5173\u8054\u6570\u91cf\u4e0a\u754c\u3002",
+"crosstalk":"\u975e\u6b63\u4ea4 key \u5bfc\u81f4\u8bfb\u51fa\u6df7\u53e0\u591a\u4e2a value\u3002",
+"overcapacity":"\u5e8f\u5217\u957f\u5ea6\u8d85\u8fc7 d_dot\u3001\u5fc5\u7136\u51fa\u73b0\u4e32\u6270\u7684\u5de5\u4f5c\u533a\u3002",
+"associative memory":"\u6309 key \u5199\u5165/\u8bfb\u51fa value \u7684\u8bb0\u5fc6\uff08\u6b64\u5904\u5373 W\uff09\u3002",
+"outer product":"v\u2297k\uff1a\u628a\u4e00\u5bf9 KV \u5199\u6210\u79e9\u4e00\u66f4\u65b0\u52a0\u5230 W \u4e0a\u3002",
+"delta rule":"W \u2190 W + \u03b2(v\u2212v\u0304)\u2297\u03c6(k)\uff1a\u6309\u9884\u6d4b\u8bef\u5dee\u7ea0\u9519\u3002",
+"\u03b2":"\u5199\u5165\u5f3a\u5ea6 / \u52a8\u6001\u5b66\u4e60\u7387\uff0c\u03b2\u2208(0,1)\u3002",
+"Widrow-Hoff":"\u7ecf\u5178\u8bef\u5dee\u7ea0\u6b63\u5b66\u4e60\u89c4\u5219\uff1b\u672c\u6587\u5c06\u5176\u53ef\u5fae\u5730\u5d4c\u5165 FWP\u3002",
+"TPR":"Tensor Product Representation\uff1b\u5bb9\u91cf/\u4e32\u6270\u7406\u8bba\u6765\u6e90\u4e4b\u4e00\u3002",
+"self-attention":"\u5e8f\u5217\u5185\u90e8 QKV \u6ce8\u610f\u529b\uff1b\u53bb\u6389 softmax \u540e\u663e\u51fa FWP \u7ed3\u6784\u3002",
+"KV cache":"Softmax \u6ce8\u610f\u529b\u5b58\u4e0b\u5168\u90e8\u5386\u53f2 KV\uff1b\u7ebf\u6027\u6a21\u578b\u7528\u56fa\u5b9a W \u4ee3\u66ff\u3002",
+"ELU+1":"Katharopoulos \u7684\u7b80\u5355 \u03c6\uff1b\u4e0d\u62ac\u7ef4\u3002",
+"FAVOR+":"\u968f\u673a\u7279\u5f81\u8fd1\u4f3c softmax \u7684 \u03c6\uff1b\u53ef\u62ac\u7ef4\u4f46\u6709\u91c7\u6837\u65b9\u5dee\u3002",
+"DPFP":"\u672c\u6587\u63d0\u51fa\u7684\u786e\u5b9a\u6027\u65e0\u53c2\u6295\u5f71 \u03c6\uff0c\u7528\u4e8e\u62ac\u7ef4\u3002",
+"sum normalisation":"\u5bf9 \u03c6(k)/\u03c6(q) \u5206\u91cf\u6c42\u548c\u5f52\u4e00\u5316\uff0c\u7a33\u5b9a\u64e6\u5199\u3002",
+"Gated DeltaNet":"\u5728 delta \u524d\u4e58\u6807\u91cf \u03b1 \u7684\u540e\u7eed\u5de5\u4f5c\u3002",
+"KDA":"\u628a \u03b1 \u6362\u6210 Diag(\u03b1) \u7684\u540e\u7eed\u5de5\u4f5c\uff08Kimi\uff09\u3002",
+"chunkwise":"\u540e\u6587\u5e76\u884c\u8bad\u7ec3\u7528\u7684\u5206\u5757\u65e5\u7a0b\uff1b\u539f\u70b9\u8bba\u6587\u4ecd\u504f\u987a\u5e8f\u66f4\u65b0\u3002"};
+function setMode(m){body.classList.remove('mode-both','mode-zh','mode-en');body.classList.add('mode-'+m);
+document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));}
+document.getElementById('modeSeg').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.mode);};
+function focusCard(i){if(!cards.length)return;idx=(i+cards.length)%cards.length;cards.forEach(c=>c.classList.remove('active'));
+const c=cards[idx];c.classList.add('active');c.scrollIntoView({behavior:'smooth',block:'center'});}
+const q=document.getElementById('q');q.oninput=()=>{const s=q.value.trim().toLowerCase();
+document.querySelectorAll('[data-blob]').forEach(el=>{el.classList.toggle('hidden-by-search',s&&!(el.dataset.blob||'').includes(s));});};
+const drawer=document.getElementById('drawer');const drawerBody=document.getElementById('drawerBody');
+document.getElementById('btnGlossary').onclick=()=>{drawerBody.innerHTML=Object.entries(glossary).map(([k,v])=>`<div class="gitem"><b>${k}</b><p>${v}</p></div>`).join('');drawer.classList.add('open');};
+document.getElementById('closeDrawer').onclick=()=>drawer.classList.remove('open');
+document.body.onclick=e=>{const t=e.target.closest('.term');if(!t)return;
+drawerBody.innerHTML=`<div class="gitem"><b>${t.dataset.term}</b><p>${glossary[t.dataset.term]||'暂无'}</p></div>`;drawer.classList.add('open');};
+const tocLinks=[...document.querySelectorAll('#toc a')];
+const sections=tocLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io=new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const id='#'+en.target.id;
+tocLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===id));});},
+{rootMargin:'-20% 0px -65% 0px',threshold:0.01});
+sections.forEach(s=>io.observe(s));
+document.onkeydown=e=>{if(e.target.matches('input,textarea'))return;
+if(e.key==='1')setMode('both');if(e.key==='2')setMode('zh');if(e.key==='3')setMode('en');
+if(e.key==='j'||e.key==='J'){e.preventDefault();focusCard(idx+1);}
+if(e.key==='k'||e.key==='K'){e.preventDefault();focusCard(idx-1);}
+if(e.key==='g'||e.key==='G')document.getElementById('btnGlossary').click();
+if(e.key==='/'){e.preventDefault();q.focus();};};
+</script></body></html>

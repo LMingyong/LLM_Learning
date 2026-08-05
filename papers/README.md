@@ -22,7 +22,9 @@ papers/<slug>/
 | [watts-strogatz](./watts-strogatz/) | Watts–Strogatz (Nature 1998) |
 | [attention-residuals](./attention-residuals/) | Attention Residuals (arXiv:2603.15031) |
 | [linear-attention](./linear-attention/) | Linear Attention (arXiv:2006.16236) |
-| [delta-attention](./delta-attention/) | **DeltaNet / Delta Attention** (arXiv:2406.06484) |
+| [deltanet](./deltanet/) | **DeltaNet 原点 / FWP** (arXiv:2102.11174) |
+| [deltanet-parallel](./deltanet-parallel/) | **并行训练 DeltaNet** (arXiv:2406.06484) |
+| [gated-deltanet](./gated-deltanet/) | **Gated DeltaNet** (arXiv:2412.06464) |
 | [kda](./kda/) | **Kimi Linear / KDA** (arXiv:2510.26692) — 含教学代码 |
 | [nsa](./nsa/) | Native Sparse Attention (arXiv:2502.11089) |
 | [sparse-transformer](./sparse-transformer/) | Sparse Transformer (arXiv:1904.10509) |

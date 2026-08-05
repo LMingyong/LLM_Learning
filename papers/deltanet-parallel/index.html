@@ -166,14 +166,17 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
 <a class="btn" href="#formulas">公式墙</a>
-<a class="btn" href="../kda/index.html">KDA 精读 →</a>
-<a class="btn" href="../linear-attention/index.html">Linear Attention →</a>
-<a class="btn" href="https://github.com/fla-org/flash-linear-attention" target="_blank" rel="noopener">FLA 算子 →</a>
+<a class="btn" href="./notes.md">公式笔记 →</a>
+<a class="btn" href="../deltanet/index.html">← 理论原点</a>
+<a class="btn" href="../gated-deltanet/index.html">Gated DeltaNet →</a>
+<a class="btn" href="../kda/index.html">KDA →</a>
+<a class="btn" href="../linear-attention/index.html">Linear →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">
-<h2>DeltaNet · Delta Attention</h2>
-<p>本夹对应 <strong>arXiv:2406.06484</strong>（可扩展 DeltaNet），与 <a href="../kda/">Kimi Linear / KDA</a> 分开放。精读：小结 → Original → 译文；关键公式<strong>独立成卡</strong>（KaTeX）。</p>
+<h2>并行训练 DeltaNet（2024）</h2>
+<p>本夹对应 <strong>arXiv:2406.06484</strong>：给同一套 delta rule 做硬件高效的分块并行训练。
+理论（为何用 delta）在 <a href="../deltanet/">deltanet/</a>（arXiv:2102.11174）；本夹讲怎么练得动。</p>
 <div class="chips">
 <span class="chip">核心：<em>delta rule 擦写</em></span>
 <span class="chip">算法：<em>WY + 分块并行</em></span>
@@ -181,7 +184,7 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <span class="chip">下游：<em>→ GDN → KDA</em></span>
 </div>
 </section>
-<p class="note">英文贴近 NeurIPS 2024 论文。建议：先扫 <a href="#formulas">公式墙</a>，再读 §2.2 擦写与 §3 并行；学完接 <a href="../kda/index.html">KDA</a>。</p>
+<p class="note">英文贴近 NeurIPS 2024 论文。建议：先读 <a href="../deltanet/">理论原点</a>，再扫本页 <a href="#formulas">公式墙</a> 与 §3 并行；学完接 <a href="../gated-deltanet/index.html">Gated DeltaNet</a>，再进 <a href="../kda/index.html">KDA</a>。</p>
 <section class="section" id="formulas"><h3>公式墙（速查） <span>谱系一览</span></h3>
 <p class="inline-math-hint">以下公式从正文抽出，便于对照；段内还有更细的展开卡。</p>
 <div class="formula-wall"><div class="math-panel" data-blob="linear · 加性更新 只加不改；l&gt;d 时易发生 key 碰撞。 s_t = s_{t-1} + v_t k_t^\top,\quad o_t = s_t q_t"><div class="math-tag">Linear · 加性更新</div><div class="math-eq">\[S_t = S_{t-1} + v_t k_t^\top,\quad o_t = S_t q_t\]</div><div class="math-note">只加不改；L&gt;d 时易发生 key 碰撞。</div></div><div class="math-panel span2" data-blob="deltanet · 递推形式 广义 householder：先擦旧再写新。 s_t = s_{t-1}(i-\beta_t k_t k_t^\top)+\beta_t v_t k_t^\top"><div class="math-tag">DeltaNet · 递推形式</div><div class="math-eq">\[S_t = S_{t-1}(I-\beta_t k_t k_t^\top)+\beta_t v_t k_t^\top\]</div><div class="math-note">广义 Householder：先擦旧再写新。</div></div><div class="math-panel" data-blob="写入强度 β=1 完全覆盖；β=0 记忆不变。 \beta_t=\sigma(w_\beta x_t)\in(0,1)"><div class="math-tag">写入强度</div><div class="math-eq">\[\beta_t=\sigma(W_\beta x_t)\in(0,1)\]</div><div class="math-note">β=1 完全覆盖；β=0 记忆不变。</div></div><div class="math-panel span2" data-blob="伪 value（wy 视角） deltanet = 线性注意力，但 value 换成纠错后的 u。 u_t=\beta_t\bigl(v_t-s_{t-1}k_t\bigr),\quad s_t=\sum_{i=1}^{t} u_i k_i^\top"><div class="math-tag">伪 value（WY 视角）</div><div class="math-eq">\[u_t=\beta_t\bigl(v_t-S_{t-1}k_t\bigr),\quad S_t=\sum_{i=1}^{t} u_i k_i^\top\]</div><div class="math-note">DeltaNet = 线性注意力，但 value 换成纠错后的 u。</div></div></div></section>
@@ -395,12 +398,12 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <div class="zh-block"><div class="label">译文</div><div class="zh">本文是可扩展的 DeltaNet（delta attention）基线：有纠错写入，尚无通道级遗忘门。随后 Gated DeltaNet 加入标量衰减 α；Kimi Delta Attention（KDA）把 α 升级为 Diag(α)，并与 MLA 混合。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span><span class="term" data-term="KDA">KDA</span></div></article>
-<article class="card para" data-idx="20" data-blob="in this repo: read this page’s formulas first; then papers/kda/ for channel-wise gating + teaching code. do not conflate deltanet’s β-only update with kda’s diag(α) forget. 本仓库：先读本页公式；再读 papers/kda/ 看通道门控与教学代码。勿把 deltanet 仅含 β 的更新与 kda 的 diag(α) 遗忘混为一谈。 拆夹原因：两篇论文，两套公式。 kda">
+<article class="card para" data-idx="20" data-blob="in this repo: theory origin is papers/deltanet/ (2021); this page is parallel training (2024). then papers/gated-deltanet/ for scalar α, papers/kda/ for diag(α). do not conflate deltanet’s β-only update with kda’s diag(α) forget. 本仓库：理论原点在 papers/deltanet/（2021）；本页是并行训练（2024）。再读 papers/gated-deltanet/ 看标量 α，papers/kda/ 看 diag(α)。勿把 deltanet 仅含 β 的更新与 kda 的 diag(α) 遗忘混为一谈。 拆夹原因：两篇论文，两套公式。 kda">
 <span class="pidx">§20</span>
 <div class="summary"><b>小结</b> · 拆夹原因：两篇论文，两套公式。</div>
 <div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">In this repo: read this page’s formulas first; then papers/kda/ for channel-wise gating + teaching code. Do not conflate DeltaNet’s β-only update with KDA’s Diag(α) forget.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库：先读本页公式；再读 papers/kda/ 看通道门控与教学代码。勿把 DeltaNet 仅含 β 的更新与 KDA 的 Diag(α) 遗忘混为一谈。</div></div>
+<div class="en-block"><div class="label">Original</div><div class="en">In this repo: theory origin is papers/deltanet/ (2021); this page is parallel training (2024). Then papers/gated-deltanet/ for scalar α, papers/kda/ for Diag(α). Do not conflate DeltaNet’s β-only update with KDA’s Diag(α) forget.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库：理论原点在 papers/deltanet/（2021）；本页是并行训练（2024）。再读 papers/gated-deltanet/ 看标量 α，papers/kda/ 看 Diag(α)。勿把 DeltaNet 仅含 β 的更新与 KDA 的 Diag(α) 遗忘混为一谈。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="KDA">KDA</span></div></article>
 </section>

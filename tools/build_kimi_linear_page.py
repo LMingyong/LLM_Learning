@@ -263,13 +263,15 @@ def build() -> str:
 <a class="btn" href="./notes.md">公式笔记 →</a>
 <a class="btn" href="./kda/recurrent.py">recurrent.py →</a>
 <a class="btn" href="./demo.py">demo.py →</a>
-<a class="btn" href="../delta-attention/index.html">DeltaNet →</a>
+<a class="btn" href="../deltanet/index.html">DeltaNet 原点 →</a>
+<a class="btn" href="../deltanet-parallel/index.html">并行训练 →</a>
+<a class="btn" href="../gated-deltanet/index.html">Gated DeltaNet →</a>
 <a class="btn" href="../linear-attention/index.html">Linear Attention →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">
 <h2>Kimi Linear · Kimi Delta Attention（KDA）</h2>
-<p>本夹对应 <strong>arXiv:2510.26692</strong>。与 <a href="../delta-attention/">DeltaNet / Delta Attention</a> 分开放：那边是可扩展 delta rule 基线，这里是通道级门控 + 混合架构。精读含独立公式卡（KaTeX）。</p>
+<p>本夹对应 <strong>arXiv:2510.26692</strong>。与 DeltaNet 分开放：理论见 <a href="../deltanet/">deltanet</a>，可扩展训练见 <a href="../deltanet-parallel/">deltanet-parallel</a>；本夹是通道级门控 + 混合架构。精读含独立公式卡（KaTeX）。</p>
 <div class="chips">
 <span class="chip">核心：<em>KDA = GDN + Diag(α)</em></span>
 <span class="chip">架构：<em>KDA:MLA = 3:1</em></span>
@@ -277,7 +279,7 @@ def build() -> str:
 <span class="chip">代码：<em>./kda/</em></span>
 </div>
 </section>
-<p class="note">建议：先读 <a href="../delta-attention/index.html">DeltaNet</a> 搞清擦写，再扫本页 <a href="#formulas">公式墙</a>，最后打开 <a href="./kda/recurrent.py">recurrent.py</a>。</p>
+<p class="note">建议：<a href="../deltanet/">原点</a> → <a href="../deltanet-parallel/">并行</a> → <a href="../gated-deltanet/index.html">GDN</a> → 本页，再扫本页 <a href="#formulas">公式墙</a>，最后打开 <a href="./kda/recurrent.py">recurrent.py</a>。</p>
 <section class="section" id="formulas"><h3>公式墙（速查） <span>谱系一览</span></h3>
 <p class="inline-math-hint">以下公式从正文抽出，便于对照；段内还有更细的展开卡。</p>
 """

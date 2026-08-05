@@ -512,9 +512,16 @@ REFS = [
     },
     {
         "level": "前驱",
-        "title": "DeltaNet / Delta Attention",
-        "why": "可扩展 delta rule 基线；KDA 在其上加通道门。",
-        "url": "../delta-attention/index.html",
+        "title": "DeltaNet 原点（2021）",
+        "why": "delta rule 理论：FWP / 容量 / β 写入。",
+        "url": "../deltanet/index.html",
+        "ext": "https://arxiv.org/abs/2102.11174",
+    },
+    {
+        "level": "前驱",
+        "title": "并行 DeltaNet 训练（2024）",
+        "why": "可扩展 delta rule 训练基线；KDA 在其上加通道门。",
+        "url": "../deltanet-parallel/index.html",
         "ext": "https://arxiv.org/abs/2406.06484",
     },
     {
