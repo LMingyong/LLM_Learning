@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Gated DeltaNet 逐段精读</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"/>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+
+<style>
+:root{
+  --bg:#f6f3ec; --bg2:#efe9dc; --paper:#fffcf5; --ink:#1c2420; --muted:#5a6a62;
+  --faint:#7d8c84; --line:#d8d0c0; --accent:#0f6e56; --accent-soft:#d8efe6;
+  --warm:#b85c38; --warm-soft:#f3e0d6; --blue:#1f4e79; --blue-soft:#dce8f3;
+  --shadow:0 12px 40px rgba(40,50,40,.08);
+  --serif:"Literata",Georgia,"Noto Serif SC",serif;
+  --sans:"Manrope",system-ui,"Noto Sans SC",sans-serif;
+  --mono:ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.75;
+background:radial-gradient(900px 500px at 0% 0%,rgba(15,110,86,.07),transparent 55%),
+radial-gradient(700px 400px at 100% 8%,rgba(184,92,56,.06),transparent 50%),
+linear-gradient(180deg,var(--bg),var(--bg2));min-height:100vh}
+a{color:var(--accent);text-underline-offset:3px}
+a:hover{color:var(--warm)}
+.app{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow:auto;padding:22px 16px 28px;
+border-right:1px solid var(--line);background:rgba(255,252,245,.85);backdrop-filter:blur(10px)}
+.brand{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--accent);letter-spacing:.04em;margin:0 0 8px}
+.side h1{font-family:var(--sans);font-size:20px;line-height:1.25;margin:0 0 8px}
+.side .meta{font-family:var(--sans);font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+.side nav a{display:block;padding:8px 10px;border-radius:10px;color:var(--muted);
+font-family:var(--sans);font-size:13px;text-decoration:none;margin-bottom:2px}
+.side nav a:hover,.side nav a.active{background:var(--accent-soft);color:var(--ink)}
+.side .hint{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:12px;
+font-family:var(--sans);font-size:12px;color:var(--faint);line-height:1.55;background:var(--paper)}
+.main{padding:22px 28px 80px;max-width:1080px}
+.topbar{position:sticky;top:0;z-index:20;margin:0 -28px 22px;padding:14px 28px;
+display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+background:rgba(246,243,236,.9);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.seg{display:inline-flex;padding:4px;border-radius:999px;background:var(--paper);border:1px solid var(--line)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;
+font-family:var(--sans);font-size:12px;padding:8px 12px;border-radius:999px}
+.seg button.on{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.btn{font-family:var(--sans);font-size:12px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);border-radius:999px;padding:8px 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.search{flex:1;min-width:180px}
+.search input{width:100%;border-radius:999px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);padding:9px 14px;font-family:var(--sans);font-size:13px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.hero{border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:22px;
+background:linear-gradient(135deg,rgba(15,110,86,.08),transparent 45%),var(--paper);
+box-shadow:var(--shadow)}
+.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:26px}
+.hero p{margin:0;color:var(--muted);font-family:var(--sans);font-size:14px;line-height:1.65}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-family:var(--sans);font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.chip em{color:var(--warm);font-style:normal;font-weight:600}
+.section{margin:28px 0 10px;scroll-margin-top:78px}
+.section h3{font-family:var(--sans);font-size:18px;margin:0 0 12px;padding-bottom:8px;
+border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:10px}
+.section h3 span{font-size:12px;color:var(--faint);font-weight:500}
+.card{border:1px solid var(--line);background:var(--paper);border-radius:16px;padding:14px 16px;margin:0 0 12px;
+transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover{border-color:rgba(15,110,86,.35);transform:translateY(-1px);box-shadow:var(--shadow)}
+.card.active{border-color:var(--accent);box-shadow:0 0 0 1px rgba(15,110,86,.2),var(--shadow)}
+.pidx{font-family:var(--sans);font-size:11px;color:var(--faint);float:right;margin-left:8px}
+.summary{font-family:var(--sans);font-size:13px;color:#0b3d30;background:var(--accent-soft);
+border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 10px 10px 0;margin:0 0 12px;line-height:1.55}
+.lang{font-size:15.5px;line-height:1.8}
+.lang .en{color:#24312c}
+.lang .zh{color:#1c2420}
+.lang .label{font-family:var(--sans);font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+body.mode-zh .en-block,body.mode-en .zh-block{display:none}
+body.mode-zh .pair,body.mode-en .pair{grid-template-columns:1fr}
+.terms{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;clear:both}
+.term{font-family:var(--sans);font-size:11px;padding:4px 8px;border-radius:999px;cursor:pointer;
+background:var(--warm-soft);color:#6a2f18;border:1px solid rgba(184,92,56,.25)}
+.term:hover{background:#efd2c2}
+.figure{margin:12px 0 4px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fffcf5}
+.figure .cap{font-family:var(--sans);font-size:12px;color:var(--faint);padding:8px 12px;border-top:1px solid var(--line)}
+.figure svg{display:block;width:100%;height:auto}
+.hidden-by-search{display:none !important}
+.drawer{position:fixed;top:0;right:0;width:min(420px,100%);height:100vh;overflow:auto;z-index:40;
+background:var(--paper);border-left:1px solid var(--line);
+transform:translateX(100%);transition:transform .28s ease;padding:18px 16px 40px;box-shadow:var(--shadow)}
+.drawer.open{transform:none}
+.drawer h2{font-family:var(--sans);margin:8px 0 6px;font-size:18px}
+.gitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff}
+.gitem b{font-family:var(--sans);color:var(--warm)}
+.gitem p{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.55}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ref{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--paper);
+display:flex;flex-direction:column;gap:8px;min-height:140px}
+.ref .lv{font-family:var(--sans);font-size:11px;align-self:start;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.ref .lv.must{color:#fff;background:var(--accent);border-color:transparent;font-weight:700}
+.ref .lv.imp{color:#fff;background:var(--warm);border-color:transparent;font-weight:700}
+.ref h4{margin:0;font-family:var(--sans);font-size:15px;line-height:1.35}
+.ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint);background:#fff}
+.note{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+
+.math-stack{display:flex;flex-direction:column;gap:10px;margin:12px 0 4px}
+.math-panel{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#fff,#fffcf5);
+padding:12px 14px;box-shadow:0 8px 24px rgba(40,50,40,.04)}
+.math-panel .math-tag{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.04em;
+color:var(--accent);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.math-panel .math-tag::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--accent);flex:0 0 auto}
+.math-panel .math-eq{overflow-x:auto;padding:4px 0 2px;font-size:1.05em;line-height:1.6;color:var(--ink)}
+.math-panel .math-eq .katex-display{margin:0.4em 0}
+.math-panel .math-note{font-family:var(--sans);font-size:12px;color:var(--muted);margin-top:8px;
+padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
+.formula-wall{display:grid;grid-template-columns:1fr;gap:12px;margin:0 0 18px}
+@media (min-width:820px){.formula-wall{grid-template-columns:1fr 1fr}}
+.formula-wall .math-panel{min-height:100%}
+.formula-wall .math-panel.span2{grid-column:1 / -1}
+.inline-math-hint{font-family:var(--sans);font-size:12px;color:var(--faint);margin:0 0 10px}
+
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .pair{grid-template-columns:1fr}
+  .main{padding:16px 14px 70px}
+  .topbar{margin:0 -14px 16px;padding:12px 14px}
+}
+</style></head>
+<body class="mode-both"><div class="app">
+<aside class="side">
+<div class="brand">LLM Learning · Paper Reader</div>
+<h1>Gated DeltaNet</h1>
+<div class="meta">arXiv:2412.06464<br/>每段 = 小结 + Original + 译文<br/>公式独立成卡 · α + δ</div>
+<nav id="toc">
+<a href="#formulas">公式墙（速查）</a>
+<a href="#abstract">Abstract 摘要</a>
+<a href="#intro">1 Introduction 引言（关键）</a>
+<a href="#prelim">2 预备：Mamba2 与 DeltaNet</a>
+<a href="#rule">3.1 Gated Delta Rule（核心公式）</a>
+<a href="#arch">架构与混合</a>
+<a href="#expts">4 实验要点</a>
+<a href="#bridge">谱系位置：DeltaNet → GDN → KDA</a>
+<a href="#glossary">名词重点解释</a>
+<a href="#refs">重点引用</a>
+</nav>
+<div class="hint">
+<div><span class="kbd">1</span>对照 <span class="kbd">2</span>译文 <span class="kbd">3</span>原文</div>
+<div style="margin-top:6px"><span class="kbd">J</span>/<span class="kbd">K</span>跳段 <span class="kbd">G</span>名词 <span class="kbd">/</span>搜索</div>
+</div></aside>
+<main class="main">
+<div class="topbar">
+<div class="seg" id="modeSeg">
+<button data-mode="both" class="on">对照</button>
+<button data-mode="zh">仅译文</button>
+<button data-mode="en">仅原文</button>
+</div>
+<button class="btn" id="btnGlossary">名词表</button>
+<a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+<a class="btn" href="#formulas">公式墙</a>
+<a class="btn" href="../deltanet/index.html">DeltaNet 原点 →</a>
+<a class="btn" href="../deltanet-parallel/index.html">并行训练 →</a>
+<a class="btn" href="../kda/index.html">KDA →</a>
+<a class="btn" href="https://github.com/NVlabs/GatedDeltaNet" target="_blank" rel="noopener">官方代码 →</a>
+<div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
+</div>
+<section class="hero">
+<h2>Gated DeltaNet</h2>
+<p>本夹对应 <strong>arXiv:2412.06464</strong>：把 Mamba2 的标量门 α 与 DeltaNet 的 delta rule 合成 <em>gated delta rule</em>。精读含独立公式卡；上游读 <a href="../deltanet/">理论原点</a> / <a href="../deltanet-parallel/">并行训练</a>，下游读 <a href="../kda/">KDA</a>。</p>
+<div class="chips">
+<span class="chip">核心：<em>α(I−βkkᵀ)</em></span>
+<span class="chip">对照：<em>Mamba2 · DeltaNet</em></span>
+<span class="chip">训练：<em>WY 分块 + 门控</em></span>
+<span class="chip">下游：<em>→ KDA</em></span>
+</div>
+</section>
+<p class="note">英文贴近 ICLR 2025 论文。建议：先扫 <a href="#formulas">公式墙</a> 看三式对照，再读 §3.1；然后进 <a href="../kda/index.html">KDA</a> 看通道门。</p>
+<section class="section" id="formulas"><h3>公式墙（速查） <span>谱系一览</span></h3>
+<p class="inline-math-hint">以下公式从正文抽出，便于对照；段内还有更细的展开卡。</p>
+<div class="formula-wall"><div class="math-panel" data-blob="mamba2 · 标量衰减 全体关联同一比例遗忘；擦除不够定点。 s_t=\alpha_t s_{t-1}+v_t k_t^\top"><div class="math-tag">Mamba2 · 标量衰减</div><div class="math-eq">\[S_t=\alpha_t S_{t-1}+v_t k_t^\top\]</div><div class="math-note">全体关联同一比例遗忘；擦除不够定点。</div></div><div class="math-panel span2" data-blob="deltanet · 定点擦写 按 key 纠错；难快速清空整块记忆。 s_t=s_{t-1}(i-\beta_t k_t k_t^\top)+\beta_t v_t k_t^\top"><div class="math-tag">DeltaNet · 定点擦写</div><div class="math-eq">\[S_t=S_{t-1}(I-\beta_t k_t k_t^\top)+\beta_t v_t k_t^\top\]</div><div class="math-note">按 key 纠错；难快速清空整块记忆。</div></div><div class="math-panel span2" data-blob="式 (10) · gated delta rule α→0 快速清空；α→1 退化为纯 deltanet。 s_t=s_{t-1}\bigl(\alpha_t(i-\beta_t k_t k_t^\top)\bigr)+\beta_t v_t k_t^\top"><div class="math-tag">式 (10) · Gated Delta Rule</div><div class="math-eq">\[S_t=S_{t-1}\bigl(\alpha_t(I-\beta_t k_t k_t^\top)\bigr)+\beta_t v_t k_t^\top\]</div><div class="math-note">α→0 快速清空；α→1 退化为纯 DeltaNet。</div></div><div class="math-panel" data-blob="读出 状态大小固定，与序列长度无关。 o_t=s_t q_t"><div class="math-tag">读出</div><div class="math-eq">\[o_t=S_t q_t\]</div><div class="math-note">状态大小固定，与序列长度无关。</div></div></div></section>
+<section class="section" id="abstract"><h3>Abstract 摘要 <span>3 段</span></h3>
+<article class="card para" data-idx="1" data-blob="linear transformers are efficient alternatives to standard transformers, but retrieval and long-context performance remain limited. recent work explored two mechanisms: gating for adaptive memory control, and the delta update rule for precise memory modifications. 线性 transformer 是标准注意力的高效替代，但检索与长上下文仍受限。近期工作探索两类机制：门控做自适应记忆控制，以及 delta 更新做精确记忆修改。 两条线：门控管「忘多少」，delta 管「改哪条」。 gating delta rule linear attention">
+<span class="pidx">§1</span>
+<div class="summary"><b>小结</b> · 两条线：门控管「忘多少」，delta 管「改哪条」。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Linear Transformers are efficient alternatives to standard Transformers, but retrieval and long-context performance remain limited. Recent work explored two mechanisms: gating for adaptive memory control, and the delta update rule for precise memory modifications.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">线性 Transformer 是标准注意力的高效替代，但检索与长上下文仍受限。近期工作探索两类机制：门控做自适应记忆控制，以及 delta 更新做精确记忆修改。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="gating">gating</span><span class="term" data-term="delta rule">delta rule</span><span class="term" data-term="linear attention">linear attention</span></div></article>
+<article class="card para" data-idx="2" data-blob="these mechanisms are complementary: gating enables rapid memory erasure while the delta rule facilitates targeted updates. we introduce the gated delta rule and a parallel training algorithm optimized for modern hardware. 二者互补：门控擅长快速擦除，delta 擅长定点更新。我们提出 gated delta rule，并给出面向现代硬件的并行训练算法。 本文公式核心：把 α 和 β 装进同一个递推。 gated delta rule">
+<span class="pidx">§2</span>
+<div class="summary"><b>小结</b> · 本文公式核心：把 α 和 β 装进同一个递推。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">These mechanisms are complementary: gating enables rapid memory erasure while the delta rule facilitates targeted updates. We introduce the gated delta rule and a parallel training algorithm optimized for modern hardware.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">二者互补：门控擅长快速擦除，delta 擅长定点更新。我们提出 gated delta rule，并给出面向现代硬件的并行训练算法。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="gated delta rule">gated delta rule</span></div></article>
+<article class="card para" data-idx="3" data-blob="gated deltanet surpasses mamba2 and deltanet on language modeling, common-sense reasoning, in-context retrieval, length extrapolation, and long-context understanding. hybrids with sliding-window attention or mamba2 further improve efficiency and quality. gated deltanet 在语言建模、常识推理、上下文检索、长度外推与长上下文理解上超过 mamba2 与 deltanet；与滑窗注意力或 mamba2 的混合进一步提升效率与质量。 结论：单模打赢两前驱；混合还能再抬一手。 gated deltanet mamba2 hybrid">
+<span class="pidx">§3</span>
+<div class="summary"><b>小结</b> · 结论：单模打赢两前驱；混合还能再抬一手。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Gated DeltaNet surpasses Mamba2 and DeltaNet on language modeling, common-sense reasoning, in-context retrieval, length extrapolation, and long-context understanding. Hybrids with sliding-window attention or Mamba2 further improve efficiency and quality.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Gated DeltaNet 在语言建模、常识推理、上下文检索、长度外推与长上下文理解上超过 Mamba2 与 DeltaNet；与滑窗注意力或 Mamba2 的混合进一步提升效率与质量。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span><span class="term" data-term="Mamba2">Mamba2</span><span class="term" data-term="hybrid">hybrid</span></div></article>
+</section>
+<section class="section" id="intro"><h3>1 Introduction 引言（关键） <span>3 段</span></h3>
+<article class="card para" data-idx="4" data-blob="linear transformers store outer-product key–value associations in a fixed-size state. when sequence length exceeds dimensionality, memory collisions hinder exact retrieval. 线性 transformer 用固定大小状态存外积 kv 关联；序列长度超过维度后，「记忆碰撞」阻碍精确检索。 有限状态容量是一切门控/纠错动机的源头。 associative memory memory collision">
+<span class="pidx">§4</span>
+<div class="summary"><b>小结</b> · 有限状态容量是一切门控/纠错动机的源头。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Linear Transformers store outer-product key–value associations in a fixed-size state. When sequence length exceeds dimensionality, memory collisions hinder exact retrieval.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">线性 Transformer 用固定大小状态存外积 KV 关联；序列长度超过维度后，「记忆碰撞」阻碍精确检索。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="associative memory">associative memory</span><span class="term" data-term="memory collision">memory collision</span></div></article>
+<article class="card para" data-idx="5" data-blob="mamba2 uses a scalar gate α_t that uniformly decays all associations—fast to clear, but not targeted. deltanet softly replaces one key’s binding via β_t—precise, but slow to flush irrelevant context. mamba2 用标量门 α_t 均匀衰减全部关联——清空快，但不定点。deltanet 用 β_t 软替换某一 key 的绑定——精确，但难快速冲掉无关上下文。 一张表：α=全局刮板，β=局部橡皮擦。 mamba2 deltanet α β">
+<span class="pidx">§5</span>
+<div class="summary"><b>小结</b> · 一张表：α=全局刮板，β=局部橡皮擦。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Mamba2 uses a scalar gate α_t that uniformly decays all associations—fast to clear, but not targeted. DeltaNet softly replaces one key’s binding via β_t—precise, but slow to flush irrelevant context.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Mamba2 用标量门 α_t 均匀衰减全部关联——清空快，但不定点。DeltaNet 用 β_t 软替换某一 key 的绑定——精确，但难快速冲掉无关上下文。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="compare">
+  <rect width="820" height="210" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">互补：全局门 α × 定点擦写 β</text>
+    <rect x="40" y="55" width="220" height="100" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="150" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">Mamba2</text>
+    <text x="150" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">α · S + vkᵀ</text>
+    <text x="150" y="138" text-anchor="middle" font-size="11" fill="#7d8c84">清空快 · 不定点</text>
+    <rect x="300" y="55" width="220" height="100" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="410" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">DeltaNet</text>
+    <text x="410" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">(I−βkkᵀ)S + βvkᵀ</text>
+    <text x="410" y="138" text-anchor="middle" font-size="11" fill="#7d8c84">定点准 · 难整页清</text>
+    <rect x="560" y="55" width="220" height="100" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="670" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">Gated DeltaNet</text>
+    <text x="670" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">α(I−βkkᵀ)S + βvkᵀ</text>
+    <text x="670" y="138" text-anchor="middle" font-size="11" fill="#7d8c84">两者兼得</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">下一跳：KDA 把 α 换成 Diag(α) 做通道级遗忘</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · Mamba2 / DeltaNet / GDN 互补</div></div>
+<div class="terms"><span class="term" data-term="Mamba2">Mamba2</span><span class="term" data-term="DeltaNet">DeltaNet</span><span class="term" data-term="α">α</span><span class="term" data-term="β">β</span></div></article>
+<article class="card para" data-idx="6" data-blob="gated delta rule unifies both: α_t→0 clears memory promptly; α_t→1 recovers pure delta updates. training extends deltanet’s wy/chunkwise algorithm with gating terms. gated delta rule 统一二者：α_t→0 迅速清空；α_t→1 退回纯 delta。训练在 deltanet 的 wy/分块算法上并入门控项。 工程承诺：表达力升级，并行训练日程可复用。 gated delta rule wy representation chunkwise">
+<span class="pidx">§6</span>
+<div class="summary"><b>小结</b> · 工程承诺：表达力升级，并行训练日程可复用。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Gated delta rule unifies both: α_t→0 clears memory promptly; α_t→1 recovers pure delta updates. Training extends DeltaNet’s WY/chunkwise algorithm with gating terms.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Gated delta rule 统一二者：α_t→0 迅速清空；α_t→1 退回纯 delta。训练在 DeltaNet 的 WY/分块算法上并入门控项。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="gated delta rule">gated delta rule</span><span class="term" data-term="WY representation">WY representation</span><span class="term" data-term="chunkwise">chunkwise</span></div></article>
+</section>
+<section class="section" id="prelim"><h3>2 预备：Mamba2 与 DeltaNet <span>2 段</span></h3>
+<article class="card para" data-idx="7" data-blob="vanilla linear attention accumulates s_t = s_{t−1} + v_t k_tᵀ. mamba2 adds scalar decay α_t so every association shrinks by the same factor each step. 朴素线性注意力累加 s_t=s_{t−1}+v_t k_tᵀ。mamba2 加标量衰减 α_t，每一步所有关联按同一比例缩小。 mamba2 = 加性写入 + 全局遗忘。 mamba2 α">
+<span class="pidx">§7</span>
+<div class="summary"><b>小结</b> · Mamba2 = 加性写入 + 全局遗忘。</div>
+<div class="math-stack"><div class="math-panel" data-blob="线性注意力  s_t=s_{t-1}+v_t k_t^\top,\quad o_t=s_t q_t"><div class="math-tag">线性注意力</div><div class="math-eq">\[S_t=S_{t-1}+v_t k_t^\top,\quad o_t=S_t q_t\]</div></div><div class="math-panel span2" data-blob="mamba2 全体一起忘，无法只擦某一条绑定。 s_t=\alpha_t s_{t-1}+v_t k_t^\top,\quad \alpha_t\in(0,1)"><div class="math-tag">Mamba2</div><div class="math-eq">\[S_t=\alpha_t S_{t-1}+v_t k_t^\top,\quad \alpha_t\in(0,1)\]</div><div class="math-note">全体一起忘，无法只擦某一条绑定。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Vanilla linear attention accumulates S_t = S_{t−1} + v_t k_tᵀ. Mamba2 adds scalar decay α_t so every association shrinks by the same factor each step.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">朴素线性注意力累加 S_t=S_{t−1}+v_t k_tᵀ。Mamba2 加标量衰减 α_t，每一步所有关联按同一比例缩小。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Mamba2">Mamba2</span><span class="term" data-term="α">α</span></div></article>
+<article class="card para" data-idx="8" data-blob="deltanet retrieves the old value for the current key, mixes with the new value by writing strength β, then remove-and-write—equivalent to a generalized householder transition. deltanet 取回当前 key 的旧 value，按写入强度 β 与新 value 混合，再擦写——等价于广义 householder 转移。 deltanet = 定点纠错，缺快速整页清空。 deltanet β householder">
+<span class="pidx">§8</span>
+<div class="summary"><b>小结</b> · DeltaNet = 定点纠错，缺快速整页清空。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="deltanet  s_t=s_{t-1}(i-\beta_t k_t k_t^\top)+\beta_t v_t k_t^\top"><div class="math-tag">DeltaNet</div><div class="math-eq">\[S_t=S_{t-1}(I-\beta_t k_t k_t^\top)+\beta_t v_t k_t^\top\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">DeltaNet retrieves the old value for the current key, mixes with the new value by writing strength β, then remove-and-write—equivalent to a generalized Householder transition.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">DeltaNet 取回当前 key 的旧 value，按写入强度 β 与新 value 混合，再擦写——等价于广义 Householder 转移。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="DeltaNet">DeltaNet</span><span class="term" data-term="β">β</span><span class="term" data-term="Householder">Householder</span></div></article>
+</section>
+<section class="section" id="rule"><h3>3.1 Gated Delta Rule（核心公式） <span>3 段</span></h3>
+<article class="card para" data-idx="9" data-blob="equation (10): apply scalar gate α_t before / around the householder delta transition, then write β_t v_t k_tᵀ. this is the gated delta rule. 式 (10)：在 householder 型 delta 转移上乘标量门 α_t，再写入 β_t v_t k_tᵀ。这就是 gated delta rule。 必背：s ← α(i−βkkᵀ)s + βvkᵀ。 gated delta rule eq.10">
+<span class="pidx">§9</span>
+<div class="summary"><b>小结</b> · 必背：S ← α(I−βkkᵀ)S + βvkᵀ。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="式 (10) α 管全局寿命，β 管本次纠错强度。 s_t=s_{t-1}\bigl(\alpha_t(i-\beta_t k_t k_t^\top)\bigr)+\beta_t v_t k_t^\top"><div class="math-tag">式 (10)</div><div class="math-eq">\[S_t=S_{t-1}\bigl(\alpha_t(I-\beta_t k_t k_t^\top)\bigr)+\beta_t v_t k_t^\top\]</div><div class="math-note">α 管全局寿命，β 管本次纠错强度。</div></div><div class="math-panel span2" data-blob="极限行为  \alpha_t\to 0\;\rightarrow\;\text{快速清空};\quad \alpha_t\to 1\;\rightarrow\;\text{纯 deltanet}"><div class="math-tag">极限行为</div><div class="math-eq">\[\alpha_t\to 0\;\Rightarrow\;\text{快速清空};\quad \alpha_t\to 1\;\Rightarrow\;\text{纯 DeltaNet}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Equation (10): apply scalar gate α_t before / around the Householder delta transition, then write β_t v_t k_tᵀ. This is the gated delta rule.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">式 (10)：在 Householder 型 delta 转移上乘标量门 α_t，再写入 β_t v_t k_tᵀ。这就是 gated delta rule。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GDN steps">
+  <rect width="820" height="210" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Gated Delta Rule 一步（式 10）</text>
+    <rect x="30" y="55" width="170" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="115" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">1. 门控</text>
+    <text x="115" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">乘 α</text>
+    <text x="115" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">全局寿命</text>
+    <rect x="225" y="55" width="170" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="310" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">2. 擦旧</text>
+    <text x="310" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">(I−βkkᵀ)</text>
+    <text x="310" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">按地址</text>
+    <rect x="420" y="55" width="170" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="505" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 写新</text>
+    <text x="505" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">+ β v kᵀ</text>
+    <text x="505" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">纠错写入</text>
+    <rect x="615" y="55" width="170" height="90" rx="12" fill="#1c2420"/>
+    <text x="700" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">4. 读出</text>
+    <text x="700" y="115" text-anchor="middle" font-size="12" fill="#cfd8d3">o ← S q</text>
+    <text x="700" y="135" text-anchor="middle" font-size="11" fill="#9bb4ae">固定状态</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">α→0 整页清空 · α→1 退化为纯 DeltaNet</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应论文式 (10)</div></div>
+<div class="terms"><span class="term" data-term="gated delta rule">gated delta rule</span><span class="term" data-term="Eq.10">Eq.10</span></div></article>
+<article class="card para" data-idx="10" data-blob="through an online-learning view (table 1), gated deltanet relaxes the retention regularizer with α_t while keeping a delta-style regression term on the (gated) prediction error—combining selective forgetting with associative-recall objectives. 从在线学习视角（表 1）：gated deltanet 用 α_t 放松「贴近旧状态」正则，同时保留对（门控后）预测误差的 delta 风格回归项——兼具选择性遗忘与联想回忆目标。 理论口令：遗忘松弛 + 重构纠错，一张目标函数写清。 online learning associative recall">
+<span class="pidx">§10</span>
+<div class="summary"><b>小结</b> · 理论口令：遗忘松弛 + 重构纠错，一张目标函数写清。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Through an online-learning view (Table 1), Gated DeltaNet relaxes the retention regularizer with α_t while keeping a delta-style regression term on the (gated) prediction error—combining selective forgetting with associative-recall objectives.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">从在线学习视角（表 1）：Gated DeltaNet 用 α_t 放松「贴近旧状态」正则，同时保留对（门控后）预测误差的 delta 风格回归项——兼具选择性遗忘与联想回忆目标。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="online learning">online learning</span><span class="term" data-term="associative recall">associative recall</span></div></article>
+<article class="card para" data-idx="11" data-blob="training extends the wy / ut chunkwise algorithm of scalable deltanet by folding α into the householder products, preserving matmul-heavy kernels for tensor cores. 训练把 α 折进 householder 乘积，扩展可扩展 deltanet 的 wy/ut 分块算法，保持吃 tensor core 的 matmul 核。 算法：不是另起炉灶，是在 deltanet 并行日程上加门。 wy representation chunkwise ut transform">
+<span class="pidx">§11</span>
+<div class="summary"><b>小结</b> · 算法：不是另起炉灶，是在 DeltaNet 并行日程上加门。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Training extends the WY / UT chunkwise algorithm of scalable DeltaNet by folding α into the Householder products, preserving matmul-heavy kernels for Tensor Cores.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">训练把 α 折进 Householder 乘积，扩展可扩展 DeltaNet 的 WY/UT 分块算法，保持吃 Tensor Core 的 matmul 核。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="WY representation">WY representation</span><span class="term" data-term="chunkwise">chunkwise</span><span class="term" data-term="UT transform">UT transform</span></div></article>
+</section>
+<section class="section" id="arch"><h3>架构与混合 <span>2 段</span></h3>
+<article class="card para" data-idx="12" data-blob="practical parameterization mirrors recent linear rnns: short convolution + silu on q/k/v paths, l2-normalized q/k, linear maps for α/β, and an output gate. 实践参数化对齐近期线性 rnn：q/k/v 路径短卷积 + silu，q/k 再 l2norm，α/β 线性映射，外加输出门。 零件清单与 deltanet/kda 家族一脉相承。 shortconv silu l2norm output gate">
+<span class="pidx">§12</span>
+<div class="summary"><b>小结</b> · 零件清单与 DeltaNet/KDA 家族一脉相承。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Practical parameterization mirrors recent linear RNNs: short convolution + SiLU on q/k/v paths, L2-normalized q/k, linear maps for α/β, and an output gate.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">实践参数化对齐近期线性 RNN：q/k/v 路径短卷积 + SiLU，q/k 再 L2Norm，α/β 线性映射，外加输出门。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="ShortConv">ShortConv</span><span class="term" data-term="SiLU">SiLU</span><span class="term" data-term="L2Norm">L2Norm</span><span class="term" data-term="output gate">output gate</span></div></article>
+<article class="card para" data-idx="13" data-blob="hybrids: interleave gated deltanet with sliding-window attention, or mix with mamba2 layers, to gain local precision / complementary inductive bias and higher training throughput. 混合：与滑窗注意力交织，或与 mamba2 层混合，补局部精度/归纳偏置，并抬高训练吞吐。 纯 gdn 已强；混合是工程上的再加速与再补强。 hybrid sliding window mamba2">
+<span class="pidx">§13</span>
+<div class="summary"><b>小结</b> · 纯 GDN 已强；混合是工程上的再加速与再补强。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Hybrids: interleave Gated DeltaNet with sliding-window attention, or mix with Mamba2 layers, to gain local precision / complementary inductive bias and higher training throughput.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">混合：与滑窗注意力交织，或与 Mamba2 层混合，补局部精度/归纳偏置，并抬高训练吞吐。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="hybrid">
+  <rect width="820" height="180" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">混合示意：GDN + 滑窗 / Mamba2</text>
+    <rect x="60" y="60" width="140" height="56" rx="10" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="130" y="93" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">GDN</text>
+    <rect x="240" y="60" width="140" height="56" rx="10" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="310" y="93" text-anchor="middle" font-size="13" font-weight="700" fill="#b85c38">SWA / Mamba2</text>
+    <rect x="420" y="60" width="140" height="56" rx="10" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="490" y="93" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">GDN</text>
+    <rect x="600" y="60" width="140" height="56" rx="10" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="670" y="93" text-anchor="middle" font-size="13" font-weight="700" fill="#b85c38">SWA / Mamba2</text>
+    <text x="410" y="150" text-anchor="middle" font-size="12" fill="#7d8c84">互补归纳偏置 + 更高训练吞吐</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 混合架构选项</div></div>
+<div class="terms"><span class="term" data-term="hybrid">hybrid</span><span class="term" data-term="sliding window">sliding window</span><span class="term" data-term="Mamba2">Mamba2</span></div></article>
+</section>
+<section class="section" id="expts"><h3>4 实验要点 <span>2 段</span></h3>
+<article class="card para" data-idx="14" data-blob="on s-niah retrieval suites, gated deltanet holds accuracy farther in length than mamba2 (which collapses) and is more robust than deltanet on harder haystack variants—evidence that gate+delta helps long-context retrieval. s-niah 检索套件上，gated deltanet 在更长长度仍稳住精度（mamba2 崩得更快），在更难 haystack 变体上也比 deltanet 更稳——说明门+delta 有助于长上下文检索。 检索：互补机制不是论文故事，有长度曲线撑着。 s-niah in-context retrieval">
+<span class="pidx">§14</span>
+<div class="summary"><b>小结</b> · 检索：互补机制不是论文故事，有长度曲线撑着。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">On S-NIAH retrieval suites, Gated DeltaNet holds accuracy farther in length than Mamba2 (which collapses) and is more robust than DeltaNet on harder haystack variants—evidence that gate+delta helps long-context retrieval.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">S-NIAH 检索套件上，Gated DeltaNet 在更长长度仍稳住精度（Mamba2 崩得更快），在更难 haystack 变体上也比 DeltaNet 更稳——说明门+delta 有助于长上下文检索。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="S-NIAH">S-NIAH</span><span class="term" data-term="in-context retrieval">in-context retrieval</span></div></article>
+<article class="card para" data-idx="15" data-blob="across lm / reasoning / long-context suites, gated deltanet consistently beats mamba2 and deltanet; hybrids further improve efficiency–quality trade-offs. code: nvlabs/gateddeltanet. 语言建模 / 推理 / 长上下文套件上 gated deltanet 稳定超过 mamba2 与 deltanet；混合进一步改善效率–质量折中。代码：nvlabs/gateddeltanet。 产品结论：gdn 是 delta→kda 谱系里关键的一环。 gated deltanet">
+<span class="pidx">§15</span>
+<div class="summary"><b>小结</b> · 产品结论：GDN 是 Delta→KDA 谱系里关键的一环。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Across LM / reasoning / long-context suites, Gated DeltaNet consistently beats Mamba2 and DeltaNet; hybrids further improve efficiency–quality trade-offs. Code: NVlabs/GatedDeltaNet.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">语言建模 / 推理 / 长上下文套件上 Gated DeltaNet 稳定超过 Mamba2 与 DeltaNet；混合进一步改善效率–质量折中。代码：NVlabs/GatedDeltaNet。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span></div></article>
+</section>
+<section class="section" id="bridge"><h3>谱系位置：DeltaNet → GDN → KDA <span>2 段</span></h3>
+<article class="card para" data-idx="16" data-blob="reading map in this repo: papers/deltanet (2021 theory) → papers/deltanet-parallel (2024 scalable training) → this page (scalar α + δ) → papers/kda (channel-wise diag(α) + mla hybrid). 本仓库阅读地图：papers/deltanet（2021 理论原点）→ papers/deltanet-parallel（2024 可扩展训练）→ 本页（标量 α + δ）→ papers/kda（通道级 diag(α) + mla 混合）。 四步：理论原点 → 练得动 → 全局门 → 通道门。 kda deltanet">
+<span class="pidx">§16</span>
+<div class="summary"><b>小结</b> · 四步：理论原点 → 练得动 → 全局门 → 通道门。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Reading map in this repo: papers/deltanet (2021 theory) → papers/deltanet-parallel (2024 scalable training) → this page (scalar α + δ) → papers/kda (channel-wise Diag(α) + MLA hybrid).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库阅读地图：papers/deltanet（2021 理论原点）→ papers/deltanet-parallel（2024 可扩展训练）→ 本页（标量 α + δ）→ papers/kda（通道级 Diag(α) + MLA 混合）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="KDA">KDA</span><span class="term" data-term="DeltaNet">DeltaNet</span></div></article>
+<article class="card para" data-idx="17" data-blob="do not confuse folders: deltanet has β only; gated deltanet adds scalar α; kda replaces α with diag(α_t) per channel. 分夹勿混：deltanet 只有 β；gated deltanet 加标量 α；kda 把 α 换成逐通道 diag(α_t)。 公式差一个符号量级，论文就该分开放。 diag(α_t) α β">
+<span class="pidx">§17</span>
+<div class="summary"><b>小结</b> · 公式差一个符号量级，论文就该分开放。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="对照三式  \begin{aligned}\mathrm{deltanet}&amp;:\;s\leftarrow s(i-\beta kk^\top)+\beta vk^\top\\ \mathrm{gdn}&amp;:\;s\leftarrow s(\alpha(i-\beta kk^\top))+\beta vk^\top\\ \mathrm{kda}&amp;:\;s\leftarrow (i-\beta kk^\top)\mathrm{diag}(\alpha)s+\beta vk^\top\end{aligned}"><div class="math-tag">对照三式</div><div class="math-eq">\[\begin{aligned}\mathrm{DeltaNet}&amp;:\;S\leftarrow S(I-\beta kk^\top)+\beta vk^\top\\ \mathrm{GDN}&amp;:\;S\leftarrow S(\alpha(I-\beta kk^\top))+\beta vk^\top\\ \mathrm{KDA}&amp;:\;S\leftarrow (I-\beta kk^\top)\mathrm{Diag}(\alpha)S+\beta vk^\top\end{aligned}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Do not confuse folders: DeltaNet has β only; Gated DeltaNet adds scalar α; KDA replaces α with Diag(α_t) per channel.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">分夹勿混：DeltaNet 只有 β；Gated DeltaNet 加标量 α；KDA 把 α 换成逐通道 Diag(α_t)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Diag(α_t)">Diag(α_t)</span><span class="term" data-term="α">α</span><span class="term" data-term="β">β</span></div></article>
+</section>
+<section class="section" id="glossary"><h3>名词重点解释 <span>27 条</span></h3><div class="refgrid">
+<div class="gitem" id="term-Gated DeltaNet" data-blob="gated deltanet 结合标量遗忘门 α 与 delta rule β 的线性注意力架构（本文）。"><b>Gated DeltaNet</b><p>结合标量遗忘门 α 与 delta rule β 的线性注意力架构（本文）。</p></div>
+<div class="gitem" id="term-gated delta rule" data-blob="gated delta rule s←s(α(i−βkkᵀ))+βvkᵀ：全局遗忘 + 定点纠错。"><b>gated delta rule</b><p>S←S(α(I−βkkᵀ))+βvkᵀ：全局遗忘 + 定点纠错。</p></div>
+<div class="gitem" id="term-DeltaNet" data-blob="deltanet 仅用 delta rule 的线性注意力；理论见 papers/deltanet，可扩展训练见 papers/deltanet-parallel。"><b>DeltaNet</b><p>仅用 delta rule 的线性注意力；理论见 papers/deltanet，可扩展训练见 papers/deltanet-parallel。</p></div>
+<div class="gitem" id="term-Mamba2" data-blob="mamba2 带标量衰减的加性状态更新：s←αs+vkᵀ。"><b>Mamba2</b><p>带标量衰减的加性状态更新：S←αS+vkᵀ。</p></div>
+<div class="gitem" id="term-α" data-blob="α 数据相关标量遗忘/衰减因子。"><b>α</b><p>数据相关标量遗忘/衰减因子。</p></div>
+<div class="gitem" id="term-β" data-blob="β delta 写入强度 / 学习率。"><b>β</b><p>delta 写入强度 / 学习率。</p></div>
+<div class="gitem" id="term-delta rule" data-blob="delta rule 按 key 读出旧值、按误差纠错写入的更新。"><b>delta rule</b><p>按 key 读出旧值、按误差纠错写入的更新。</p></div>
+<div class="gitem" id="term-gating" data-blob="gating 数据相关的记忆清除/保留控制。"><b>gating</b><p>数据相关的记忆清除/保留控制。</p></div>
+<div class="gitem" id="term-linear attention" data-blob="linear attention 固定大小状态的线性复杂度注意力族。"><b>linear attention</b><p>固定大小状态的线性复杂度注意力族。</p></div>
+<div class="gitem" id="term-associative memory" data-blob="associative memory 把 key 映射到 value 的可写可读状态 s。"><b>associative memory</b><p>把 key 映射到 value 的可写可读状态 S。</p></div>
+<div class="gitem" id="term-memory collision" data-blob="memory collision 序列过长导致有限维度状态无法区分过多 kv 绑定。"><b>memory collision</b><p>序列过长导致有限维度状态无法区分过多 KV 绑定。</p></div>
+<div class="gitem" id="term-Householder" data-blob="householder i−βkkᵀ 型秩一修正转移。"><b>Householder</b><p>I−βkkᵀ 型秩一修正转移。</p></div>
+<div class="gitem" id="term-WY representation" data-blob="wy representation 紧凑表示一串 householder 乘积，支撑分块并行。"><b>WY representation</b><p>紧凑表示一串 Householder 乘积，支撑分块并行。</p></div>
+<div class="gitem" id="term-UT transform" data-blob="ut transform 把 wy 因子写成可 matmul 的块三角形式。"><b>UT transform</b><p>把 WY 因子写成可 matmul 的块三角形式。</p></div>
+<div class="gitem" id="term-chunkwise" data-blob="chunkwise 块间递推、块内并行的训练日程。"><b>chunkwise</b><p>块间递推、块内并行的训练日程。</p></div>
+<div class="gitem" id="term-online learning" data-blob="online learning 把递推看成逐步最小化在线目标的闭式更新。"><b>online learning</b><p>把递推看成逐步最小化在线目标的闭式更新。</p></div>
+<div class="gitem" id="term-associative recall" data-blob="associative recall 上下文中按 key 找回 value 的能力。"><b>associative recall</b><p>上下文中按 key 找回 value 的能力。</p></div>
+<div class="gitem" id="term-S-NIAH" data-blob="s-niah 长上下文检索探针套件（needle-in-a-haystack 变体）。"><b>S-NIAH</b><p>长上下文检索探针套件（needle-in-a-haystack 变体）。</p></div>
+<div class="gitem" id="term-hybrid" data-blob="hybrid gdn 与滑窗注意力或 mamba2 等混合堆叠。"><b>hybrid</b><p>GDN 与滑窗注意力或 Mamba2 等混合堆叠。</p></div>
+<div class="gitem" id="term-sliding window" data-blob="sliding window 局部滑窗 softmax 注意力。"><b>sliding window</b><p>局部滑窗 softmax 注意力。</p></div>
+<div class="gitem" id="term-ShortConv" data-blob="shortconv qkv 后的轻量短卷积。"><b>ShortConv</b><p>QKV 后的轻量短卷积。</p></div>
+<div class="gitem" id="term-SiLU" data-blob="silu 常用激活；配合 l2norm 稳定 q/k。"><b>SiLU</b><p>常用激活；配合 L2Norm 稳定 q/k。</p></div>
+<div class="gitem" id="term-L2Norm" data-blob="l2norm 对 q/k 的 l2 归一化。"><b>L2Norm</b><p>对 q/k 的 L2 归一化。</p></div>
+<div class="gitem" id="term-output gate" data-blob="output gate 输出侧数据相关门。"><b>output gate</b><p>输出侧数据相关门。</p></div>
+<div class="gitem" id="term-KDA" data-blob="kda kimi delta attention：把 α 升级为 diag(α)（papers/kda）。"><b>KDA</b><p>Kimi Delta Attention：把 α 升级为 Diag(α)（papers/kda）。</p></div>
+<div class="gitem" id="term-Diag(α_t)" data-blob="diag(α_t) 通道级对角遗忘；相对 gdn 的标量 α。"><b>Diag(α_t)</b><p>通道级对角遗忘；相对 GDN 的标量 α。</p></div>
+<div class="gitem" id="term-Eq.10" data-blob="eq.10 本文 gated delta rule 主公式。"><b>Eq.10</b><p>本文 gated delta rule 主公式。</p></div>
+</div></section>
+<section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">
+<div class="ref" data-blob="gated deltanet 逐段精读对象；标量门 + delta rule。"><span class="lv must">本篇</span><h4>Gated DeltaNet</h4><p>逐段精读对象；标量门 + delta rule。</p><a href="./paper.pdf" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2412.06464" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="deltanet 原点（2021） fwp 等价、容量界、delta 指令。"><span class="lv imp">前驱</span><h4>DeltaNet 原点（2021）</h4><p>FWP 等价、容量界、delta 指令。</p><a href="../deltanet/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2102.11174" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="并行 deltanet 训练（2024） 同一 delta rule 的 wy 分块并行。"><span class="lv imp">前驱</span><h4>并行 DeltaNet 训练（2024）</h4><p>同一 delta rule 的 WY 分块并行。</p><a href="../deltanet-parallel/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2406.06484" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="kimi linear / kda 通道级 diag(α) + mla 混合。"><span class="lv ">下游</span><h4>Kimi Linear / KDA</h4><p>通道级 Diag(α) + MLA 混合。</p><a href="../kda/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="mamba2 标量衰减加性更新的强基线。"><span class="lv ">对照</span><h4>Mamba2</h4><p>标量衰减加性更新的强基线。</p><a href="https://arxiv.org/abs/2405.21060" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="nvlabs/gateddeltanet 官方实现与实验入口。"><span class="lv imp">代码</span><h4>NVlabs/GatedDeltaNet</h4><p>官方实现与实验入口。</p><a href="https://github.com/NVlabs/GatedDeltaNet" target="_blank" rel="noopener">打开 →</a></div>
+</div><p class="note" style="margin-top:28px">本页为学习用逐段精读；数字与公式以 PDF 为准。示意图为教学重绘。</p></section></main></div>
+
+<aside class="drawer" id="drawer"><button class="btn" id="closeDrawer">关闭</button>
+<h2>名词速查</h2><div id="drawerBody"></div></aside>
+<script>
+const body=document.body;const cards=[...document.querySelectorAll('.para')];let idx=0;
+const glossary={"Gated DeltaNet":"\u7ed3\u5408\u6807\u91cf\u9057\u5fd8\u95e8 \u03b1 \u4e0e delta rule \u03b2 \u7684\u7ebf\u6027\u6ce8\u610f\u529b\u67b6\u6784\uff08\u672c\u6587\uff09\u3002",
+"gated delta rule":"S\u2190S(\u03b1(I\u2212\u03b2kk\u1d40))+\u03b2vk\u1d40\uff1a\u5168\u5c40\u9057\u5fd8 + \u5b9a\u70b9\u7ea0\u9519\u3002",
+"DeltaNet":"\u4ec5\u7528 delta rule \u7684\u7ebf\u6027\u6ce8\u610f\u529b\uff1b\u7406\u8bba\u89c1 papers/deltanet\uff0c\u53ef\u6269\u5c55\u8bad\u7ec3\u89c1 papers/deltanet-parallel\u3002",
+"Mamba2":"\u5e26\u6807\u91cf\u8870\u51cf\u7684\u52a0\u6027\u72b6\u6001\u66f4\u65b0\uff1aS\u2190\u03b1S+vk\u1d40\u3002",
+"\u03b1":"\u6570\u636e\u76f8\u5173\u6807\u91cf\u9057\u5fd8/\u8870\u51cf\u56e0\u5b50\u3002",
+"\u03b2":"delta \u5199\u5165\u5f3a\u5ea6 / \u5b66\u4e60\u7387\u3002",
+"delta rule":"\u6309 key \u8bfb\u51fa\u65e7\u503c\u3001\u6309\u8bef\u5dee\u7ea0\u9519\u5199\u5165\u7684\u66f4\u65b0\u3002",
+"gating":"\u6570\u636e\u76f8\u5173\u7684\u8bb0\u5fc6\u6e05\u9664/\u4fdd\u7559\u63a7\u5236\u3002",
+"linear attention":"\u56fa\u5b9a\u5927\u5c0f\u72b6\u6001\u7684\u7ebf\u6027\u590d\u6742\u5ea6\u6ce8\u610f\u529b\u65cf\u3002",
+"associative memory":"\u628a key \u6620\u5c04\u5230 value \u7684\u53ef\u5199\u53ef\u8bfb\u72b6\u6001 S\u3002",
+"memory collision":"\u5e8f\u5217\u8fc7\u957f\u5bfc\u81f4\u6709\u9650\u7ef4\u5ea6\u72b6\u6001\u65e0\u6cd5\u533a\u5206\u8fc7\u591a KV \u7ed1\u5b9a\u3002",
+"Householder":"I\u2212\u03b2kk\u1d40 \u578b\u79e9\u4e00\u4fee\u6b63\u8f6c\u79fb\u3002",
+"WY representation":"\u7d27\u51d1\u8868\u793a\u4e00\u4e32 Householder \u4e58\u79ef\uff0c\u652f\u6491\u5206\u5757\u5e76\u884c\u3002",
+"UT transform":"\u628a WY \u56e0\u5b50\u5199\u6210\u53ef matmul \u7684\u5757\u4e09\u89d2\u5f62\u5f0f\u3002",
+"chunkwise":"\u5757\u95f4\u9012\u63a8\u3001\u5757\u5185\u5e76\u884c\u7684\u8bad\u7ec3\u65e5\u7a0b\u3002",
+"online learning":"\u628a\u9012\u63a8\u770b\u6210\u9010\u6b65\u6700\u5c0f\u5316\u5728\u7ebf\u76ee\u6807\u7684\u95ed\u5f0f\u66f4\u65b0\u3002",
+"associative recall":"\u4e0a\u4e0b\u6587\u4e2d\u6309 key \u627e\u56de value \u7684\u80fd\u529b\u3002",
+"S-NIAH":"\u957f\u4e0a\u4e0b\u6587\u68c0\u7d22\u63a2\u9488\u5957\u4ef6\uff08needle-in-a-haystack \u53d8\u4f53\uff09\u3002",
+"hybrid":"GDN \u4e0e\u6ed1\u7a97\u6ce8\u610f\u529b\u6216 Mamba2 \u7b49\u6df7\u5408\u5806\u53e0\u3002",
+"sliding window":"\u5c40\u90e8\u6ed1\u7a97 softmax \u6ce8\u610f\u529b\u3002",
+"ShortConv":"QKV \u540e\u7684\u8f7b\u91cf\u77ed\u5377\u79ef\u3002",
+"SiLU":"\u5e38\u7528\u6fc0\u6d3b\uff1b\u914d\u5408 L2Norm \u7a33\u5b9a q/k\u3002",
+"L2Norm":"\u5bf9 q/k \u7684 L2 \u5f52\u4e00\u5316\u3002",
+"output gate":"\u8f93\u51fa\u4fa7\u6570\u636e\u76f8\u5173\u95e8\u3002",
+"KDA":"Kimi Delta Attention\uff1a\u628a \u03b1 \u5347\u7ea7\u4e3a Diag(\u03b1)\uff08papers/kda\uff09\u3002",
+"Diag(\u03b1_t)":"\u901a\u9053\u7ea7\u5bf9\u89d2\u9057\u5fd8\uff1b\u76f8\u5bf9 GDN \u7684\u6807\u91cf \u03b1\u3002",
+"Eq.10":"\u672c\u6587 gated delta rule \u4e3b\u516c\u5f0f\u3002"};
+function setMode(m){body.classList.remove('mode-both','mode-zh','mode-en');body.classList.add('mode-'+m);
+document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));}
+document.getElementById('modeSeg').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.mode);};
+function focusCard(i){if(!cards.length)return;idx=(i+cards.length)%cards.length;cards.forEach(c=>c.classList.remove('active'));
+const c=cards[idx];c.classList.add('active');c.scrollIntoView({behavior:'smooth',block:'center'});}
+const q=document.getElementById('q');q.oninput=()=>{const s=q.value.trim().toLowerCase();
+document.querySelectorAll('[data-blob]').forEach(el=>{el.classList.toggle('hidden-by-search',s&&!(el.dataset.blob||'').includes(s));});};
+const drawer=document.getElementById('drawer');const drawerBody=document.getElementById('drawerBody');
+document.getElementById('btnGlossary').onclick=()=>{drawerBody.innerHTML=Object.entries(glossary).map(([k,v])=>`<div class="gitem"><b>${k}</b><p>${v}</p></div>`).join('');drawer.classList.add('open');};
+document.getElementById('closeDrawer').onclick=()=>drawer.classList.remove('open');
+document.body.onclick=e=>{const t=e.target.closest('.term');if(!t)return;
+drawerBody.innerHTML=`<div class="gitem"><b>${t.dataset.term}</b><p>${glossary[t.dataset.term]||'暂无'}</p></div>`;drawer.classList.add('open');};
+const tocLinks=[...document.querySelectorAll('#toc a')];
+const sections=tocLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io=new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const id='#'+en.target.id;
+tocLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===id));});},
+{rootMargin:'-20% 0px -65% 0px',threshold:0.01});
+sections.forEach(s=>io.observe(s));
+document.onkeydown=e=>{if(e.target.matches('input,textarea'))return;
+if(e.key==='1')setMode('both');if(e.key==='2')setMode('zh');if(e.key==='3')setMode('en');
+if(e.key==='j'||e.key==='J'){e.preventDefault();focusCard(idx+1);}
+if(e.key==='k'||e.key==='K'){e.preventDefault();focusCard(idx-1);}
+if(e.key==='g'||e.key==='G')document.getElementById('btnGlossary').click();
+if(e.key==='/'){e.preventDefault();q.focus();};};
+</script></body></html>

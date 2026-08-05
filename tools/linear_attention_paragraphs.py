@@ -329,8 +329,8 @@ SECTIONS = [
                 "terms": ["delta rule", "KDA", "Gated DeltaNet"],
             },
             {
-                "en": "Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/delta-attention/index.html for DeltaNet, then papers/kda/index.html for KDA; step through papers/kda/kda/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.",
-                "zh": "本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/delta-attention/ 看 DeltaNet，再读 papers/kda/ 看 KDA；最后跟 papers/kda/kda/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。",
+                "en": "Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/deltanet/ (2021 theory bridge to delta rule), papers/deltanet-parallel/ (2024 training), papers/gated-deltanet/, then papers/kda/; step through papers/kda/kda/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.",
+                "zh": "本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/deltanet/（2021 理论桥到 delta），papers/deltanet-parallel/（2024 训练），papers/gated-deltanet/，再读 papers/kda/；最后跟 papers/kda/kda/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。",
                 "summary": "学完这篇，再学 KDA 不会懵「S 从哪来」。",
                 "terms": ["KDA", "recurrent_kda"],
             },

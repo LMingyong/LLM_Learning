@@ -261,8 +261,8 @@ SECTIONS = [
                 "terms": ["Gated DeltaNet", "KDA"],
             },
             {
-                "en": "In this repo: read this page’s formulas first; then papers/kda/ for channel-wise gating + teaching code. Do not conflate DeltaNet’s β-only update with KDA’s Diag(α) forget.",
-                "zh": "本仓库：先读本页公式；再读 papers/kda/ 看通道门控与教学代码。勿把 DeltaNet 仅含 β 的更新与 KDA 的 Diag(α) 遗忘混为一谈。",
+                "en": "In this repo: theory origin is papers/deltanet/ (2021); this page is parallel training (2024). Then papers/gated-deltanet/ for scalar α, papers/kda/ for Diag(α). Do not conflate DeltaNet’s β-only update with KDA’s Diag(α) forget.",
+                "zh": "本仓库：理论原点在 papers/deltanet/（2021）；本页是并行训练（2024）。再读 papers/gated-deltanet/ 看标量 α，papers/kda/ 看 Diag(α)。勿把 DeltaNet 仅含 β 的更新与 KDA 的 Diag(α) 遗忘混为一谈。",
                 "summary": "拆夹原因：两篇论文，两套公式。",
                 "terms": ["KDA"],
             },

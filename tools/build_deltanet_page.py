@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build fine-grained DeltaNet / Delta Attention study page."""
+"""Build fine-grained DeltaNet origin (Schlag 2021) study page."""
 
 from __future__ import annotations
 
@@ -7,72 +7,101 @@ import html
 import json
 from pathlib import Path
 
-from delta_attention_paragraphs import FORMULA_WALL, GLOSSARY, REFS, SECTIONS
+from deltanet_paragraphs import FORMULA_WALL, GLOSSARY, REFS, SECTIONS
 from reader_math import KATEX_HEAD, MATH_CSS, render_formulas
 
-OUT = Path(__file__).resolve().parents[1] / "papers/deltanet-parallel/index.html"
+OUT = Path(__file__).resolve().parents[1] / "papers/deltanet/index.html"
 
 
 def esc(s: str) -> str:
     return html.escape(s)
 
 
-def fig_delta_steps() -> str:
+def fig_bridge() -> str:
     return """
-<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DeltaNet steps">
-  <rect width="820" height="210" fill="#fffcf5"/>
+<svg viewBox="0 0 820 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="bridge">
+  <rect width="820" height="220" fill="#fffcf5"/>
   <g font-family="Manrope,sans-serif">
-    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">DeltaNet 一步：读旧 → 混合 → 擦写 → 查询</text>
-    <rect x="20" y="55" width="175" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
-    <text x="107" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">1. 读旧</text>
-    <text x="107" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v_old ← S k</text>
-    <text x="107" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">按当前 key 取回</text>
-    <rect x="220" y="55" width="175" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
-    <text x="307" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">2. 混合</text>
-    <text x="307" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">v_new ← βv+(1−β)v_old</text>
-    <text x="307" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">写入强度 β</text>
-    <rect x="420" y="55" width="175" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
-    <text x="507" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 擦写</text>
-    <text x="507" y="108" text-anchor="middle" font-size="12" fill="#5a6a62">S ← S(I−βkkᵀ)+βvkᵀ</text>
-    <text x="507" y="128" text-anchor="middle" font-size="11" fill="#7d8c84">Householder</text>
-    <rect x="620" y="55" width="175" height="90" rx="12" fill="#1c2420"/>
-    <text x="707" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">4. 查询</text>
-    <text x="707" y="108" text-anchor="middle" font-size="12" fill="#cfd8d3">o ← S q</text>
-    <text x="707" y="128" text-anchor="middle" font-size="11" fill="#9bb4ae">无通道遗忘门</text>
-    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">相对 KDA：这里还没有 Diag(α)；遗忘靠 β 擦写本身</text>
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">缺口补齐：Linear Attn → 容量墙 → Delta</text>
+    <rect x="30" y="50" width="170" height="100" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="115" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">1. 加性写入</text>
+    <text x="115" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">W ← W + v⊗φ(k)</text>
+    <text x="115" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">Linear Attn / FWP</text>
+    <text x="215" y="105" font-size="20" fill="#0f6e56">→</text>
+    <rect x="240" y="50" width="170" height="100" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="325" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">2. 容量墙</text>
+    <text x="325" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">L &gt; d_dot</text>
+    <text x="325" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">串扰不可避免</text>
+    <text x="425" y="105" font-size="20" fill="#0f6e56">→</text>
+    <rect x="450" y="50" width="170" height="100" rx="12" fill="#fff3d6" stroke="#8a6a20"/>
+    <text x="535" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#8a6a20">3. 需要改写</text>
+    <text x="535" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">只会叠加不够</text>
+    <text x="535" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">指令集要升级</text>
+    <text x="635" y="105" font-size="20" fill="#0f6e56">→</text>
+    <rect x="660" y="50" width="130" height="100" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="725" y="85" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">4. Delta</text>
+    <text x="725" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">β(v−v̄)⊗φ(k)</text>
+    <text x="725" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">先读再改</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">不是换核函数，而是换「写入指令」</text>
   </g>
 </svg>
 """
 
 
-def fig_chunk() -> str:
+def fig_equiv() -> str:
     return """
-<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="chunkwise">
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="equiv">
   <rect width="820" height="200" fill="#fffcf5"/>
   <g font-family="Manrope,sans-serif">
-    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">分块并行：WY 构造 U/W → 块间传 S → 块内 matmul</text>
-    <rect x="40" y="60" width="200" height="80" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
-    <text x="140" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">构造 U, W</text>
-    <text x="140" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">O(d) 内存 / 块</text>
-    <path d="M250 100 H290" stroke="#0f6e56" stroke-width="2"/>
-    <rect x="295" y="60" width="200" height="80" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
-    <text x="395" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">块间更新 S</text>
-    <text x="395" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">Eq.7 递推</text>
-    <path d="M505 100 H545" stroke="#0f6e56" stroke-width="2"/>
-    <rect x="550" y="60" width="220" height="80" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
-    <text x="660" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">块内算 O</text>
-    <text x="660" y="118" text-anchor="middle" font-size="12" fill="#5a6a62">Eq.8 · 吃 Tensor Core</text>
-    <text x="410" y="175" text-anchor="middle" font-size="12" fill="#7d8c84">相对纯递推：H100 上约 5.5×–13×（随 L、d_head 增大）</text>
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">形式等价：Linear Transformer = FWP + 归一化</text>
+    <rect x="60" y="55" width="300" height="100" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="210" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">因果 Linear Attention</text>
+    <text x="210" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">累加 v⊗φ(k)，用 φ(q) 读</text>
+    <text x="210" y="138" text-anchor="middle" font-size="11" fill="#7d8c84">固定大小状态</text>
+    <text x="410" y="110" text-anchor="middle" font-size="22" font-weight="700" fill="#0f6e56">≡</text>
+    <rect x="460" y="55" width="300" height="100" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="610" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">Fast Weight Programmer</text>
+    <text x="610" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">慢网写快权重 W</text>
+    <text x="610" y="138" text-anchor="middle" font-size="11" fill="#7d8c84">联想记忆读写</text>
+    <text x="410" y="180" text-anchor="middle" font-size="12" fill="#7d8c84">同一套 W；差别在后来把「加」换成「delta」</text>
+  </g>
+</svg>
+"""
+
+
+def fig_delta_steps() -> str:
+    return """
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="delta steps">
+  <rect width="820" height="210" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Delta 编程指令一步（式 23–24）</text>
+    <rect x="30" y="55" width="170" height="90" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="115" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">1. 读旧</text>
+    <text x="115" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">v̄ = W φ(k)</text>
+    <text x="115" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">当前地址内容</text>
+    <rect x="225" y="55" width="170" height="90" rx="12" fill="#fff3d6" stroke="#8a6a20"/>
+    <text x="310" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#8a6a20">2. 定强度</text>
+    <text x="310" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">β = σ(W_β x)</text>
+    <text x="310" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">改多狠</text>
+    <rect x="420" y="55" width="170" height="90" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="505" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">3. 算误差</text>
+    <text x="505" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">β(v − v̄)</text>
+    <text x="505" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">只写纠正量</text>
+    <rect x="615" y="55" width="170" height="90" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="700" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">4. 写回</text>
+    <text x="700" y="115" text-anchor="middle" font-size="12" fill="#5a6a62">W ← W + …⊗φ(k)</text>
+    <text x="700" y="135" text-anchor="middle" font-size="11" fill="#7d8c84">定点擦写</text>
+    <text x="410" y="185" text-anchor="middle" font-size="12" fill="#7d8c84">β=1 完全覆盖该 key；β=0 完全不改 · 后文再加 α / Diag(α)</text>
   </g>
 </svg>
 """
 
 
 FIGURES = {
-    "delta_steps": ("教学示意 · DeltaNet 单步擦写", fig_delta_steps()),
-    "chunk": ("教学示意 · 对应论文 §3 分块并行", fig_chunk()),
+    "bridge": ("教学示意 · 从 Linear Attention 到 Delta 的四步缺口", fig_bridge()),
+    "equiv": ("教学示意 · Linear Attention ≡ Fast Weight Programmer", fig_equiv()),
+    "delta_steps": ("教学示意 · 对应原文式 (23)–(24)", fig_delta_steps()),
 }
-
 
 
 CSS = r"""
@@ -172,6 +201,9 @@ display:flex;flex-direction:column;gap:8px;min-height:140px}
 .ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
 .kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint);background:#fff}
 .note{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+.bridge-callout{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:0 14px 14px 0;
+background:var(--paper);padding:14px 16px;margin:0 0 18px;font-family:var(--sans);font-size:14px;color:var(--muted);line-height:1.65}
+.bridge-callout strong{color:var(--ink)}
 """ + MATH_CSS + r"""
 @media (max-width:960px){
   .app{grid-template-columns:1fr}
@@ -190,7 +222,7 @@ def build() -> str:
 <html lang="zh-CN"><head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>DeltaNet / Delta Attention 逐段精读</title>
+<title>DeltaNet 原点 · 逐段精读（Schlag 2021）</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
@@ -199,8 +231,8 @@ def build() -> str:
 <body class="mode-both"><div class="app">
 <aside class="side">
 <div class="brand">LLM Learning · Paper Reader</div>
-<h1>DeltaNet / Delta Attention</h1>
-<div class="meta">arXiv:2406.06484<br/>每段 = 小结 + Original + 译文<br/>公式独立成卡 · 与 KDA 分夹</div>
+<h1>DeltaNet 原点</h1>
+<div class="meta">arXiv:2102.11174 · ICML 2021<br/>Linear Transformers Are Secretly FWPs<br/>理论：等价 · 容量 · delta 指令</div>
 <nav id="toc">
 <a href="#formulas">公式墙（速查）</a>
 """
@@ -225,27 +257,33 @@ def build() -> str:
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
 <a class="btn" href="#formulas">公式墙</a>
-<a class="btn" href="./notes.md">公式笔记 →</a>
-<a class="btn" href="../deltanet/index.html">← 理论原点</a>
+<a class="btn" href="../linear-attention/index.html">← Linear Attn</a>
+<a class="btn" href="../deltanet-parallel/index.html">并行训练 →</a>
 <a class="btn" href="../gated-deltanet/index.html">Gated DeltaNet →</a>
-<a class="btn" href="../kda/index.html">KDA →</a>
-<a class="btn" href="../linear-attention/index.html">Linear →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
 </div>
 <section class="hero">
-<h2>并行训练 DeltaNet（2024）</h2>
-<p>本夹对应 <strong>arXiv:2406.06484</strong>：给同一套 delta rule 做硬件高效的分块并行训练。
-理论（为何用 delta）在 <a href="../deltanet/">deltanet/</a>（arXiv:2102.11174）；本夹讲怎么练得动。</p>
+<h2>DeltaNet 原点（Schlag et al., 2021）</h2>
+<p>本夹对应 <strong>arXiv:2102.11174</strong>：证明 Linear Attention ≡ Fast Weight Programmer，推出加性写入的容量上限，并把写入指令换成 delta rule。
+这是理论原点，不是 2024 并行训练文——训练加速见 <a href="../deltanet-parallel/">deltanet-parallel</a>。</p>
 <div class="chips">
-<span class="chip">核心：<em>delta rule 擦写</em></span>
-<span class="chip">算法：<em>WY + 分块并行</em></span>
-<span class="chip">规模：<em>1.3B / 100B tokens</em></span>
-<span class="chip">下游：<em>→ GDN → KDA</em></span>
+<span class="chip">核心：<em>β(v−v̄)⊗φ(k)</em></span>
+<span class="chip">桥：<em>Linear → FWP → 容量 → δ</em></span>
+<span class="chip">后续：<em>并行 · GDN · KDA</em></span>
 </div>
 </section>
-<p class="note">英文贴近 NeurIPS 2024 论文。建议：先读 <a href="../deltanet/">理论原点</a>，再扫本页 <a href="#formulas">公式墙</a> 与 §3 并行；学完接 <a href="../gated-deltanet/index.html">Gated DeltaNet</a>，再进 <a href="../kda/index.html">KDA</a>。</p>
-<section class="section" id="formulas"><h3>公式墙（速查） <span>谱系一览</span></h3>
-<p class="inline-math-hint">以下公式从正文抽出，便于对照；段内还有更细的展开卡。</p>
+<div class="bridge-callout">
+<strong>读之前先认缺口：</strong>从 Linear Attention 直接跳到「用 delta 更新」会觉得中间空一截。
+空的是：① 固定矩阵 W 是联想记忆；② 加法写入在超容量下必然串扰；③ 因此指令集要从「只加」升级到「先读再改」。
+请先读下面「导读」节，再进正文。
+</div>
+<p class="note">英文贴近 ICML 2021 论文；导读节为学习笔记。建议路径：
+<a href="../linear-attention/">Linear Attention</a> → 本页 →
+<a href="../deltanet-parallel/">并行训练</a> →
+<a href="../gated-deltanet/">Gated DeltaNet</a> →
+<a href="../kda/">KDA</a>。</p>
+<section class="section" id="formulas"><h3>公式墙（速查） <span>理论三板斧</span></h3>
+<p class="inline-math-hint">加性 FWP → 容量界 → delta 纠错；段内还有更细展开。</p>
 """
         + render_formulas(FORMULA_WALL, wall=True)
         + "</section>\n"

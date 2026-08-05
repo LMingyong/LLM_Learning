@@ -164,7 +164,7 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 </div>
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
-<a class="btn" href="../delta-attention/index.html">DeltaNet →</a>
+<a class="btn" href="../deltanet/index.html">DeltaNet →</a>
 <a class="btn" href="../kda/index.html">KDA →</a>
 <a class="btn" href="https://linear-transformers.com/" target="_blank" rel="noopener">官网 →</a>
 <div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
@@ -179,7 +179,7 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <span class="chip">下游：<em>KDA / 混合架构</em></span>
 </div>
 </section>
-<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。学完建议接着读 <a href="../delta-attention/index.html">DeltaNet</a> 与 <a href="../kda/index.html">KDA</a>。</p>
+<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。学完建议接着读 <a href="../deltanet/index.html">DeltaNet 原点</a>（补容量/delta 理论桥），再 <a href="../deltanet-parallel/index.html">并行训练</a> 与 <a href="../kda/index.html">KDA</a>。</p>
 <section class="section" id="abstract"><h3>Abstract 摘要 <span>4 段</span></h3>
 <article class="card para" data-idx="1" data-blob="transformers achieve remarkable performance in several tasks but due to their quadratic complexity, with respect to the input’s length, they are prohibitively slow for very long sequences. transformer 在多项任务上表现卓越，但由于相对输入长度的二次复杂度，对很长序列而言慢得难以接受。 痛点：全注意力 o(n²)，长序列吃不消。 quadratic complexity">
 <span class="pidx">§1</span>
@@ -504,12 +504,12 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <div class="zh-block"><div class="label">译文</div><div class="zh">后续工作攻击的局限：(1) 无遗忘——旧关联互相干扰；(2) 加性更新不能纠正错误的 key→value 绑定（故有 DeltaNet 的 delta rule）；(3) 标量/通道门（GDN/GLA/KDA）加入数据相关衰减；(4) 纯有限状态检索仍吃力，催生 Kimi Linear 这类混合（KDA:MLA=3:1）。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="delta rule">delta rule</span><span class="term" data-term="KDA">KDA</span><span class="term" data-term="Gated DeltaNet">Gated DeltaNet</span></div></article>
-<article class="card para" data-idx="34" data-blob="suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/delta-attention/index.html for deltanet, then papers/kda/index.html for kda; step through papers/kda/kda/recurrent.py to see channel-wise forget + delta write on top of the same s-state idea. 本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/delta-attention/ 看 deltanet，再读 papers/kda/ 看 kda；最后跟 papers/kda/kda/recurrent.py，看在同一 s 状态思想上的通道遗忘 + delta 写入。 学完这篇，再学 kda 不会懵「s 从哪来」。 kda recurrent_kda">
+<article class="card para" data-idx="34" data-blob="suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/deltanet/ (2021 theory bridge to delta rule), papers/deltanet-parallel/ (2024 training), papers/gated-deltanet/, then papers/kda/; step through papers/kda/kda/recurrent.py to see channel-wise forget + delta write on top of the same s-state idea. 本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/deltanet/（2021 理论桥到 delta），papers/deltanet-parallel/（2024 训练），papers/gated-deltanet/，再读 papers/kda/；最后跟 papers/kda/kda/recurrent.py，看在同一 s 状态思想上的通道遗忘 + delta 写入。 学完这篇，再学 kda 不会懵「s 从哪来」。 kda recurrent_kda">
 <span class="pidx">§34</span>
 <div class="summary"><b>小结</b> · 学完这篇，再学 KDA 不会懵「S 从哪来」。</div>
 <div class="pair lang">
-<div class="en-block"><div class="label">Original</div><div class="en">Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/delta-attention/index.html for DeltaNet, then papers/kda/index.html for KDA; step through papers/kda/kda/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.</div></div>
-<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/delta-attention/ 看 DeltaNet，再读 papers/kda/ 看 KDA；最后跟 papers/kda/kda/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。</div></div>
+<div class="en-block"><div class="label">Original</div><div class="en">Suggested path in this repo: read this page’s §3.2–3.4 carefully; then papers/deltanet/ (2021 theory bridge to delta rule), papers/deltanet-parallel/ (2024 training), papers/gated-deltanet/, then papers/kda/; step through papers/kda/kda/recurrent.py to see channel-wise forget + delta write on top of the same S-state idea.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库建议路径：先精读本页 §3.2–3.4；再读 papers/deltanet/（2021 理论桥到 delta），papers/deltanet-parallel/（2024 训练），papers/gated-deltanet/，再读 papers/kda/；最后跟 papers/kda/kda/recurrent.py，看在同一 S 状态思想上的通道遗忘 + delta 写入。</div></div>
 </div>
 <div class="terms"><span class="term" data-term="KDA">KDA</span><span class="term" data-term="recurrent_kda">recurrent_kda</span></div></article>
 </section>
