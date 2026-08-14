@@ -221,6 +221,7 @@ def build() -> str:
 </div>
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+<a class="btn" href="../transformer/index.html">← Transformer</a>
 <a class="btn" href="../deltanet/index.html">DeltaNet →</a>
 <a class="btn" href="../kda/index.html">KDA →</a>
 <a class="btn" href="https://linear-transformers.com/" target="_blank" rel="noopener">官网 →</a>
@@ -228,7 +229,7 @@ def build() -> str:
 </div>
 <section class="hero">
 <h2>Transformers are RNNs · Linear Attention</h2>
-<p>线性注意力经典源头：用核特征把 softmax 换成 φ(q)ᵀφ(k)，再用结合律把计算从「N×N 矩阵」重排成「固定大小状态聚合」。因果形式下，Transformer 就是带双状态 (S,Z) 的 RNN——这也是后来 DeltaNet / GDN / KDA 的起点。</p>
+<p>先读 <a href="../transformer/">原始 Transformer</a>。本页把 softmax 换成 φ(q)ᵀφ(k)，再用结合律把计算从「N×N 矩阵」重排成「固定大小状态聚合」。因果形式下，Transformer 就是带双状态 (S,Z) 的 RNN——这也是后来 DeltaNet / GDN / KDA 的起点。</p>
 <div class="chips">
 <span class="chip">复杂度：<em>O(N²) → O(N)</em></span>
 <span class="chip">特征：<em>φ = elu+1</em></span>
@@ -236,7 +237,7 @@ def build() -> str:
 <span class="chip">下游：<em>KDA / 混合架构</em></span>
 </div>
 </section>
-<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。学完建议接着读 <a href="../deltanet/index.html">DeltaNet 原点</a>（补容量/delta 理论桥），再 <a href="../deltanet-parallel/index.html">并行训练</a> 与 <a href="../kda/index.html">KDA</a>。</p>
+<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。前置：<a href="../transformer/index.html">原始 Transformer</a>。学完建议接着读 <a href="../deltanet/index.html">DeltaNet 原点</a>（补容量/delta 理论桥），再 <a href="../deltanet-parallel/index.html">并行训练</a> 与 <a href="../kda/index.html">KDA</a>。</p>
 """
     )
 

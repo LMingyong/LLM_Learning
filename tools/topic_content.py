@@ -17,7 +17,7 @@ SPARSE_ATTENTION: dict[str, Any] = {
     "nav_title": "Sparse Attention",
     "subtitle": "操作方式 · 主流范式 · 工程落地",
     "hero": "稀疏注意力精读",
-    "hero_desc": "从「谁和谁算注意力」出发，理解如何把 O(L²) 全连接注意力变成可训练、可部署的长上下文方案。",
+    "hero_desc": "先读 papers/transformer（原始 QKV / 多头）。再从「谁和谁算注意力」出发，把 O(L²) 全连接变成可训练、可部署的长上下文方案。",
     "chips": [
         {"label": "核心", "value": "稀疏掩码 / 路由"},
         {"label": "复杂度", "value": "O(L·w) 或 O(L·k)"},
@@ -251,6 +251,12 @@ SPARSE_ATTENTION: dict[str, Any] = {
         ("tiling", "把大矩阵分成小块在 SRAM 中计算。"),
     ],
     "refs": [
+        {
+            "title": "Attention Is All You Need",
+            "why": "原始 Transformer；稀疏路线的前置（QKV / 多头 / O(N²)）。",
+            "url": "../transformer/index.html",
+            "level": "必读",
+        },
         {
             "title": "Longformer: The Long-Document Transformer",
             "why": "全局+局部混合的经典范式；理解「滑动窗口 + 全局 token」操作方式的首选。",

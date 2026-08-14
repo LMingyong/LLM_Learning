@@ -164,6 +164,7 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 </div>
 <button class="btn" id="btnGlossary">名词表</button>
 <a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+<a class="btn" href="../transformer/index.html">← Transformer</a>
 <a class="btn" href="../deltanet/index.html">DeltaNet →</a>
 <a class="btn" href="../kda/index.html">KDA →</a>
 <a class="btn" href="https://linear-transformers.com/" target="_blank" rel="noopener">官网 →</a>
@@ -171,7 +172,7 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 </div>
 <section class="hero">
 <h2>Transformers are RNNs · Linear Attention</h2>
-<p>线性注意力经典源头：用核特征把 softmax 换成 φ(q)ᵀφ(k)，再用结合律把计算从「N×N 矩阵」重排成「固定大小状态聚合」。因果形式下，Transformer 就是带双状态 (S,Z) 的 RNN——这也是后来 DeltaNet / GDN / KDA 的起点。</p>
+<p>先读 <a href="../transformer/">原始 Transformer</a>。本页把 softmax 换成 φ(q)ᵀφ(k)，再用结合律把计算从「N×N 矩阵」重排成「固定大小状态聚合」。因果形式下，Transformer 就是带双状态 (S,Z) 的 RNN——这也是后来 DeltaNet / GDN / KDA 的起点。</p>
 <div class="chips">
 <span class="chip">复杂度：<em>O(N²) → O(N)</em></span>
 <span class="chip">特征：<em>φ = elu+1</em></span>
@@ -179,7 +180,7 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <span class="chip">下游：<em>KDA / 混合架构</em></span>
 </div>
 </section>
-<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。学完建议接着读 <a href="../deltanet/index.html">DeltaNet 原点</a>（补容量/delta 理论桥），再 <a href="../deltanet-parallel/index.html">并行训练</a> 与 <a href="../kda/index.html">KDA</a>。</p>
+<p class="note">英文贴近 ICML 2020 论文；段末小结为学习导读。前置：<a href="../transformer/index.html">原始 Transformer</a>。学完建议接着读 <a href="../deltanet/index.html">DeltaNet 原点</a>（补容量/delta 理论桥），再 <a href="../deltanet-parallel/index.html">并行训练</a> 与 <a href="../kda/index.html">KDA</a>。</p>
 <section class="section" id="abstract"><h3>Abstract 摘要 <span>4 段</span></h3>
 <article class="card para" data-idx="1" data-blob="transformers achieve remarkable performance in several tasks but due to their quadratic complexity, with respect to the input’s length, they are prohibitively slow for very long sequences. transformer 在多项任务上表现卓越，但由于相对输入长度的二次复杂度，对很长序列而言慢得难以接受。 痛点：全注意力 o(n²)，长序列吃不消。 quadratic complexity">
 <span class="pidx">§1</span>
@@ -547,6 +548,7 @@ padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
 <div class="gitem" id="term-recurrent_kda" data-blob="recurrent_kda 本仓库 kda 逐步递推实现。"><b>recurrent_kda</b><p>本仓库 KDA 逐步递推实现。</p></div>
 </div></section>
 <section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">
+<div class="ref" data-blob="attention is all you need 稠密 softmax 注意力定义；本页从这里改核、躲开 n×n。"><span class="lv ">前驱</span><h4>Attention Is All You Need</h4><p>稠密 softmax 注意力定义；本页从这里改核、躲开 N×N。</p><a href="../transformer/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">外链</a></div>
 <div class="ref" data-blob="transformers are rnns (linear attention) 逐段精读对象；线性注意力经典源头。"><span class="lv must">本篇</span><h4>Transformers are RNNs (Linear Attention)</h4><p>逐段精读对象；线性注意力经典源头。</p><a href="./paper.pdf" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2006.16236" target="_blank" rel="noopener">外链</a></div>
 <div class="ref" data-blob="linear-transformers.com 作者页：公式演示与代码入口。"><span class="lv imp">官网</span><h4>linear-transformers.com</h4><p>作者页：公式演示与代码入口。</p><a href="https://linear-transformers.com/" target="_blank" rel="noopener">打开 →</a></div>
 <div class="ref" data-blob="kimi linear / kda 逐段精读 在加性 s 上加入遗忘门与 delta rule 的现代升级。"><span class="lv imp">下游</span><h4>Kimi Linear / KDA 逐段精读</h4><p>在加性 S 上加入遗忘门与 delta rule 的现代升级。</p><a href="../kda/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noopener">外链</a></div>

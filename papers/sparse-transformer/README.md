@@ -12,4 +12,6 @@
 |------|------|
 | `paper.pdf` | 原文 PDF |
 
-相关：[稀疏注意力专题](../sparse-attention/) · [Longformer](../longformer/) · [BigBird](../bigbird/)
+先读：[原始 Transformer](../transformer/) · [稀疏注意力专题](../sparse-attention/)
+
+相关：[Longformer](../longformer/) · [BigBird](../bigbird/)
