@@ -289,7 +289,7 @@ background:var(--accent);color:#fff;font-family:var(--sans);font-size:13px;displ
 <aside class="nav">
   <div class="brand">LLM Learning · Topic</div>
   <h1>稀疏注意力</h1>
-  <p class="sub">对照 Longformer / BigBird / Sparse Transformer / NSA 重写 · 浅色长文精读</p>
+  <p class="sub">先读原始 Transformer，再对照 Longformer / BigBird / Sparse Transformer / NSA</p>
   <nav id="toc">
     <a href="#intro">1. 先建立直觉</a>
     <a href="#math">2. 数学上在做什么</a>
@@ -301,12 +301,13 @@ background:var(--accent);color:#fff;font-family:var(--sans);font-size:13px;displ
     <a href="#glossary">8. 名词解释</a>
     <a href="#refs">9. 原文与引用</a>
   </nav>
-  <div class="box">阅读建议：先看图，再读长文。稀疏决定「算哪些格子」；<a href="../flash-attention/index.html">Flash Attention</a> 决定「格子怎么在 GPU 上算」。</div>
+  <div class="box">阅读建议：若还不会 QKV / 多头，先打开 <a href="../transformer/index.html">原始 Transformer</a>。稀疏决定「算哪些格子」；<a href="../flash-attention/index.html">Flash Attention</a> 决定「格子怎么在 GPU 上算」。</div>
 </aside>
 
 <main class="main">
   <div class="toolbar">
-    <a class="btn primary" href="../nsa/paper.pdf" target="_blank">NSA 原文 PDF</a>
+    <a class="btn primary" href="../transformer/index.html">← 原始 Transformer</a>
+    <a class="btn" href="../nsa/paper.pdf" target="_blank">NSA 原文 PDF</a>
     <a class="btn" href="../longformer/index.html">Longformer 精读</a>
     <a class="btn" href="../bigbird/index.html">BigBird 精读</a>
     <a class="btn" href="../sparse-transformer/paper.pdf" target="_blank">Sparse Transformer</a>
@@ -315,7 +316,7 @@ background:var(--accent);color:#fff;font-family:var(--sans);font-size:13px;displ
 
   <header class="hero">
     <h2>稀疏注意力：谁和谁该算？</h2>
-    <p>标准注意力让每个 token 与几乎所有历史 token 交互，代价随长度平方增长。稀疏注意力的关键不是换一套新公式，而是<strong>规定（或学习）一张允许连边的图</strong>：每个 query 只对少数 key 做 softmax。本页按 Longformer、BigBird、Sparse Transformer、DeepSeek NSA 等原文，把图案、操作步骤与现代可训练方案讲透。</p>
+    <p>若还不会稠密注意力，先读 <a href="../transformer/index.html">Attention Is All You Need 精读</a>。标准注意力让每个 token 与几乎所有历史 token 交互，代价随长度平方增长。稀疏注意力的关键不是换一套新公式，而是<strong>规定（或学习）一张允许连边的图</strong>：每个 query 只对少数 key 做 softmax。本页按 Longformer、BigBird、Sparse Transformer、DeepSeek NSA 等原文，把图案、操作步骤与现代可训练方案讲透。</p>
     <div class="pills">
       <span class="pill">改连边，不改 softmax 本质</span>
       <span class="pill warm">常见复杂度 O(L·w) / O(#块)</span>
@@ -491,6 +492,7 @@ o_t = Σ_{{i∈S(t)}} α_t,i · v_i</div>
 
   <h3 class="sec" id="refs"><span class="num">09</span>原文 PDF 与重点引用</h3>
   <div class="refgrid">
+    <div class="ref"><span class="tag">必读 · 从零</span><h5>Attention Is All You Need</h5><p>原始 Transformer：QKV、缩放点积、多头；稀疏路线的前置。</p><a href="../transformer/index.html">精读</a> · <a href="../transformer/paper.pdf">PDF</a> · <a href="https://arxiv.org/abs/1706.03762">arXiv</a></div>
     <div class="ref"><span class="tag">必读 · 本地 PDF</span><h5>Native Sparse Attention (NSA)</h5><p>可训练层次稀疏：压缩、选块、窗口；硬件对齐讨论最完整的现代报告之一。</p><a href="../nsa/paper.pdf">打开 PDF</a> · <a href="../nsa/">目录</a> · <a href="https://arxiv.org/abs/2502.11089">arXiv</a></div>
     <div class="ref"><span class="tag">必读 · 本地 PDF</span><h5>Longformer</h5><p>局部窗口 + 全局 token 的经典操作范式，文档 Transformer 起点。</p><a href="../longformer/index.html">精读</a> · <a href="../longformer/paper.pdf">PDF</a> · <a href="https://arxiv.org/abs/2004.05150">arXiv</a></div>
     <div class="ref"><span class="tag imp">重点 · 本地 PDF</span><h5>BigBird</h5><p>局部+全局+随机；块稀疏与理论连通性。</p><a href="../bigbird/index.html">精读</a> · <a href="../bigbird/paper.pdf">PDF</a> · <a href="https://arxiv.org/abs/2007.14062">arXiv</a></div>

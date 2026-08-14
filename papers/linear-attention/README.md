@@ -8,6 +8,8 @@
 | 链接 | [arXiv:2006.16236](https://arxiv.org/abs/2006.16236) · [官网](https://linear-transformers.com/) |
 | 一句话 | 用核特征 + 结合律把自注意力降到 **O(N)**；因果形式下 Transformer = 双状态 RNN。 |
 
+**先读** [`../transformer/`](../transformer/)（稠密 softmax 注意力），再读本页：这里把 \(N\times N\) 换成核特征 + 结合律。
+
 ## 怎么读
 
 **[`index.html`](./index.html)** — 浅色**逐段精读**：
@@ -16,6 +18,7 @@
 - 重点：§3.2 线性化推导、§3.3 因果常数内存、§3.4 RNN 形式
 - 末节桥接 DeltaNet / GDN / KDA
 
+上一篇：[原始 Transformer](../transformer/)  
 接着读：[DeltaNet 原点](../deltanet/) · [并行训练](../deltanet-parallel/) · [KDA](../kda/)
 
 ## 文件

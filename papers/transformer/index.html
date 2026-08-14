@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>原始 Transformer · 逐段精读（Vaswani 2017）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"/>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+
+<style>
+:root{
+  --bg:#f6f3ec; --bg2:#efe9dc; --paper:#fffcf5; --ink:#1c2420; --muted:#5a6a62;
+  --faint:#7d8c84; --line:#d8d0c0; --accent:#0f6e56; --accent-soft:#d8efe6;
+  --warm:#b85c38; --warm-soft:#f3e0d6; --blue:#1f4e79; --blue-soft:#dce8f3;
+  --shadow:0 12px 40px rgba(40,50,40,.08);
+  --serif:"Literata",Georgia,"Noto Serif SC",serif;
+  --sans:"Manrope",system-ui,"Noto Sans SC",sans-serif;
+  --mono:ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.75;
+background:radial-gradient(900px 500px at 0% 0%,rgba(15,110,86,.07),transparent 55%),
+radial-gradient(700px 400px at 100% 8%,rgba(184,92,56,.06),transparent 50%),
+linear-gradient(180deg,var(--bg),var(--bg2));min-height:100vh}
+a{color:var(--accent);text-underline-offset:3px}
+a:hover{color:var(--warm)}
+.app{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow:auto;padding:22px 16px 28px;
+border-right:1px solid var(--line);background:rgba(255,252,245,.85);backdrop-filter:blur(10px)}
+.brand{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--accent);letter-spacing:.04em;margin:0 0 8px}
+.side h1{font-family:var(--sans);font-size:20px;line-height:1.25;margin:0 0 8px}
+.side .meta{font-family:var(--sans);font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+.side nav a{display:block;padding:8px 10px;border-radius:10px;color:var(--muted);
+font-family:var(--sans);font-size:13px;text-decoration:none;margin-bottom:2px}
+.side nav a:hover,.side nav a.active{background:var(--accent-soft);color:var(--ink)}
+.side .hint{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:12px;
+font-family:var(--sans);font-size:12px;color:var(--faint);line-height:1.55;background:var(--paper)}
+.main{padding:22px 28px 80px;max-width:1080px}
+.topbar{position:sticky;top:0;z-index:20;margin:0 -28px 22px;padding:14px 28px;
+display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+background:rgba(246,243,236,.9);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.seg{display:inline-flex;padding:4px;border-radius:999px;background:var(--paper);border:1px solid var(--line)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;
+font-family:var(--sans);font-size:12px;padding:8px 12px;border-radius:999px}
+.seg button.on{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.btn{font-family:var(--sans);font-size:12px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);border-radius:999px;padding:8px 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.search{flex:1;min-width:180px}
+.search input{width:100%;border-radius:999px;border:1px solid var(--line);background:var(--paper);
+color:var(--ink);padding:9px 14px;font-family:var(--sans);font-size:13px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.hero{border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:22px;
+background:linear-gradient(135deg,rgba(15,110,86,.08),transparent 45%),var(--paper);
+box-shadow:var(--shadow)}
+.hero h2{font-family:var(--sans);margin:0 0 8px;font-size:26px}
+.hero p{margin:0;color:var(--muted);font-family:var(--sans);font-size:14px;line-height:1.65}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-family:var(--sans);font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.chip em{color:var(--warm);font-style:normal;font-weight:600}
+.section{margin:28px 0 10px;scroll-margin-top:78px}
+.section h3{font-family:var(--sans);font-size:18px;margin:0 0 12px;padding-bottom:8px;
+border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:10px}
+.section h3 span{font-size:12px;color:var(--faint);font-weight:500}
+.card{border:1px solid var(--line);background:var(--paper);border-radius:16px;padding:14px 16px;margin:0 0 12px;
+transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover{border-color:rgba(15,110,86,.35);transform:translateY(-1px);box-shadow:var(--shadow)}
+.card.active{border-color:var(--accent);box-shadow:0 0 0 1px rgba(15,110,86,.2),var(--shadow)}
+.pidx{font-family:var(--sans);font-size:11px;color:var(--faint);float:right;margin-left:8px}
+.summary{font-family:var(--sans);font-size:13px;color:#0b3d30;background:var(--accent-soft);
+border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 10px 10px 0;margin:0 0 12px;line-height:1.55}
+.lang{font-size:15.5px;line-height:1.8}
+.lang .en{color:#24312c}
+.lang .zh{color:#1c2420}
+.lang .label{font-family:var(--sans);font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+body.mode-zh .en-block,body.mode-en .zh-block{display:none}
+body.mode-zh .pair,body.mode-en .pair{grid-template-columns:1fr}
+.terms{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;clear:both}
+.term{font-family:var(--sans);font-size:11px;padding:4px 8px;border-radius:999px;cursor:pointer;
+background:var(--warm-soft);color:#6a2f18;border:1px solid rgba(184,92,56,.25)}
+.term:hover{background:#efd2c2}
+.figure{margin:12px 0 4px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fffcf5}
+.figure .cap{font-family:var(--sans);font-size:12px;color:var(--faint);padding:8px 12px;border-top:1px solid var(--line)}
+.figure svg{display:block;width:100%;height:auto}
+.hidden-by-search{display:none !important}
+.drawer{position:fixed;top:0;right:0;width:min(420px,100%);height:100vh;overflow:auto;z-index:40;
+background:var(--paper);border-left:1px solid var(--line);
+transform:translateX(100%);transition:transform .28s ease;padding:18px 16px 40px;box-shadow:var(--shadow)}
+.drawer.open{transform:none}
+.drawer h2{font-family:var(--sans);margin:8px 0 6px;font-size:18px}
+.gitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff}
+.gitem b{font-family:var(--sans);color:var(--warm)}
+.gitem p{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.55}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ref{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--paper);
+display:flex;flex-direction:column;gap:8px;min-height:140px}
+.ref .lv{font-family:var(--sans);font-size:11px;align-self:start;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.ref .lv.must{color:#fff;background:var(--accent);border-color:transparent;font-weight:700}
+.ref .lv.imp{color:#fff;background:var(--warm);border-color:transparent;font-weight:700}
+.ref h4{margin:0;font-family:var(--sans);font-size:15px;line-height:1.35}
+.ref p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;flex:1}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;color:var(--faint);background:#fff}
+.note{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+.bridge-callout{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:0 14px 14px 0;
+background:var(--paper);padding:14px 16px;margin:0 0 18px;font-family:var(--sans);font-size:14px;color:var(--muted);line-height:1.65}
+.bridge-callout strong{color:var(--ink)}
+
+.math-stack{display:flex;flex-direction:column;gap:10px;margin:12px 0 4px}
+.math-panel{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#fff,#fffcf5);
+padding:12px 14px;box-shadow:0 8px 24px rgba(40,50,40,.04)}
+.math-panel .math-tag{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.04em;
+color:var(--accent);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.math-panel .math-tag::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--accent);flex:0 0 auto}
+.math-panel .math-eq{overflow-x:auto;padding:4px 0 2px;font-size:1.05em;line-height:1.6;color:var(--ink)}
+.math-panel .math-eq .katex-display{margin:0.4em 0}
+.math-panel .math-note{font-family:var(--sans);font-size:12px;color:var(--muted);margin-top:8px;
+padding-top:8px;border-top:1px dashed var(--line);line-height:1.5}
+.formula-wall{display:grid;grid-template-columns:1fr;gap:12px;margin:0 0 18px}
+@media (min-width:820px){.formula-wall{grid-template-columns:1fr 1fr}}
+.formula-wall .math-panel{min-height:100%}
+.formula-wall .math-panel.span2{grid-column:1 / -1}
+.inline-math-hint{font-family:var(--sans);font-size:12px;color:var(--faint);margin:0 0 10px}
+
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .pair{grid-template-columns:1fr}
+  .main{padding:16px 14px 70px}
+  .topbar{margin:0 -14px 16px;padding:12px 14px}
+}
+</style></head>
+<body class="mode-both"><div class="app">
+<aside class="side">
+<div class="brand">LLM Learning · Paper Reader</div>
+<h1>原始 Transformer</h1>
+<div class="meta">arXiv:1706.03762 · NIPS 2017<br/>Attention Is All You Need<br/>从零：QKV · 缩放点积 · 多头</div>
+<nav id="toc">
+<a href="#formulas">公式墙（速查）</a>
+<a href="#zero">从零：注意力在干什么（导读，请先读）</a>
+<a href="#abstract">Abstract 摘要</a>
+<a href="#intro">1 Introduction 引言</a>
+<a href="#background">2 Background 背景（精要）</a>
+<a href="#arch">3 总览：编码器–解码器栈</a>
+<a href="#attn-def">3.2 注意力在定义上是什么</a>
+<a href="#scaled">3.2.1 缩放点积注意力（核心，请逐步读）</a>
+<a href="#mha">3.2.2 多头注意力（核心，请逐步读）</a>
+<a href="#apps">3.2.3 三种用法：自注意 / 交叉注意 / 掩码</a>
+<a href="#ffn">3.3 逐位置前馈网络</a>
+<a href="#embed">3.4 嵌入与 Softmax</a>
+<a href="#posenc">3.5 位置编码（没有 RNN 之后必须补的）</a>
+<a href="#why">4 为什么用自注意力（接到稀疏的关键表）</a>
+<a href="#train">5 训练要点（极简）</a>
+<a href="#results">6 结果与变体（极简）</a>
+<a href="#next">读完之后：接到稀疏注意力</a>
+<a href="#glossary">名词重点解释</a>
+<a href="#refs">重点引用</a>
+</nav>
+<div class="hint">
+<div><span class="kbd">1</span>对照 <span class="kbd">2</span>译文 <span class="kbd">3</span>原文</div>
+<div style="margin-top:6px"><span class="kbd">J</span>/<span class="kbd">K</span>跳段 <span class="kbd">G</span>名词 <span class="kbd">/</span>搜索</div>
+</div></aside>
+<main class="main">
+<div class="topbar">
+<div class="seg" id="modeSeg">
+<button data-mode="both" class="on">对照</button>
+<button data-mode="zh">仅译文</button>
+<button data-mode="en">仅原文</button>
+</div>
+<button class="btn" id="btnGlossary">名词表</button>
+<a class="btn primary" href="./paper.pdf" target="_blank" rel="noopener">打开原文 PDF</a>
+<a class="btn" href="#formulas">公式墙</a>
+<a class="btn" href="../sparse-attention/index.html">稀疏注意力 →</a>
+<a class="btn" href="../linear-attention/index.html">线性注意力 →</a>
+<div class="search"><input id="q" type="search" placeholder="搜索段落 / 名词 / 引用…" /></div>
+</div>
+<section class="hero">
+<h2>Attention Is All You Need</h2>
+<p>本夹对应 <strong>arXiv:1706.03762</strong>：原始 Transformer。从零讲清 Q / K / V、缩放点积四步、多头拼接，以及 <em>O(N²)</em> 从哪来。
+核心方法（§3.2）按计算步骤拆开；标了「导读」的段落是教学补充，不是论文原句。</p>
+<div class="chips">
+<span class="chip">核心：<em>softmax(QKᵀ/√d_k) V</em></span>
+<span class="chip">多头：<em>h=8 · d_k=64</em></span>
+<span class="chip">下一站：<em>稀疏注意力</em></span>
+</div>
+</section>
+<div class="bridge-callout">
+<strong>怎么读本页：</strong>先读「从零」导读（QKV 与形状），再逐段走 §3.2.1 四步和 §3.2.2 多头，不要跳。
+§4 表 1 最后一行已经在谈「只看 r 个邻居」——那就是稀疏注意力的入口。
+读完打开 <a href="../sparse-attention/">稀疏专题</a>。
+</div>
+<p class="note">英文贴近 NIPS 2017 论文；导读段为学习笔记。仓库总阅读顺序见根目录 README。</p>
+<section class="section" id="formulas"><h3>公式墙（速查） <span>先记住这五式</span></h3>
+<p class="inline-math-hint">段内还有逐步展开卡；核心方法请按卡片顺序读，不要只扫这一墙。</p>
+<div class="formula-wall"><div class="math-panel span2" data-blob="缩放点积注意力（式 1） 先算 n×n 分数，缩放，softmax 成权重，再加权 v。这就是 o(n²) 的源头。 \mathrm{attention}(q,k,v)=\mathrm{softmax}\!\left(\frac{qk^\top}{\sqrt{d_k}}\right)v"><div class="math-tag">缩放点积注意力（式 1）</div><div class="math-eq">\[\mathrm{Attention}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V\]</div><div class="math-note">先算 N×N 分数，缩放，softmax 成权重，再加权 V。这就是 O(N²) 的源头。</div></div><div class="math-panel span2" data-blob="多头（式 2–3） 每个 head_i = attention(q w_i^q, k w_i^k, v w_i^v)。 \mathrm{multihead}(q,k,v)=\mathrm{concat}(\mathrm{head}_1,\ldots,\mathrm{head}_h)w^o"><div class="math-tag">多头（式 2–3）</div><div class="math-eq">\[\mathrm{MultiHead}(Q,K,V)=\mathrm{Concat}(\mathrm{head}_1,\ldots,\mathrm{head}_h)W^O\]</div><div class="math-note">每个 head_i = Attention(Q W_i^Q, K W_i^K, V W_i^V)。</div></div><div class="math-panel span2" data-blob="残差 + layernorm 每个子层（注意力或 ffn）外包这一层。 x \leftarrow \mathrm{layernorm}\bigl(x + \mathrm{sublayer}(x)\bigr)"><div class="math-tag">残差 + LayerNorm</div><div class="math-eq">\[x \leftarrow \mathrm{LayerNorm}\bigl(x + \mathrm{Sublayer}(x)\bigr)\]</div><div class="math-note">每个子层（注意力或 FFN）外包这一层。</div></div><div class="math-panel span2" data-blob="逐位置 ffn（式 2） 位置之间不混合；混合只发生在注意力里。 \mathrm{ffn}(x)=\max(0,xw_1+b_1)w_2+b_2"><div class="math-tag">逐位置 FFN（式 2）</div><div class="math-eq">\[\mathrm{FFN}(x)=\max(0,xW_1+b_1)W_2+b_2\]</div><div class="math-note">位置之间不混合；混合只发生在注意力里。</div></div><div class="math-panel span2" data-blob="正弦位置编码 没有 rnn，位置信息必须另加。 pe_{(pos,2i)}=\sin\!\bigl(pos/10000^{2i/d_{\mathrm{model}}}\bigr),\quad pe_{(pos,2i+1)}=\cos\!\bigl(pos/10000^{2i/d_{\mathrm{model}}}\bigr)"><div class="math-tag">正弦位置编码</div><div class="math-eq">\[PE_{(pos,2i)}=\sin\!\bigl(pos/10000^{2i/d_{\mathrm{model}}}\bigr),\quad PE_{(pos,2i+1)}=\cos\!\bigl(pos/10000^{2i/d_{\mathrm{model}}}\bigr)\]</div><div class="math-note">没有 RNN，位置信息必须另加。</div></div></div></section>
+<section class="section" id="zero"><h3>从零：注意力在干什么（导读，请先读） <span>7 段</span></h3>
+<article class="card para" data-idx="1" data-blob="teaching note. sequence transduction (e.g. translation) maps a source sequence of tokens to a target sequence. before 2017 the default was rnn/cnn encoder–decoder: the encoder compressed the source, the decoder generated the target one step at a time. 导读。序列转导（如翻译）要把一串源词变成一串目标词。2017 年前默认是 rnn/cnn 编码器–解码器：编码器把源句压成状态，解码器逐步吐出目标词。 任务先立住：源序列 → 目标序列。 sequence transduction encoder-decoder">
+<span class="pidx">§1</span>
+<div class="summary"><b>小结</b> · 任务先立住：源序列 → 目标序列。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Sequence transduction (e.g. translation) maps a source sequence of tokens to a target sequence. Before 2017 the default was RNN/CNN encoder–decoder: the encoder compressed the source, the decoder generated the target one step at a time.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。序列转导（如翻译）要把一串源词变成一串目标词。2017 年前默认是 RNN/CNN 编码器–解码器：编码器把源句压成状态，解码器逐步吐出目标词。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="sequence transduction">sequence transduction</span><span class="term" data-term="encoder-decoder">encoder-decoder</span></div></article>
+<article class="card para" data-idx="2" data-blob="teaching note. rnns mix information over time by hidden-state recurrence. that mixing is sequential: token 5 cannot be processed until tokens 1–4 are done. training therefore cannot fully parallelize over the length axis. the transformer’s bet: replace recurrence with a mixing operator that looks at the whole sequence at once. 导读。rnn 靠隐状态沿时间混信息，所以必须按顺序算：第 5 个词要等前 4 个算完。训练没法在长度维上完全并行。transformer 的赌注：换一个能一眼看完整句的混合算子。 rnn 的痛：算得对，但算不并行。 rnn parallelization">
+<span class="pidx">§2</span>
+<div class="summary"><b>小结</b> · RNN 的痛：算得对，但算不并行。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. RNNs mix information over time by hidden-state recurrence. That mixing is sequential: token 5 cannot be processed until tokens 1–4 are done. Training therefore cannot fully parallelize over the length axis. The Transformer’s bet: replace recurrence with a mixing operator that looks at the whole sequence at once.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。RNN 靠隐状态沿时间混信息，所以必须按顺序算：第 5 个词要等前 4 个算完。训练没法在长度维上完全并行。Transformer 的赌注：换一个能一眼看完整句的混合算子。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="RNN">RNN</span><span class="term" data-term="parallelization">parallelization</span></div></article>
+<article class="card para" data-idx="3" data-blob="teaching note. name the three roles after a dictionary. query = the question you are asking now. key = the label on each stored item. value = the content of that item. attention: compare the current query with every key, turn similarities into weights, return a weighted mix of values. 导读。三个角色按「查字典」来记。query = 此刻要问的问题。key = 每条记录上的标签。value = 记录里的内容。注意力：用当前 query 去对所有 key 打分，分数变成权重，再按权重混合 value。 q 提问，k 当标签，v 给内容。 q k v attention">
+<span class="pidx">§3</span>
+<div class="summary"><b>小结</b> · Q 提问，K 当标签，V 给内容。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Name the three roles after a dictionary. Query = the question you are asking now. Key = the label on each stored item. Value = the content of that item. Attention: compare the current query with every key, turn similarities into weights, return a weighted mix of values.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。三个角色按「查字典」来记。Query = 此刻要问的问题。Key = 每条记录上的标签。Value = 记录里的内容。注意力：用当前 query 去对所有 key 打分，分数变成权重，再按权重混合 value。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="QKV">
+  <rect width="820" height="200" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">查字典类比：Query 提问 · Key 标签 · Value 内容</text>
+    <rect x="40" y="50" width="220" height="100" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="150" y="88" text-anchor="middle" font-size="16" font-weight="700" fill="#1f4e79">Query</text>
+    <text x="150" y="114" text-anchor="middle" font-size="12" fill="#5a6a62">此刻要读什么？</text>
+    <text x="150" y="134" text-anchor="middle" font-size="11" fill="#7d8c84">当前 token 的问题</text>
+    <rect x="300" y="50" width="220" height="100" rx="12" fill="#fff3d6" stroke="#8a6a20"/>
+    <text x="410" y="88" text-anchor="middle" font-size="16" font-weight="700" fill="#8a6a20">Key</text>
+    <text x="410" y="114" text-anchor="middle" font-size="12" fill="#5a6a62">这条记录关于什么？</text>
+    <text x="410" y="134" text-anchor="middle" font-size="11" fill="#7d8c84">用来被匹配</text>
+    <rect x="560" y="50" width="220" height="100" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="670" y="88" text-anchor="middle" font-size="16" font-weight="700" fill="#0f6e56">Value</text>
+    <text x="670" y="114" text-anchor="middle" font-size="12" fill="#5a6a62">真正取走的内容</text>
+    <text x="670" y="134" text-anchor="middle" font-size="11" fill="#7d8c84">按权重混合</text>
+    <text x="410" y="178" text-anchor="middle" font-size="12" fill="#7d8c84">分数 = 问与标签有多齐；输出 = 内容的加权和</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 先分清 Q / K / V 三个角色</div></div>
+<div class="terms"><span class="term" data-term="Q">Q</span><span class="term" data-term="K">K</span><span class="term" data-term="V">V</span><span class="term" data-term="attention">attention</span></div></article>
+<article class="card para" data-idx="4" data-blob="teaching note. concrete shapes for one sentence of n tokens, model width d_model. input x ∈ r^{n×d_model}. three learned matrices make q=x w^q, k=x w^k, v=x w^v. then the score matrix is q kᵀ ∈ r^{n×n}: entry (i,j) is “how much token i wants to read token j”. 导读。n 个词、模型宽度 d_model。输入 x∈r^{n×d_model}。三个可学矩阵做出 q、k、v。分数矩阵 qkᵀ∈r^{n×n}：第 (i,j) 格是「第 i 个词想读第 j 个词有多想」。 形状锚点：x 是 n×d；qkᵀ 是 n×n。 d_model attention matrix">
+<span class="pidx">§4</span>
+<div class="summary"><b>小结</b> · 形状锚点：X 是 N×d；QKᵀ 是 N×N。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="投影成 q/k/v 自注意力里三者都来自同一段 x；编码器–解码器注意力里 q 来自解码器，k/v 来自编码器。 q=xw^q,\quad k=xw^k,\quad v=xw^v"><div class="math-tag">投影成 Q/K/V</div><div class="math-eq">\[Q=XW^Q,\quad K=XW^K,\quad V=XW^V\]</div><div class="math-note">自注意力里三者都来自同一段 X；编码器–解码器注意力里 Q 来自解码器，K/V 来自编码器。</div></div><div class="math-panel span2" data-blob="形状  x\in\mathbb{r}^{n\times d_{\mathrm{model}}},\; qk^\top\in\mathbb{r}^{n\times n},\; \mathrm{softmax}(\cdot)v\in\mathbb{r}^{n\times d_v}"><div class="math-tag">形状</div><div class="math-eq">\[X\in\mathbb{R}^{N\times d_{\mathrm{model}}},\; QK^\top\in\mathbb{R}^{N\times N},\; \mathrm{softmax}(\cdot)V\in\mathbb{R}^{N\times d_v}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Concrete shapes for one sentence of N tokens, model width d_model. Input X ∈ R^{N×d_model}. Three learned matrices make Q=X W^Q, K=X W^K, V=X W^V. Then the score matrix is Q Kᵀ ∈ R^{N×N}: entry (i,j) is “how much token i wants to read token j”.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。N 个词、模型宽度 d_model。输入 X∈R^{N×d_model}。三个可学矩阵做出 Q、K、V。分数矩阵 QKᵀ∈R^{N×N}：第 (i,j) 格是「第 i 个词想读第 j 个词有多想」。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="d_model">d_model</span><span class="term" data-term="attention matrix">attention matrix</span></div></article>
+<article class="card para" data-idx="5" data-blob="teaching note. softmax turns a row of raw scores into non-negative weights that sum to 1. so each query reads a convex combination of values—never “all of one token and none of the others” unless one score dominates. that is why attention can softly copy, average, or ignore. 导读。softmax 把一行原始分数变成非负、和为 1 的权重。于是每个 query 读到的是 value 的凸组合——除非某一格特别大，否则不会「只看一个词」。所以注意力能软拷贝、软平均、软忽略。 softmax = 把打分成「读多少」。 softmax">
+<span class="pidx">§5</span>
+<div class="summary"><b>小结</b> · softmax = 把打分成「读多少」。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="按行归一化  \alpha_{ij}=\frac{e^{s_{ij}}}{\sum_{j&#x27;}e^{s_{ij&#x27;}}},\quad y_i=\sum_j \alpha_{ij} v_j"><div class="math-tag">按行归一化</div><div class="math-eq">\[\alpha_{ij}=\frac{e^{s_{ij}}}{\sum_{j'}e^{s_{ij'}}},\quad y_i=\sum_j \alpha_{ij} v_j\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Softmax turns a row of raw scores into non-negative weights that sum to 1. So each query reads a convex combination of values—never “all of one token and none of the others” unless one score dominates. That is why attention can softly copy, average, or ignore.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。Softmax 把一行原始分数变成非负、和为 1 的权重。于是每个 query 读到的是 value 的凸组合——除非某一格特别大，否则不会「只看一个词」。所以注意力能软拷贝、软平均、软忽略。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="softmax">softmax</span></div></article>
+<article class="card para" data-idx="6" data-blob="teaching note. self-attention means q, k, v are all produced from the same sequence. encoder–decoder attention means q comes from the target side while k,v come from the source side. causal (masked) self-attention further forbids looking at future target tokens, so generation stays left-to-right. 导读。自注意力：q、k、v 都来自同一段序列。编码器–解码器注意力：q 来自目标侧，k/v 来自源侧。因果（掩码）自注意力再禁止看未来的目标词，生成才能从左到右。 三种用法：自注意 / 交叉注意 / 因果自注意。后文 §3.2.3 会再讲。 self-attention encoder-decoder attention causal masking">
+<span class="pidx">§6</span>
+<div class="summary"><b>小结</b> · 三种用法：自注意 / 交叉注意 / 因果自注意。后文 §3.2.3 会再讲。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Self-attention means Q, K, V are all produced from the same sequence. Encoder–decoder attention means Q comes from the target side while K,V come from the source side. Causal (masked) self-attention further forbids looking at future target tokens, so generation stays left-to-right.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。自注意力：Q、K、V 都来自同一段序列。编码器–解码器注意力：Q 来自目标侧，K/V 来自源侧。因果（掩码）自注意力再禁止看未来的目标词，生成才能从左到右。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="self-attention">self-attention</span><span class="term" data-term="encoder-decoder attention">encoder-decoder attention</span><span class="term" data-term="causal masking">causal masking</span></div></article>
+<article class="card para" data-idx="7" data-blob="teaching note. the n×n score matrix is the cost. time and memory both scale as o(n²) if you materialize it. every later paper in this repo is a reaction to that square: sparse attention deletes most (i,j) edges; linear attention never builds the matrix; flashattention still computes full attention but tiles it to spare hbm. 导读。代价就在这张 n×n 分数表。若把它完整造出来，时间与内存都是 o(n²)。本仓库后面的论文全是在对这个平方作出反应：稀疏注意力删掉大多数 (i,j) 边；线性注意力根本不造这张表；flashattention 仍算全注意力，但分块算以省显存。 读完本页你该能指着 qkᵀ 说：稀疏 = 不让多数格参与 softmax。 quadratic complexity sparse attention linear attention">
+<span class="pidx">§7</span>
+<div class="summary"><b>小结</b> · 读完本页你该能指着 QKᵀ 说：稀疏 = 不让多数格参与 softmax。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. The N×N score matrix is the cost. Time and memory both scale as O(N²) if you materialize it. Every later paper in this repo is a reaction to that square: sparse attention deletes most (i,j) edges; linear attention never builds the matrix; FlashAttention still computes full attention but tiles it to spare HBM.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。代价就在这张 N×N 分数表。若把它完整造出来，时间与内存都是 O(N²)。本仓库后面的论文全是在对这个平方作出反应：稀疏注意力删掉大多数 (i,j) 边；线性注意力根本不造这张表；FlashAttention 仍算全注意力，但分块算以省显存。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="cost">
+  <rect width="820" height="210" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">N×N 分数表：本仓库两条分叉都从这里出发</text>
+    <rect x="40" y="48" width="230" height="110" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="155" y="80" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">稠密 Transformer</text>
+    <text x="155" y="106" text-anchor="middle" font-size="12" fill="#5a6a62">每个 query 看所有 key</text>
+    <text x="155" y="128" text-anchor="middle" font-size="12" fill="#5a6a62">O(N² d) · 本页</text>
+    <rect x="295" y="48" width="230" height="110" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="410" y="80" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">稀疏注意力</text>
+    <text x="410" y="106" text-anchor="middle" font-size="12" fill="#5a6a62">同一公式，删掉多数边</text>
+    <text x="410" y="128" text-anchor="middle" font-size="12" fill="#5a6a62">O(N·r) · 下一站</text>
+    <rect x="550" y="48" width="230" height="110" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="665" y="80" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">线性注意力</text>
+    <text x="665" y="106" text-anchor="middle" font-size="12" fill="#5a6a62">改核，不造 N×N</text>
+    <text x="665" y="128" text-anchor="middle" font-size="12" fill="#5a6a62">O(N) · 另一条线</text>
+    <text x="410" y="188" text-anchor="middle" font-size="12" fill="#7d8c84">建议第一遍先走稀疏（改掩码），再走线性（改公式）</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 稠密 / 稀疏 / 线性 三条路</div></div>
+<div class="terms"><span class="term" data-term="quadratic complexity">quadratic complexity</span><span class="term" data-term="sparse attention">sparse attention</span><span class="term" data-term="linear attention">linear attention</span></div></article>
+</section>
+<section class="section" id="abstract"><h3>Abstract 摘要 <span>4 段</span></h3>
+<article class="card para" data-idx="8" data-blob="the dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. the best performing models also connect the encoder and decoder through an attention mechanism. 当时主流的序列转导模型基于复杂的循环或卷积网络，并包含编码器与解码器。表现最好的模型还会用注意力把编码器和解码器连起来。 2017 年的默认配方：rnn/cnn + 一点注意力。 sequence transduction attention">
+<span class="pidx">§8</span>
+<div class="summary"><b>小结</b> · 2017 年的默认配方：RNN/CNN + 一点注意力。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">当时主流的序列转导模型基于复杂的循环或卷积网络，并包含编码器与解码器。表现最好的模型还会用注意力把编码器和解码器连起来。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="sequence transduction">sequence transduction</span><span class="term" data-term="attention">attention</span></div></article>
+<article class="card para" data-idx="9" data-blob="we propose a new simple network architecture, the transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. 我们提出一种新的简单网络结构——transformer，完全基于注意力机制，彻底去掉循环与卷积。 标题落地：attention is all you need。 transformer">
+<span class="pidx">§9</span>
+<div class="summary"><b>小结</b> · 标题落地：Attention is all you need。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们提出一种新的简单网络结构——Transformer，完全基于注意力机制，彻底去掉循环与卷积。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Transformer">Transformer</span></div></article>
+<article class="card para" data-idx="10" data-blob="experiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train. 在两项机器翻译任务上的实验表明：质量更好，更可并行，训练时间显著更少。 卖点不只是 bleu，还有「训得快」。 parallelization">
+<span class="pidx">§10</span>
+<div class="summary"><b>小结</b> · 卖点不只是 BLEU，还有「训得快」。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Experiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">在两项机器翻译任务上的实验表明：质量更好，更可并行，训练时间显著更少。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="parallelization">parallelization</span></div></article>
+<article class="card para" data-idx="11" data-blob="our model achieves 28.4 bleu on the wmt 2014 english-to-german translation task, improving over the existing best results, including ensembles, by over 2 bleu. on wmt 2014 english-to-french it establishes a new single-model sota of 41.8 bleu after 3.5 days on eight gpus. wmt14 英德达到 28.4 bleu，比当时最佳（含集成）高 2 分以上。英法在 8 块 gpu 上训 3.5 天达到单模型 41.8 bleu。 数字锚：28.4 / 41.8；硬件锚：8 gpu × 3.5 天。 bleu">
+<span class="pidx">§11</span>
+<div class="summary"><b>小结</b> · 数字锚：28.4 / 41.8；硬件锚：8 GPU × 3.5 天。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Our model achieves 28.4 BLEU on the WMT 2014 English-to-German translation task, improving over the existing best results, including ensembles, by over 2 BLEU. On WMT 2014 English-to-French it establishes a new single-model SOTA of 41.8 BLEU after 3.5 days on eight GPUs.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">WMT14 英德达到 28.4 BLEU，比当时最佳（含集成）高 2 分以上。英法在 8 块 GPU 上训 3.5 天达到单模型 41.8 BLEU。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="BLEU">BLEU</span></div></article>
+</section>
+<section class="section" id="intro"><h3>1 Introduction 引言 <span>3 段</span></h3>
+<article class="card para" data-idx="12" data-blob="recurrent neural networks, long short-term memory and gated recurrent neural networks in particular, have been firmly established as state of the art in sequence modeling and transduction. 循环网络，尤其是 lstm 与门控 rnn，当时已被视为序列建模与转导的主流。 先承认：rnn 家族是当时的 sota。 rnn lstm">
+<span class="pidx">§12</span>
+<div class="summary"><b>小结</b> · 先承认：RNN 家族是当时的 SOTA。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Recurrent neural networks, long short-term memory and gated recurrent neural networks in particular, have been firmly established as state of the art in sequence modeling and transduction.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">循环网络，尤其是 LSTM 与门控 RNN，当时已被视为序列建模与转导的主流。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="RNN">RNN</span><span class="term" data-term="LSTM">LSTM</span></div></article>
+<article class="card para" data-idx="13" data-blob="the number of operations required to relate signals from two arbitrary input or output positions grows in the distance between positions, linearly for convs2s and logarithmically for bytenet. this makes it more difficult to learn dependencies between distant positions. 要让任意两个位置的信号发生关系，所需运算次数随距离增长：convs2s 线性、bytenet 对数。这让远距离依赖更难学。 卷积路径：位置离得越远，信息要走的步数越多。 long-range dependency">
+<span class="pidx">§13</span>
+<div class="summary"><b>小结</b> · 卷积路径：位置离得越远，信息要走的步数越多。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The number of operations required to relate signals from two arbitrary input or output positions grows in the distance between positions, linearly for ConvS2S and logarithmically for ByteNet. This makes it more difficult to learn dependencies between distant positions.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">要让任意两个位置的信号发生关系，所需运算次数随距离增长：ConvS2S 线性、ByteNet 对数。这让远距离依赖更难学。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="long-range dependency">long-range dependency</span></div></article>
+<article class="card para" data-idx="14" data-blob="in this work we propose the transformer, a model architecture eschewing recurrence and instead relying entirely on an attention mechanism to draw global dependencies between input and output. the transformer allows for significantly more parallelization and can reach a new sota in translation after being trained for as little as twelve hours on eight p100 gpus. 本文提出 transformer：抛弃循环，完全靠注意力抽取输入与输出之间的全局依赖。它可大幅并行；在 8 块 p100 上最短约 12 小时即可达到翻译新 sota。 全局一步到位 + 训练可并行。 transformer self-attention">
+<span class="pidx">§14</span>
+<div class="summary"><b>小结</b> · 全局一步到位 + 训练可并行。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In this work we propose the Transformer, a model architecture eschewing recurrence and instead relying entirely on an attention mechanism to draw global dependencies between input and output. The Transformer allows for significantly more parallelization and can reach a new SOTA in translation after being trained for as little as twelve hours on eight P100 GPUs.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本文提出 Transformer：抛弃循环，完全靠注意力抽取输入与输出之间的全局依赖。它可大幅并行；在 8 块 P100 上最短约 12 小时即可达到翻译新 SOTA。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Transformer">Transformer</span><span class="term" data-term="self-attention">self-attention</span></div></article>
+</section>
+<section class="section" id="background"><h3>2 Background 背景（精要） <span>2 段</span></h3>
+<article class="card para" data-idx="15" data-blob="the goal of reducing sequential computation also forms the foundation of the extended neural gpu, bytenet and convs2s, all of which use convolutional neural networks as basic building block, computing hidden representations in parallel for all input and output positions. 减少顺序计算这一目标，也是 extended neural gpu、bytenet 与 convs2s 的基础——它们用卷积做积木，可对所有输入/输出位置并行算隐表示。 前人已经在「去循环」；本文换注意力来去。 ">
+<span class="pidx">§15</span>
+<div class="summary"><b>小结</b> · 前人已经在「去循环」；本文换注意力来去。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The goal of reducing sequential computation also forms the foundation of the Extended Neural GPU, ByteNet and ConvS2S, all of which use convolutional neural networks as basic building block, computing hidden representations in parallel for all input and output positions.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">减少顺序计算这一目标，也是 Extended Neural GPU、ByteNet 与 ConvS2S 的基础——它们用卷积做积木，可对所有输入/输出位置并行算隐表示。</div></div>
+</div>
+<div class="terms"></div></article>
+<article class="card para" data-idx="16" data-blob="self-attention, sometimes called intra-attention, is an attention mechanism relating different positions of a single sequence in order to compute a representation of the sequence. end-to-end memory networks are based on a recurrent attention mechanism instead of sequence-aligned recurrence. 自注意力（也称内部注意力）让同一序列的不同位置互相发生关系，从而算出该序列的表示。端到端记忆网络则用循环注意力，而不是与序列对齐的循环。 自注意力不是本文发明的词，但本文把它做成整座楼的承重墙。 self-attention">
+<span class="pidx">§16</span>
+<div class="summary"><b>小结</b> · 自注意力不是本文发明的词，但本文把它做成整座楼的承重墙。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Self-attention, sometimes called intra-attention, is an attention mechanism relating different positions of a single sequence in order to compute a representation of the sequence. End-to-end memory networks are based on a recurrent attention mechanism instead of sequence-aligned recurrence.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">自注意力（也称内部注意力）让同一序列的不同位置互相发生关系，从而算出该序列的表示。端到端记忆网络则用循环注意力，而不是与序列对齐的循环。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="self-attention">self-attention</span></div></article>
+</section>
+<section class="section" id="arch"><h3>3 总览：编码器–解码器栈 <span>6 段</span></h3>
+<article class="card para" data-idx="17" data-blob="the transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder, shown in the left and right halves of figure 1. transformer 沿用编码器–解码器总结构：两侧都是堆叠的自注意力与逐位置全连接层，见图 1 左右两半。 整张图只干两件事：注意（混位置）+ ffn（混通道）。 encoder-decoder transformer">
+<span class="pidx">§17</span>
+<div class="summary"><b>小结</b> · 整张图只干两件事：注意（混位置）+ FFN（混通道）。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The Transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder, shown in the left and right halves of Figure 1.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Transformer 沿用编码器–解码器总结构：两侧都是堆叠的自注意力与逐位置全连接层，见图 1 左右两半。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="architecture">
+  <rect width="820" height="250" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">图 1 教学重绘：左边编码器 · 右边解码器 · 各 6 层</text>
+    <rect x="70" y="44" width="280" height="168" rx="14" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="210" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">Encoder ×6</text>
+    <text x="210" y="98" text-anchor="middle" font-size="13" fill="#1c2420">① 多头自注意力</text>
+    <text x="210" y="120" text-anchor="middle" font-size="12" fill="#5a6a62">看整句源语言</text>
+    <text x="210" y="148" text-anchor="middle" font-size="13" fill="#1c2420">② 逐位置 FFN</text>
+    <text x="210" y="170" text-anchor="middle" font-size="12" fill="#5a6a62">每词各自 MLP</text>
+    <text x="210" y="196" text-anchor="middle" font-size="11" fill="#7d8c84">每子层：残差 + LayerNorm</text>
+    <rect x="470" y="44" width="280" height="168" rx="14" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="610" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">Decoder ×6</text>
+    <text x="610" y="96" text-anchor="middle" font-size="13" fill="#1c2420">① 掩码自注意力</text>
+    <text x="610" y="118" text-anchor="middle" font-size="13" fill="#1c2420">② 交叉注意力</text>
+    <text x="610" y="140" text-anchor="middle" font-size="12" fill="#5a6a62">Q 来自解码器 · KV 来自编码器</text>
+    <text x="610" y="166" text-anchor="middle" font-size="13" fill="#1c2420">③ 逐位置 FFN</text>
+    <text x="610" y="196" text-anchor="middle" font-size="11" fill="#7d8c84">同样残差 + LayerNorm</text>
+    <text x="410" y="234" text-anchor="middle" font-size="12" fill="#7d8c84">输入两端都是：token 嵌入 + 位置编码</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应原文 Figure 1</div></div>
+<div class="terms"><span class="term" data-term="encoder-decoder">encoder-decoder</span><span class="term" data-term="Transformer">Transformer</span></div></article>
+<article class="card para" data-idx="18" data-blob="encoder: the encoder is composed of a stack of n=6 identical layers. each layer has two sub-layers: a multi-head self-attention mechanism, and a simple, position-wise fully connected feed-forward network. 编码器：n=6 层相同的栈。每层两个子层：多头自注意力，以及简单的逐位置全连接前馈网络。 编码器一层 = 多头自注意 + ffn。 encoder n=6">
+<span class="pidx">§18</span>
+<div class="summary"><b>小结</b> · 编码器一层 = 多头自注意 + FFN。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Encoder: The encoder is composed of a stack of N=6 identical layers. Each layer has two sub-layers: a multi-head self-attention mechanism, and a simple, position-wise fully connected feed-forward network.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">编码器：N=6 层相同的栈。每层两个子层：多头自注意力，以及简单的逐位置全连接前馈网络。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="encoder">encoder</span><span class="term" data-term="N=6">N=6</span></div></article>
+<article class="card para" data-idx="19" data-blob="we employ a residual connection around each of the two sub-layers, followed by layer normalization. that is, the output of each sub-layer is layernorm(x + sublayer(x)), where sublayer(x) is the function implemented by the sub-layer itself. 每个子层外包残差连接，再接层归一化。即输出为 layernorm(x + sublayer(x))，其中 sublayer(x) 是该子层本身。 记这一句：先加回去，再 layernorm。 residual layernorm">
+<span class="pidx">§19</span>
+<div class="summary"><b>小结</b> · 记这一句：先加回去，再 LayerNorm。</div>
+<div class="math-stack"><div class="math-panel" data-blob="子层包装 sublayer 是 multihead 或 ffn。训练时对 sublayer 输出做 dropout。 \mathrm{layernorm}\bigl(x+\mathrm{sublayer}(x)\bigr)"><div class="math-tag">子层包装</div><div class="math-eq">\[\mathrm{LayerNorm}\bigl(x+\mathrm{Sublayer}(x)\bigr)\]</div><div class="math-note">Sublayer 是 MultiHead 或 FFN。训练时对 Sublayer 输出做 dropout。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We employ a residual connection around each of the two sub-layers, followed by layer normalization. That is, the output of each sub-layer is LayerNorm(x + Sublayer(x)), where Sublayer(x) is the function implemented by the sub-layer itself.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">每个子层外包残差连接，再接层归一化。即输出为 LayerNorm(x + Sublayer(x))，其中 Sublayer(x) 是该子层本身。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="residual">residual</span><span class="term" data-term="LayerNorm">LayerNorm</span></div></article>
+<article class="card para" data-idx="20" data-blob="to facilitate these residual connections, all sub-layers in the model, as well as the embedding layers, produce outputs of dimension d_model = 512. 为了残差能直接相加，模型中所有子层以及嵌入层的输出维都是 d_model=512。 宽度约定：全程 512 维对齐。 d_model">
+<span class="pidx">§20</span>
+<div class="summary"><b>小结</b> · 宽度约定：全程 512 维对齐。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">To facilitate these residual connections, all sub-layers in the model, as well as the embedding layers, produce outputs of dimension d_model = 512.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">为了残差能直接相加，模型中所有子层以及嵌入层的输出维都是 d_model=512。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="d_model">d_model</span></div></article>
+<article class="card para" data-idx="21" data-blob="decoder: the decoder is also composed of a stack of n=6 identical layers. in addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack. 解码器同样 n=6 层。在编码器那两个子层之外，再插入第三个子层：对编码器栈的输出做多头注意力。 解码器一层 = 掩码自注意 + 交叉注意 + ffn。 decoder encoder-decoder attention">
+<span class="pidx">§21</span>
+<div class="summary"><b>小结</b> · 解码器一层 = 掩码自注意 + 交叉注意 + FFN。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Decoder: The decoder is also composed of a stack of N=6 identical layers. In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">解码器同样 N=6 层。在编码器那两个子层之外，再插入第三个子层：对编码器栈的输出做多头注意力。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="decoder">decoder</span><span class="term" data-term="encoder-decoder attention">encoder-decoder attention</span></div></article>
+<article class="card para" data-idx="22" data-blob="similar to the encoder, we employ residual connections around each of the sub-layers, followed by layer normalization. we also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. this masking, combined with the fact that the output embeddings are offset by one position, ensures that the predictions for position i can depend only on the known outputs at positions less than i. 解码器同样残差 + layernorm。另外把解码器自注意力改成：禁止位置去看后面的位置。该掩码再加上输出嵌入右移一位，保证预测位置 i 只依赖已经知道的 &lt;i 输出。 因果掩码 = 生成时不能偷看未来。 causal masking auto-regressive">
+<span class="pidx">§22</span>
+<div class="summary"><b>小结</b> · 因果掩码 = 生成时不能偷看未来。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Similar to the encoder, we employ residual connections around each of the sub-layers, followed by layer normalization. We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This masking, combined with the fact that the output embeddings are offset by one position, ensures that the predictions for position i can depend only on the known outputs at positions less than i.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">解码器同样残差 + LayerNorm。另外把解码器自注意力改成：禁止位置去看后面的位置。该掩码再加上输出嵌入右移一位，保证预测位置 i 只依赖已经知道的 &lt;i 输出。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="causal mask">
+  <rect width="820" height="200" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">解码器因果掩码：只能看自己及左边</text>
+    <text x="80" y="58" font-size="12" fill="#7d8c84">key →</text>
+    <text x="28" y="120" font-size="12" fill="#7d8c84">q</text>
+    <g font-size="13" font-weight="700">
+      <rect x="90" y="70" width="36" height="36" fill="#d8efe6" stroke="#0f6e56"/><text x="108" y="93" text-anchor="middle" fill="#0f6e56">✓</text>
+      <rect x="130" y="70" width="36" height="36" fill="#f3e0d6" stroke="#b85c38"/><text x="148" y="93" text-anchor="middle" fill="#b85c38">−∞</text>
+      <rect x="170" y="70" width="36" height="36" fill="#f3e0d6" stroke="#b85c38"/><text x="188" y="93" text-anchor="middle" fill="#b85c38">−∞</text>
+      <rect x="210" y="70" width="36" height="36" fill="#f3e0d6" stroke="#b85c38"/><text x="228" y="93" text-anchor="middle" fill="#b85c38">−∞</text>
+      <rect x="90" y="110" width="36" height="36" fill="#d8efe6" stroke="#0f6e56"/><text x="108" y="133" text-anchor="middle" fill="#0f6e56">✓</text>
+      <rect x="130" y="110" width="36" height="36" fill="#d8efe6" stroke="#0f6e56"/><text x="148" y="133" text-anchor="middle" fill="#0f6e56">✓</text>
+      <rect x="170" y="110" width="36" height="36" fill="#f3e0d6" stroke="#b85c38"/><text x="188" y="133" text-anchor="middle" fill="#b85c38">−∞</text>
+      <rect x="210" y="110" width="36" height="36" fill="#f3e0d6" stroke="#b85c38"/><text x="228" y="133" text-anchor="middle" fill="#b85c38">−∞</text>
+      <rect x="90" y="150" width="36" height="36" fill="#d8efe6" stroke="#0f6e56"/><text x="108" y="173" text-anchor="middle" fill="#0f6e56">✓</text>
+      <rect x="130" y="150" width="36" height="36" fill="#d8efe6" stroke="#0f6e56"/><text x="148" y="173" text-anchor="middle" fill="#0f6e56">✓</text>
+      <rect x="170" y="150" width="36" height="36" fill="#d8efe6" stroke="#0f6e56"/><text x="188" y="173" text-anchor="middle" fill="#0f6e56">✓</text>
+      <rect x="210" y="150" width="36" height="36" fill="#f3e0d6" stroke="#b85c38"/><text x="228" y="173" text-anchor="middle" fill="#b85c38">−∞</text>
+    </g>
+    <text x="480" y="100" font-size="14" fill="#1c2420">绿色：允许（j ≤ i）</text>
+    <text x="480" y="128" font-size="14" fill="#1c2420">红色：非法未来，softmax 前设 −∞</text>
+    <text x="480" y="156" font-size="13" fill="#7d8c84">稀疏注意力 = 在这张下三角里再挖更多洞</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 解码器因果掩码</div></div>
+<div class="terms"><span class="term" data-term="causal masking">causal masking</span><span class="term" data-term="auto-regressive">auto-regressive</span></div></article>
+</section>
+<section class="section" id="attn-def"><h3>3.2 注意力在定义上是什么 <span>2 段</span></h3>
+<article class="card para" data-idx="23" data-blob="an attention function can be described as mapping a query and a set of key-value pairs to an output, where the query, keys, values, and output are all vectors. 注意力函数可以描述为：把一个 query 和一组 key–value 对映射成一个输出；query、key、value 与输出都是向量。 接口： (query, {(key,value)}) → output。 attention q k v">
+<span class="pidx">§23</span>
+<div class="summary"><b>小结</b> · 接口： (query, {(key,value)}) → output。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">An attention function can be described as mapping a query and a set of key-value pairs to an output, where the query, keys, values, and output are all vectors.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">注意力函数可以描述为：把一个 query 和一组 key–value 对映射成一个输出；query、key、value 与输出都是向量。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="attention">attention</span><span class="term" data-term="Q">Q</span><span class="term" data-term="K">K</span><span class="term" data-term="V">V</span></div></article>
+<article class="card para" data-idx="24" data-blob="the output is computed as a weighted sum of the values, where the weight assigned to each value is computed by a compatibility function of the query with the corresponding key. 输出是 value 的加权和；每个 value 的权重，由 query 与对应 key 的相容性函数算出。 两步：相容性打分 → 用分数加权 v。 compatibility function">
+<span class="pidx">§24</span>
+<div class="summary"><b>小结</b> · 两步：相容性打分 → 用分数加权 V。</div>
+<div class="math-stack"><div class="math-panel" data-blob="定义（尚未指定打分） α 由相容性函数再归一化得到。下一节把相容性定成缩放点积。 y=\sum_j \alpha(q,k_j)\, v_j"><div class="math-tag">定义（尚未指定打分）</div><div class="math-eq">\[y=\sum_j \alpha(q,k_j)\, v_j\]</div><div class="math-note">α 由相容性函数再归一化得到。下一节把相容性定成缩放点积。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The output is computed as a weighted sum of the values, where the weight assigned to each value is computed by a compatibility function of the query with the corresponding key.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">输出是 value 的加权和；每个 value 的权重，由 query 与对应 key 的相容性函数算出。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="compatibility function">compatibility function</span></div></article>
+</section>
+<section class="section" id="scaled"><h3>3.2.1 缩放点积注意力（核心，请逐步读） <span>10 段</span></h3>
+<article class="card para" data-idx="25" data-blob="we call our particular attention “scaled dot-product attention” (figure 2). the input consists of queries and keys of dimension d_k, and values of dimension d_v. 我们把所用的注意力叫做「缩放点积注意力」（图 2）。输入是维度为 d_k 的 query/key，以及维度为 d_v 的 value。 名字拆开：点积打分 + 除以 √d_k。 scaled dot-product attention d_k d_v">
+<span class="pidx">§25</span>
+<div class="summary"><b>小结</b> · 名字拆开：点积打分 + 除以 √d_k。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We call our particular attention “Scaled Dot-Product Attention” (Figure 2). The input consists of queries and keys of dimension d_k, and values of dimension d_v.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">我们把所用的注意力叫做「缩放点积注意力」（图 2）。输入是维度为 d_k 的 query/key，以及维度为 d_v 的 value。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="scaled steps">
+  <rect width="820" height="210" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">缩放点积四步（对应原文图 2 左 / 式 1）</text>
+    <rect x="20" y="50" width="180" height="100" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="110" y="84" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">A. 点积</text>
+    <text x="110" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">S = Q Kᵀ</text>
+    <text x="110" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">形状 N×N</text>
+    <rect x="220" y="50" width="180" height="100" rx="12" fill="#fff3d6" stroke="#8a6a20"/>
+    <text x="310" y="84" text-anchor="middle" font-size="14" font-weight="700" fill="#8a6a20">B. 缩放</text>
+    <text x="310" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">÷ √d_k</text>
+    <text x="310" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">防 softmax 饱和</text>
+    <rect x="420" y="50" width="180" height="100" rx="12" fill="#f3e0d6" stroke="#b85c38"/>
+    <text x="510" y="84" text-anchor="middle" font-size="14" font-weight="700" fill="#b85c38">C. softmax</text>
+    <text x="510" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">按行变权重</text>
+    <text x="510" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">可加 −∞ 掩码</text>
+    <rect x="620" y="50" width="180" height="100" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="710" y="84" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">D. ×V</text>
+    <text x="710" y="110" text-anchor="middle" font-size="12" fill="#5a6a62">加权求和</text>
+    <text x="710" y="132" text-anchor="middle" font-size="11" fill="#7d8c84">输出 N×d_v</text>
+    <text x="410" y="178" text-anchor="middle" font-size="12" fill="#5a6a62">O(N²) 发生在 A：那张分数表被造出来了</text>
+    <text x="410" y="198" text-anchor="middle" font-size="12" fill="#7d8c84">稀疏注意力 = 在 A/C 之前就不允许多数 (i,j)</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应原文 Figure 2 左、式 (1)</div></div>
+<div class="terms"><span class="term" data-term="scaled dot-product attention">scaled dot-product attention</span><span class="term" data-term="d_k">d_k</span><span class="term" data-term="d_v">d_v</span></div></article>
+<article class="card para" data-idx="26" data-blob="we compute the dot products of the query with all keys, divide each by √d_k, and apply a softmax function to obtain the weights on the values. 用 query 与所有 key 做点积，每个再除以 √d_k，然后 softmax，得到加在 value 上的权重。 四个动作：点积 → 缩放 → softmax → 加权 v。 softmax">
+<span class="pidx">§26</span>
+<div class="summary"><b>小结</b> · 四个动作：点积 → 缩放 → softmax → 加权 V。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We compute the dot products of the query with all keys, divide each by √d_k, and apply a softmax function to obtain the weights on the values.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">用 query 与所有 key 做点积，每个再除以 √d_k，然后 softmax，得到加在 value 上的权重。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="softmax">softmax</span></div></article>
+<article class="card para" data-idx="27" data-blob="teaching note. step a — scores. for one query q ∈ r^{d_k} and keys stacked as k ∈ r^{n×d_k}, the vector of raw scores is k q (or q kᵀ in row convention). entry j is q·k_j: alignment of “what i ask” with “what this position is about”. 导读。步骤 a — 打分。一个 query q∈r^{d_k}，key 排成 k∈r^{n×d_k}，原始分数是各 q·k_j：问的内容与该位置「关于什么」有多齐。 点积大 = 方向像 = 更该读这个 value。 q k">
+<span class="pidx">§27</span>
+<div class="summary"><b>小结</b> · 点积大 = 方向像 = 更该读这个 value。</div>
+<div class="math-stack"><div class="math-panel" data-blob="步骤 a · 分数 批量写法：s = q kᵀ，形状 n_q × n_k。 s_j = q^\top k_j \quad (j=1,\ldots,n)"><div class="math-tag">步骤 A · 分数</div><div class="math-eq">\[s_j = q^\top k_j \quad (j=1,\ldots,N)\]</div><div class="math-note">批量写法：S = Q Kᵀ，形状 N_q × N_k。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Step A — scores. For one query q ∈ R^{d_k} and keys stacked as K ∈ R^{N×d_k}, the vector of raw scores is K q (or q Kᵀ in row convention). Entry j is q·k_j: alignment of “what I ask” with “what this position is about”.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。步骤 A — 打分。一个 query q∈R^{d_k}，key 排成 K∈R^{N×d_k}，原始分数是各 q·k_j：问的内容与该位置「关于什么」有多齐。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Q">Q</span><span class="term" data-term="K">K</span></div></article>
+<article class="card para" data-idx="28" data-blob="teaching note. step b — scale. divide every score by √d_k before softmax. this is not a normalization of the vectors themselves; it only shrinks the logits. why: if q and k have roughly independent coordinates of variance 1, then q·k has variance d_k, so typical scores grow like √d_k. large logits make softmax peaky and gradients tiny. 导读。步骤 b — 缩放。softmax 之前把每个分数除以 √d_k。这不是把向量本身单位化，只是把 logit 缩小。原因：若 q、k 各维近似独立且方差为 1，则 q·k 的方差是 d_k，典型分数按 √d_k 变大。logit 太大时 softmax 又尖、梯度又小。 √d_k 是为了 softmax 别饱和，不是为了「除个常数好看」。 scaled dot-product attention d_k">
+<span class="pidx">§28</span>
+<div class="summary"><b>小结</b> · √d_k 是为了 softmax 别饱和，不是为了「除个常数好看」。</div>
+<div class="math-stack"><div class="math-panel" data-blob="步骤 b · 缩放 原文：无缩放时，大 d_k 下加性注意力更稳；加上 1/√d_k 后点积可用。 \tilde s_j=\frac{q^\top k_j}{\sqrt{d_k}}"><div class="math-tag">步骤 B · 缩放</div><div class="math-eq">\[\tilde s_j=\frac{q^\top k_j}{\sqrt{d_k}}\]</div><div class="math-note">原文：无缩放时，大 d_k 下加性注意力更稳；加上 1/√d_k 后点积可用。</div></div><div class="math-panel" data-blob="方差直觉  q,k\sim\text{坐标方差 }1 \;\rightarrow\; \mathrm{var}(q^\top k)\approx d_k"><div class="math-tag">方差直觉</div><div class="math-eq">\[q,k\sim\text{坐标方差 }1 \;\Rightarrow\; \mathrm{Var}(q^\top k)\approx d_k\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Step B — scale. Divide every score by √d_k before softmax. This is not a normalization of the vectors themselves; it only shrinks the logits. Why: if q and k have roughly independent coordinates of variance 1, then q·k has variance d_k, so typical scores grow like √d_k. Large logits make softmax peaky and gradients tiny.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。步骤 B — 缩放。softmax 之前把每个分数除以 √d_k。这不是把向量本身单位化，只是把 logit 缩小。原因：若 q、k 各维近似独立且方差为 1，则 q·k 的方差是 d_k，典型分数按 √d_k 变大。logit 太大时 softmax 又尖、梯度又小。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="scaled dot-product attention">scaled dot-product attention</span><span class="term" data-term="d_k">d_k</span></div></article>
+<article class="card para" data-idx="29" data-blob="teaching note. step c — softmax. apply softmax over keys for this query. weights α_j ≥ 0 and sum to 1. optional causal mask: set illegal scores to −∞ before softmax so their α becomes 0 (decoder self-attention). 导读。步骤 c — softmax。对这个 query 在 key 维上做 softmax。权重 α_j≥0 且和为 1。可选因果掩码：非法分数在 softmax 前设为 −∞，对应 α 变成 0（解码器自注意力）。 掩码不是另做一层，是改 softmax 的输入。 softmax causal masking">
+<span class="pidx">§29</span>
+<div class="summary"><b>小结</b> · 掩码不是另做一层，是改 softmax 的输入。</div>
+<div class="math-stack"><div class="math-panel" data-blob="步骤 c · 权重  \alpha_j=\mathrm{softmax}_j(\tilde s)=\frac{e^{\tilde s_j}}{\sum_{j&#x27;}e^{\tilde s_{j&#x27;}}}"><div class="math-tag">步骤 C · 权重</div><div class="math-eq">\[\alpha_j=\mathrm{softmax}_j(\tilde s)=\frac{e^{\tilde s_j}}{\sum_{j'}e^{\tilde s_{j'}}}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Step C — softmax. Apply softmax over keys for this query. Weights α_j ≥ 0 and sum to 1. Optional causal mask: set illegal scores to −∞ before softmax so their α becomes 0 (decoder self-attention).</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。步骤 C — softmax。对这个 query 在 key 维上做 softmax。权重 α_j≥0 且和为 1。可选因果掩码：非法分数在 softmax 前设为 −∞，对应 α 变成 0（解码器自注意力）。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="softmax">softmax</span><span class="term" data-term="causal masking">causal masking</span></div></article>
+<article class="card para" data-idx="30" data-blob="teaching note. step d — mix values. output y = σ_j α_j v_j ∈ r^{d_v}. if one α is ~1, you almost copy that value; if α is spread out, you average. that is the entire attention: a data-dependent pooling over the sequence. 导读。步骤 d — 混合 value。输出 y=σ_j α_j v_j ∈ r^{d_v}。某个 α≈1 就几乎拷贝那个 value；α 摊开就是平均。注意力的全部：按数据决定怎么池化整段序列。 输出仍是 d_v 维向量，不是那张 n×n 表。 v">
+<span class="pidx">§30</span>
+<div class="summary"><b>小结</b> · 输出仍是 d_v 维向量，不是那张 N×N 表。</div>
+<div class="math-stack"><div class="math-panel" data-blob="步骤 d · 加权  y=\sum_j \alpha_j v_j"><div class="math-tag">步骤 D · 加权</div><div class="math-eq">\[y=\sum_j \alpha_j v_j\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Step D — mix values. Output y = Σ_j α_j v_j ∈ R^{d_v}. If one α is ~1, you almost copy that value; if α is spread out, you average. That is the entire attention: a data-dependent pooling over the sequence.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。步骤 D — 混合 value。输出 y=Σ_j α_j v_j ∈ R^{d_v}。某个 α≈1 就几乎拷贝那个 value；α 摊开就是平均。注意力的全部：按数据决定怎么池化整段序列。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="V">V</span></div></article>
+<article class="card para" data-idx="31" data-blob="in practice, we compute the attention function on a set of queries simultaneously, packed together into a matrix q. the keys and values are also packed together into matrices k and v. we compute the matrix of outputs as: attention(q, k, v) = softmax(q kᵀ / √d_k) v. 实践中把一组 query 打成矩阵 q，key、value 打成 k、v，一次算完：attention(q,k,v)=softmax(qkᵀ/√d_k) v。 式 (1)：四个步骤的矩阵版。请对着形状读。 scaled dot-product attention">
+<span class="pidx">§31</span>
+<div class="summary"><b>小结</b> · 式 (1)：四个步骤的矩阵版。请对着形状读。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="原文式 (1) q: n_q×d_k；k: n_k×d_k；v: n_k×d_v；输出: n_q×d_v。中间 qkᵀ 是 n_q×n_k。 \mathrm{attention}(q,k,v)=\mathrm{softmax}\!\left(\frac{qk^\top}{\sqrt{d_k}}\right)v"><div class="math-tag">原文式 (1)</div><div class="math-eq">\[\mathrm{Attention}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V\]</div><div class="math-note">Q: N_q×d_k；K: N_k×d_k；V: N_k×d_v；输出: N_q×d_v。中间 QKᵀ 是 N_q×N_k。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In practice, we compute the attention function on a set of queries simultaneously, packed together into a matrix Q. The keys and values are also packed together into matrices K and V. We compute the matrix of outputs as: Attention(Q, K, V) = softmax(Q Kᵀ / √d_k) V.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">实践中把一组 query 打成矩阵 Q，key、value 打成 K、V，一次算完：Attention(Q,K,V)=softmax(QKᵀ/√d_k) V。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="scaled dot-product attention">scaled dot-product attention</span></div></article>
+<article class="card para" data-idx="32" data-blob="the two most commonly used attention functions are additive attention (bahdanau et al., 2015) and dot-product (multiplicative) attention. dot-product attention is identical to our algorithm, except for the scaling factor of 1/√d_k. additive attention computes the compatibility function using a feed-forward network with a single hidden layer. 当时最常用的两种注意力是加性注意力（bahdanau 2015）与点积（乘性）注意力。点积注意力与本算法相同，只是没有 1/√d_k 这个缩放。加性注意力用带单隐层的前馈网做相容性。 对照：bahdanau 用小网络打分；这里用点积，能吃矩阵乘。 additive attention">
+<span class="pidx">§32</span>
+<div class="summary"><b>小结</b> · 对照：Bahdanau 用小网络打分；这里用点积，能吃矩阵乘。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The two most commonly used attention functions are additive attention (Bahdanau et al., 2015) and dot-product (multiplicative) attention. Dot-product attention is identical to our algorithm, except for the scaling factor of 1/√d_k. Additive attention computes the compatibility function using a feed-forward network with a single hidden layer.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">当时最常用的两种注意力是加性注意力（Bahdanau 2015）与点积（乘性）注意力。点积注意力与本算法相同，只是没有 1/√d_k 这个缩放。加性注意力用带单隐层的前馈网做相容性。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="additive attention">additive attention</span></div></article>
+<article class="card para" data-idx="33" data-blob="while the two are similar in theoretical complexity, dot-product attention is much faster and more space-efficient in practice, since it can be implemented using highly optimized matrix multiplication code. 二者理论复杂度相近，但点积注意力实践中更快、更省空间，因为它能用高度优化的矩阵乘法实现。 选点积的工程理由：matmul 是现成最快原语。 scaled dot-product attention">
+<span class="pidx">§33</span>
+<div class="summary"><b>小结</b> · 选点积的工程理由：matmul 是现成最快原语。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">While the two are similar in theoretical complexity, dot-product attention is much faster and more space-efficient in practice, since it can be implemented using highly optimized matrix multiplication code.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">二者理论复杂度相近，但点积注意力实践中更快、更省空间，因为它能用高度优化的矩阵乘法实现。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="scaled dot-product attention">scaled dot-product attention</span></div></article>
+<article class="card para" data-idx="34" data-blob="while for small values of d_k the two mechanisms perform similarly, additive attention outperforms dot product attention without scaling for larger values of d_k. we suspect that for large values of d_k, the dot products grow large in magnitude, pushing the softmax function into regions where it has extremely small gradients. to counteract this effect, we scale the dot products by 1/√d_k. d_k 小时两者差不多；d_k 大且不缩放时，加性注意力更好。我们怀疑大 d_k 下点积幅值变大，把 softmax 推到梯度极小的区域。因此把点积除以 √d_k。 缩放的论文原话：对抗 softmax 饱和。 d_k softmax">
+<span class="pidx">§34</span>
+<div class="summary"><b>小结</b> · 缩放的论文原话：对抗 softmax 饱和。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">While for small values of d_k the two mechanisms perform similarly, additive attention outperforms dot product attention without scaling for larger values of d_k. We suspect that for large values of d_k, the dot products grow large in magnitude, pushing the softmax function into regions where it has extremely small gradients. To counteract this effect, we scale the dot products by 1/√d_k.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">d_k 小时两者差不多；d_k 大且不缩放时，加性注意力更好。我们怀疑大 d_k 下点积幅值变大，把 softmax 推到梯度极小的区域。因此把点积除以 √d_k。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="d_k">d_k</span><span class="term" data-term="softmax">softmax</span></div></article>
+</section>
+<section class="section" id="mha"><h3>3.2.2 多头注意力（核心，请逐步读） <span>8 段</span></h3>
+<article class="card para" data-idx="35" data-blob="instead of performing a single attention function with d_model-dimensional keys, values and queries, we found it beneficial to linearly project the queries, keys and values h times with different, learned linear projections to d_k, d_v and d_k dimensions, respectively. 不是只用一组 d_model 维的 q/k/v 做一次注意力，我们发现：用 h 组不同的、可学习的线性投影，分别把 q/k/v 投到 d_k、d_v、d_k 维，会更好。 多头的「头」= 一套独立的投影矩阵。 multi-head attention h">
+<span class="pidx">§35</span>
+<div class="summary"><b>小结</b> · 多头的「头」= 一套独立的投影矩阵。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Instead of performing a single attention function with d_model-dimensional keys, values and queries, we found it beneficial to linearly project the queries, keys and values h times with different, learned linear projections to d_k, d_v and d_k dimensions, respectively.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">不是只用一组 d_model 维的 Q/K/V 做一次注意力，我们发现：用 h 组不同的、可学习的线性投影，分别把 Q/K/V 投到 d_k、d_v、d_k 维，会更好。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="multi-head">
+  <rect width="820" height="230" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">多头：8 套投影各算缩放点积，再拼回去（图 2 右）</text>
+    <rect x="30" y="48" width="120" height="70" rx="10" fill="#efe9dc" stroke="#5a6a62"/>
+    <text x="90" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">Q K V</text>
+    <text x="90" y="98" text-anchor="middle" font-size="11" fill="#5a6a62">N×512</text>
+    <rect x="180" y="42" width="90" height="48" rx="8" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="225" y="71" text-anchor="middle" font-size="12" font-weight="700" fill="#1f4e79">head 1</text>
+    <rect x="280" y="42" width="90" height="48" rx="8" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="325" y="71" text-anchor="middle" font-size="12" font-weight="700" fill="#1f4e79">head 2</text>
+    <rect x="380" y="42" width="90" height="48" rx="8" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="425" y="71" text-anchor="middle" font-size="12" font-weight="700" fill="#1f4e79">…</text>
+    <rect x="480" y="42" width="90" height="48" rx="8" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="525" y="71" text-anchor="middle" font-size="12" font-weight="700" fill="#1f4e79">head 8</text>
+    <text x="355" y="110" text-anchor="middle" font-size="11" fill="#7d8c84">每头 d_k=64 · 各自一张 N×N 分数图</text>
+    <rect x="250" y="128" width="220" height="48" rx="10" fill="#fff3d6" stroke="#8a6a20"/>
+    <text x="360" y="157" text-anchor="middle" font-size="13" font-weight="700" fill="#8a6a20">Concat → N×512</text>
+    <rect x="500" y="128" width="200" height="48" rx="10" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="600" y="157" text-anchor="middle" font-size="13" font-weight="700" fill="#0f6e56">× W^O</text>
+    <text x="410" y="202" text-anchor="middle" font-size="12" fill="#5a6a62">总计算量 ≈ 单头用满 512 维：变窄换来多套读法</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应原文 Figure 2 右、式 (2)(3)</div></div>
+<div class="terms"><span class="term" data-term="multi-head attention">multi-head attention</span><span class="term" data-term="h">h</span></div></article>
+<article class="card para" data-idx="36" data-blob="on each of these projected versions of queries, keys and values we then perform the attention function in parallel, yielding d_v-dimensional output values. these are concatenated and once again projected, resulting in the final values, as depicted in figure 2. 在每组投影后的 q/k/v 上并行做注意力，得到 d_v 维输出；再拼接，再投影一次，得到最终值，见图 2。 流程：分头投影 → 各头注意力 → 拼接 → w^o 混回去。 w^o">
+<span class="pidx">§36</span>
+<div class="summary"><b>小结</b> · 流程：分头投影 → 各头注意力 → 拼接 → W^O 混回去。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">On each of these projected versions of queries, keys and values we then perform the attention function in parallel, yielding d_v-dimensional output values. These are concatenated and once again projected, resulting in the final values, as depicted in Figure 2.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">在每组投影后的 Q/K/V 上并行做注意力，得到 d_v 维输出；再拼接，再投影一次，得到最终值，见图 2。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="W^O">W^O</span></div></article>
+<article class="card para" data-idx="37" data-blob="teaching note. why not one fat head? a single softmax is a single distribution over keys. it tends to average. multiple heads let the layer keep several different distributions at once—e.g. one head on syntax, one on the previous mention of an entity, one on positional neighbors—then w^o mixes those views. 导读。为什么不做成一个很宽的单头？一次 softmax 只是对 key 的一个分布，容易平均掉。多头让一层同时保留好几套分布——例如一头看句法、一头看实体的上次提及、一头看位置邻居——再由 w^o 把这些视角混起来。 多头 = 并行的多种「读法」，不是把维度切着好玩。 multi-head attention representation subspaces">
+<span class="pidx">§37</span>
+<div class="summary"><b>小结</b> · 多头 = 并行的多种「读法」，不是把维度切着好玩。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Why not one fat head? A single softmax is a single distribution over keys. It tends to average. Multiple heads let the layer keep several different distributions at once—e.g. one head on syntax, one on the previous mention of an entity, one on positional neighbors—then W^O mixes those views.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。为什么不做成一个很宽的单头？一次 softmax 只是对 key 的一个分布，容易平均掉。多头让一层同时保留好几套分布——例如一头看句法、一头看实体的上次提及、一头看位置邻居——再由 W^O 把这些视角混起来。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="multi-head attention">multi-head attention</span><span class="term" data-term="representation subspaces">representation subspaces</span></div></article>
+<article class="card para" data-idx="38" data-blob="multihead(q, k, v) = concat(head_1, …, head_h) w^o where head_i = attention(q w_i^q, k w_i^k, v w_i^v). multihead(q,k,v)=concat(head_1,…,head_h) w^o，其中 head_i=attention(q w_i^q, k w_i^k, v w_i^v)。 式 (2)(3)：先各头缩放点积，再拼接投影。 multi-head attention">
+<span class="pidx">§38</span>
+<div class="summary"><b>小结</b> · 式 (2)(3)：先各头缩放点积，再拼接投影。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="原文式 (2)  \mathrm{multihead}(q,k,v)=\mathrm{concat}(\mathrm{head}_1,\ldots,\mathrm{head}_h)\,w^o"><div class="math-tag">原文式 (2)</div><div class="math-eq">\[\mathrm{MultiHead}(Q,K,V)=\mathrm{Concat}(\mathrm{head}_1,\ldots,\mathrm{head}_h)\,W^O\]</div></div><div class="math-panel span2" data-blob="原文式 (3) 这里的 attention 就是上一节的缩放点积。 \mathrm{head}_i=\mathrm{attention}(qw_i^q,\,kw_i^k,\,vw_i^v)"><div class="math-tag">原文式 (3)</div><div class="math-eq">\[\mathrm{head}_i=\mathrm{Attention}(QW_i^Q,\,KW_i^K,\,VW_i^V)\]</div><div class="math-note">这里的 Attention 就是上一节的缩放点积。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">MultiHead(Q, K, V) = Concat(head_1, …, head_h) W^O where head_i = Attention(Q W_i^Q, K W_i^K, V W_i^V).</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">MultiHead(Q,K,V)=Concat(head_1,…,head_h) W^O，其中 head_i=Attention(Q W_i^Q, K W_i^K, V W_i^V)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="multi-head attention">multi-head attention</span></div></article>
+<article class="card para" data-idx="39" data-blob="where the projections are parameter matrices w_i^q ∈ r^{d_model × d_k}, w_i^k ∈ r^{d_model × d_k}, w_i^v ∈ r^{d_model × d_v} and w^o ∈ r^{h d_v × d_model}. 投影参数：w_i^q、w_i^k ∈ r^{d_model×d_k}，w_i^v ∈ r^{d_model×d_v}，w^o ∈ r^{h d_v × d_model}。 参数形状：每头三块小矩阵 + 一块拼回去的 w^o。 w^q w^k w^v w^o">
+<span class="pidx">§39</span>
+<div class="summary"><b>小结</b> · 参数形状：每头三块小矩阵 + 一块拼回去的 W^O。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="参数形状  w_i^q,w_i^k\in\mathbb{r}^{d_{\mathrm{model}}\times d_k},\; w_i^v\in\mathbb{r}^{d_{\mathrm{model}}\times d_v},\; w^o\in\mathbb{r}^{hd_v\times d_{\mathrm{model}}}"><div class="math-tag">参数形状</div><div class="math-eq">\[W_i^Q,W_i^K\in\mathbb{R}^{d_{\mathrm{model}}\times d_k},\; W_i^V\in\mathbb{R}^{d_{\mathrm{model}}\times d_v},\; W^O\in\mathbb{R}^{hd_v\times d_{\mathrm{model}}}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Where the projections are parameter matrices W_i^Q ∈ R^{d_model × d_k}, W_i^K ∈ R^{d_model × d_k}, W_i^V ∈ R^{d_model × d_v} and W^O ∈ R^{h d_v × d_model}.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">投影参数：W_i^Q、W_i^K ∈ R^{d_model×d_k}，W_i^V ∈ R^{d_model×d_v}，W^O ∈ R^{h d_v × d_model}。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="W^Q">W^Q</span><span class="term" data-term="W^K">W^K</span><span class="term" data-term="W^V">W^V</span><span class="term" data-term="W^O">W^O</span></div></article>
+<article class="card para" data-idx="40" data-blob="in this work we employ h = 8 parallel attention layers, or heads. for each of these we use d_k = d_v = d_model / h = 64. due to the reduced dimension of each head, the total computational cost is similar to that of single-head attention with full dimensionality. 本文用 h=8 个并行注意力头。每头 d_k=d_v=d_model/h=64。由于每头维度缩小，总计算量与「用满宽度做单头」相近。 数字：512 维切成 8×64；多头几乎不额外加价。 h d_k d_model">
+<span class="pidx">§40</span>
+<div class="summary"><b>小结</b> · 数字：512 维切成 8×64；多头几乎不额外加价。</div>
+<div class="math-stack"><div class="math-panel" data-blob="本文设定 实现上常把 h 个头的投影做成一块大矩阵再 reshape，数值等价。 h=8,\quad d_{\mathrm{model}}=512,\quad d_k=d_v=64"><div class="math-tag">本文设定</div><div class="math-eq">\[h=8,\quad d_{\mathrm{model}}=512,\quad d_k=d_v=64\]</div><div class="math-note">实现上常把 h 个头的投影做成一块大矩阵再 reshape，数值等价。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In this work we employ h = 8 parallel attention layers, or heads. For each of these we use d_k = d_v = d_model / h = 64. Due to the reduced dimension of each head, the total computational cost is similar to that of single-head attention with full dimensionality.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本文用 h=8 个并行注意力头。每头 d_k=d_v=d_model/h=64。由于每头维度缩小，总计算量与「用满宽度做单头」相近。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="h">h</span><span class="term" data-term="d_k">d_k</span><span class="term" data-term="d_model">d_model</span></div></article>
+<article class="card para" data-idx="41" data-blob="teaching note. shape walk-through. start with x ∈ r^{n×512}. after the q projection you have q ∈ r^{n×512}, then view it as r^{n×8×64}. each of the 8 slices is one head’s queries. attention is run independently per head (8 different n×n score maps). concatenate the 8 outputs of size n×64 back to n×512, then multiply w^o. 导读。形状走一遍。x∈r^{n×512}。q 投影后仍是 n×512，再看成 n×8×64；8 片就是 8 头的 query。每头独立做注意力（8 张不同的 n×n 分数图）。8 个 n×64 输出拼回 n×512，再乘 w^o。 实现口诀：reshape 成分头 → 各算各的 → concat → 线性混。 multi-head attention">
+<span class="pidx">§41</span>
+<div class="summary"><b>小结</b> · 实现口诀：reshape 成分头 → 各算各的 → concat → 线性混。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Shape walk-through. Start with X ∈ R^{N×512}. After the Q projection you have Q ∈ R^{N×512}, then view it as R^{N×8×64}. Each of the 8 slices is one head’s queries. Attention is run independently per head (8 different N×N score maps). Concatenate the 8 outputs of size N×64 back to N×512, then multiply W^O.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。形状走一遍。X∈R^{N×512}。Q 投影后仍是 N×512，再看成 N×8×64；8 片就是 8 头的 query。每头独立做注意力（8 张不同的 N×N 分数图）。8 个 N×64 输出拼回 N×512，再乘 W^O。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="multi-head attention">multi-head attention</span></div></article>
+<article class="card para" data-idx="42" data-blob="multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions. with a single attention head, averaging inhibits this. 多头注意力让模型能联合关注不同位置、不同表示子空间里的信息。单头时，平均会抑制这种能力。 原文动机句：单头会平均掉子空间。 representation subspaces">
+<span class="pidx">§42</span>
+<div class="summary"><b>小结</b> · 原文动机句：单头会平均掉子空间。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions. With a single attention head, averaging inhibits this.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">多头注意力让模型能联合关注不同位置、不同表示子空间里的信息。单头时，平均会抑制这种能力。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="representation subspaces">representation subspaces</span></div></article>
+</section>
+<section class="section" id="apps"><h3>3.2.3 三种用法：自注意 / 交叉注意 / 掩码 <span>4 段</span></h3>
+<article class="card para" data-idx="43" data-blob="the transformer uses multi-head attention in three different ways. transformer 在三处使用多头注意力，用法不同。 同一套 multihead 公式，q/k/v 来源不同。 multi-head attention">
+<span class="pidx">§43</span>
+<div class="summary"><b>小结</b> · 同一套 MultiHead 公式，Q/K/V 来源不同。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The Transformer uses multi-head attention in three different ways.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Transformer 在三处使用多头注意力，用法不同。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="three uses">
+  <rect width="820" height="200" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">同一套 MultiHead，三处 Q/K/V 来源不同</text>
+    <rect x="30" y="48" width="240" height="110" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="150" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">编码器自注意</text>
+    <text x="150" y="104" text-anchor="middle" font-size="12" fill="#5a6a62">Q=K=V=源句</text>
+    <text x="150" y="126" text-anchor="middle" font-size="11" fill="#7d8c84">双向 · 无因果掩码</text>
+    <rect x="290" y="48" width="240" height="110" rx="12" fill="#fff3d6" stroke="#8a6a20"/>
+    <text x="410" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#8a6a20">解码器掩码自注意</text>
+    <text x="410" y="104" text-anchor="middle" font-size="12" fill="#5a6a62">Q=K=V=目标句</text>
+    <text x="410" y="126" text-anchor="middle" font-size="11" fill="#7d8c84">下三角掩码</text>
+    <rect x="550" y="48" width="240" height="110" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="670" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">交叉注意</text>
+    <text x="670" y="104" text-anchor="middle" font-size="12" fill="#5a6a62">Q=解码器 · KV=编码器</text>
+    <text x="670" y="126" text-anchor="middle" font-size="11" fill="#7d8c84">对齐源与目标</text>
+    <text x="410" y="180" text-anchor="middle" font-size="12" fill="#7d8c84">GPT 只用中间这种（解码器堆）；BERT 只用左边这种（编码器堆）</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应原文 §3.2.3 三种用法</div></div>
+<div class="terms"><span class="term" data-term="multi-head attention">multi-head attention</span></div></article>
+<article class="card para" data-idx="44" data-blob="in “encoder-decoder attention” layers, the queries come from the previous decoder layer, and the memory keys and values come from the output of the encoder stack. this allows every position in the decoder to attend over all positions in the input sequence. this mimics the typical encoder-decoder attention mechanisms in sequence-to-sequence models. 编码器–解码器注意力层：query 来自上一层解码器，key/value 来自编码器栈输出。于是解码器每个位置都能看完整句输入。这模仿了 seq2seq 里典型的编解码注意力。 交叉注意：目标侧提问，源侧提供档案。 encoder-decoder attention">
+<span class="pidx">§44</span>
+<div class="summary"><b>小结</b> · 交叉注意：目标侧提问，源侧提供档案。</div>
+<div class="math-stack"><div class="math-panel" data-blob="交叉注意的来源  q\leftarrow \text{decoder},\quad k,v\leftarrow \text{encoder}"><div class="math-tag">交叉注意的来源</div><div class="math-eq">\[Q\leftarrow \text{decoder},\quad K,V\leftarrow \text{encoder}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In “encoder-decoder attention” layers, the queries come from the previous decoder layer, and the memory keys and values come from the output of the encoder stack. This allows every position in the decoder to attend over all positions in the input sequence. This mimics the typical encoder-decoder attention mechanisms in sequence-to-sequence models.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">编码器–解码器注意力层：query 来自上一层解码器，key/value 来自编码器栈输出。于是解码器每个位置都能看完整句输入。这模仿了 seq2seq 里典型的编解码注意力。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="encoder-decoder attention">encoder-decoder attention</span></div></article>
+<article class="card para" data-idx="45" data-blob="the encoder contains self-attention layers. in a self-attention layer all of the keys, values and queries come from the same place, in this case, the output of the previous layer in the encoder. each position in the encoder can attend to all positions in the previous layer of the encoder. 编码器里是自注意力层：q/k/v 都来自编码器上一层输出。编码器每个位置都能看到上一层的所有位置。 编码侧：每个词可以看全句（无因果掩码）。 self-attention encoder">
+<span class="pidx">§45</span>
+<div class="summary"><b>小结</b> · 编码侧：每个词可以看全句（无因果掩码）。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">The encoder contains self-attention layers. In a self-attention layer all of the keys, values and queries come from the same place, in this case, the output of the previous layer in the encoder. Each position in the encoder can attend to all positions in the previous layer of the encoder.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">编码器里是自注意力层：Q/K/V 都来自编码器上一层输出。编码器每个位置都能看到上一层的所有位置。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="self-attention">self-attention</span><span class="term" data-term="encoder">encoder</span></div></article>
+<article class="card para" data-idx="46" data-blob="similarly, self-attention layers in the decoder allow each position in the decoder to attend to all positions in the decoder up to and including that position. we need to prevent leftward information flow in the decoder to preserve the auto-regressive property. we implement this inside of scaled dot-product attention by masking out (setting to −∞) all values in the input of the softmax which correspond to illegal connections. 解码器自注意力：每个位置只能看自己及之前的位置。为保持自回归，要阻止信息从右往左流。实现方式：在缩放点积内部，把非法连接对应的 softmax 输入设为 −∞。 解码侧：下三角掩码；非法格进 −∞ 再 softmax。 causal masking auto-regressive decoder">
+<span class="pidx">§46</span>
+<div class="summary"><b>小结</b> · 解码侧：下三角掩码；非法格进 −∞ 再 softmax。</div>
+<div class="math-stack"><div class="math-panel" data-blob="因果掩码 softmax(−∞)=0，等价于不读未来。 s_{ij}\leftarrow -\infty \quad\text{if } j&gt;i"><div class="math-tag">因果掩码</div><div class="math-eq">\[s_{ij}\leftarrow -\infty \quad\text{if } j&gt;i\]</div><div class="math-note">softmax(−∞)=0，等价于不读未来。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Similarly, self-attention layers in the decoder allow each position in the decoder to attend to all positions in the decoder up to and including that position. We need to prevent leftward information flow in the decoder to preserve the auto-regressive property. We implement this inside of scaled dot-product attention by masking out (setting to −∞) all values in the input of the softmax which correspond to illegal connections.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">解码器自注意力：每个位置只能看自己及之前的位置。为保持自回归，要阻止信息从右往左流。实现方式：在缩放点积内部，把非法连接对应的 softmax 输入设为 −∞。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="causal masking">causal masking</span><span class="term" data-term="auto-regressive">auto-regressive</span><span class="term" data-term="decoder">decoder</span></div></article>
+</section>
+<section class="section" id="ffn"><h3>3.3 逐位置前馈网络 <span>2 段</span></h3>
+<article class="card para" data-idx="47" data-blob="in addition to attention sub-layers, each of the layers in our encoder and decoder contains a fully connected feed-forward network, which is applied to each position separately and identically. this consists of two linear transformations with a relu activation in between. 除注意力子层外，编码器与解码器每层还有一个全连接前馈网：对每个位置单独、相同地作用。它是两层线性变换，中间夹 relu。 ffn 不看邻居；邻居混合只发生在注意力里。 ffn relu">
+<span class="pidx">§47</span>
+<div class="summary"><b>小结</b> · FFN 不看邻居；邻居混合只发生在注意力里。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="原文 ffn 输入输出维 d_model=512；内层 d_ff=2048。可看成核大小 1 的卷积。 \mathrm{ffn}(x)=\max(0,xw_1+b_1)w_2+b_2"><div class="math-tag">原文 FFN</div><div class="math-eq">\[\mathrm{FFN}(x)=\max(0,xW_1+b_1)W_2+b_2\]</div><div class="math-note">输入输出维 d_model=512；内层 d_ff=2048。可看成核大小 1 的卷积。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In addition to attention sub-layers, each of the layers in our encoder and decoder contains a fully connected feed-forward network, which is applied to each position separately and identically. This consists of two linear transformations with a ReLU activation in between.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">除注意力子层外，编码器与解码器每层还有一个全连接前馈网：对每个位置单独、相同地作用。它是两层线性变换，中间夹 ReLU。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="FFN">FFN</span><span class="term" data-term="ReLU">ReLU</span></div></article>
+<article class="card para" data-idx="48" data-blob="while the linear transformations are the same across different positions, they use different parameters from layer to layer. another way of describing this is as two convolutions with kernel size 1. the dimensionality of input and output is d_model = 512, and the inner-layer has dimensionality d_ff = 2048. 不同位置共用同一套线性变换，但层与层参数不同。也可看成两层核大小为 1 的卷积。输入输出 512 维，内层 2048 维。 扩到 2048 再压回 512：通道上的非线性。 d_ff d_model">
+<span class="pidx">§48</span>
+<div class="summary"><b>小结</b> · 扩到 2048 再压回 512：通道上的非线性。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">While the linear transformations are the same across different positions, they use different parameters from layer to layer. Another way of describing this is as two convolutions with kernel size 1. The dimensionality of input and output is d_model = 512, and the inner-layer has dimensionality d_ff = 2048.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">不同位置共用同一套线性变换，但层与层参数不同。也可看成两层核大小为 1 的卷积。输入输出 512 维，内层 2048 维。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="d_ff">d_ff</span><span class="term" data-term="d_model">d_model</span></div></article>
+</section>
+<section class="section" id="embed"><h3>3.4 嵌入与 Softmax <span>2 段</span></h3>
+<article class="card para" data-idx="49" data-blob="similarly to other sequence transduction models, we use learned embeddings to convert the input tokens and output tokens to vectors of dimension d_model. we also use the usual learned linear transformation and softmax function to convert the decoder output to predicted next-token probabilities. 与其他序列转导模型一样：用可学习嵌入把输入/输出 token 变成 d_model 维向量；解码器输出再经线性层 + softmax 变成下一个 token 的概率。 两端仍是标准词嵌入与词表 softmax。 embedding softmax">
+<span class="pidx">§49</span>
+<div class="summary"><b>小结</b> · 两端仍是标准词嵌入与词表 softmax。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Similarly to other sequence transduction models, we use learned embeddings to convert the input tokens and output tokens to vectors of dimension d_model. We also use the usual learned linear transformation and softmax function to convert the decoder output to predicted next-token probabilities.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">与其他序列转导模型一样：用可学习嵌入把输入/输出 token 变成 d_model 维向量；解码器输出再经线性层 + softmax 变成下一个 token 的概率。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="embedding">embedding</span><span class="term" data-term="softmax">softmax</span></div></article>
+<article class="card para" data-idx="50" data-blob="in our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation. in the embedding layers, we multiply those weights by √d_model. 两个嵌入层与 softmax 前的线性层共享同一权重矩阵。嵌入时把这些权重乘以 √d_model。 词表矩阵共用；嵌入再乘 √d_model 做尺度匹配。 d_model">
+<span class="pidx">§50</span>
+<div class="summary"><b>小结</b> · 词表矩阵共用；嵌入再乘 √d_model 做尺度匹配。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation. In the embedding layers, we multiply those weights by √d_model.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">两个嵌入层与 softmax 前的线性层共享同一权重矩阵。嵌入时把这些权重乘以 √d_model。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="d_model">d_model</span></div></article>
+</section>
+<section class="section" id="posenc"><h3>3.5 位置编码（没有 RNN 之后必须补的） <span>3 段</span></h3>
+<article class="card para" data-idx="51" data-blob="since our model contains no recurrence and no convolution, in order for the model to make use of the order of the sequence, we must inject some information about the relative or absolute position of the tokens in the sequence. to this end, we add “positional encodings” to the input embeddings at the bottoms of the encoder and decoder stacks. the positional encodings have the same dimension d_model as the embeddings, so that the two can be summed. 模型既无循环也无卷积，要利用词序，就必须注入相对或绝对位置信息。因此在编码器与解码器栈底部，把「位置编码」加到输入嵌入上。位置编码维数与嵌入相同，以便相加。 注意力本身对置换不敏感；位置靠加 pe 告诉模型。 positional encoding">
+<span class="pidx">§51</span>
+<div class="summary"><b>小结</b> · 注意力本身对置换不敏感；位置靠加 PE 告诉模型。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Since our model contains no recurrence and no convolution, in order for the model to make use of the order of the sequence, we must inject some information about the relative or absolute position of the tokens in the sequence. To this end, we add “positional encodings” to the input embeddings at the bottoms of the encoder and decoder stacks. The positional encodings have the same dimension d_model as the embeddings, so that the two can be summed.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">模型既无循环也无卷积，要利用词序，就必须注入相对或绝对位置信息。因此在编码器与解码器栈底部，把「位置编码」加到输入嵌入上。位置编码维数与嵌入相同，以便相加。</div></div>
+</div><div class="figure">
+<svg viewBox="0 0 820 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="positional encoding">
+  <rect width="820" height="180" fill="#fffcf5"/>
+  <g font-family="Manrope,sans-serif">
+    <text x="410" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1c2420">位置编码：注意力本身不知道词序，必须加进去</text>
+    <rect x="80" y="55" width="200" height="70" rx="12" fill="#dce8f3" stroke="#1f4e79"/>
+    <text x="180" y="96" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4e79">token 嵌入</text>
+    <text x="300" y="96" font-size="22" fill="#0f6e56">+</text>
+    <rect x="340" y="55" width="200" height="70" rx="12" fill="#fff3d6" stroke="#8a6a20"/>
+    <text x="440" y="88" text-anchor="middle" font-size="14" font-weight="700" fill="#8a6a20">正弦 PE</text>
+    <text x="440" y="108" text-anchor="middle" font-size="11" fill="#5a6a62">sin / cos · 不同频率</text>
+    <text x="555" y="96" font-size="22" fill="#0f6e56">=</text>
+    <rect x="590" y="55" width="150" height="70" rx="12" fill="#d8efe6" stroke="#0f6e56"/>
+    <text x="665" y="96" text-anchor="middle" font-size="14" font-weight="700" fill="#0f6e56">送进第 1 层</text>
+    <text x="410" y="155" text-anchor="middle" font-size="12" fill="#7d8c84">相对偏移 k 时，PE(pos+k) 是 PE(pos) 的线性函数</text>
+  </g>
+</svg>
+<div class="cap">教学示意 · 对应原文 §3.5</div></div>
+<div class="terms"><span class="term" data-term="positional encoding">positional encoding</span></div></article>
+<article class="card para" data-idx="52" data-blob="in this work, we use sine and cosine functions of different frequencies: pe(pos, 2i) = sin(pos / 10000^{2i/d_model}), pe(pos, 2i+1) = cos(pos / 10000^{2i/d_model}), where pos is the position and i is the dimension. each dimension of the positional encoding corresponds to a sinusoid. the wavelengths form a geometric progression from 2π to 10000·2π. 本文用不同频率的正弦与余弦：偶维 sin、奇维 cos，pos 是位置、i 是维度。位置编码的每个维度对应一条正弦波，波长从 2π 到 10000·2π 成等比。 正弦 pe：每个维度一条波，频率按维递减。 sinusoidal pe">
+<span class="pidx">§52</span>
+<div class="summary"><b>小结</b> · 正弦 PE：每个维度一条波，频率按维递减。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="正弦位置编码  pe_{(pos,2i)}=\sin\!\frac{pos}{10000^{2i/d_{\mathrm{model}}}},\quad pe_{(pos,2i+1)}=\cos\!\frac{pos}{10000^{2i/d_{\mathrm{model}}}}"><div class="math-tag">正弦位置编码</div><div class="math-eq">\[PE_{(pos,2i)}=\sin\!\frac{pos}{10000^{2i/d_{\mathrm{model}}}},\quad PE_{(pos,2i+1)}=\cos\!\frac{pos}{10000^{2i/d_{\mathrm{model}}}}\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In this work, we use sine and cosine functions of different frequencies: PE(pos, 2i) = sin(pos / 10000^{2i/d_model}), PE(pos, 2i+1) = cos(pos / 10000^{2i/d_model}), where pos is the position and i is the dimension. Each dimension of the positional encoding corresponds to a sinusoid. The wavelengths form a geometric progression from 2π to 10000·2π.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本文用不同频率的正弦与余弦：偶维 sin、奇维 cos，pos 是位置、i 是维度。位置编码的每个维度对应一条正弦波，波长从 2π 到 10000·2π 成等比。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="sinusoidal PE">sinusoidal PE</span></div></article>
+<article class="card para" data-idx="53" data-blob="we chose this function because we hypothesized it would allow the model to easily learn to attend by relative position, since for any fixed offset k, pe(pos+k) can be represented as a linear function of pe(pos). we also experimented with using learned positional embeddings instead, and found that the two versions produced nearly identical results. we chose the sinusoidal version because it may allow the model to extrapolate to sequence lengths longer than the ones encountered during training. 选它是因为：对任意固定偏移 k，pe(pos+k) 可写成 pe(pos) 的线性函数，便于学相对位置。我们也试过可学习位置嵌入，结果几乎相同。选正弦版是因为它可能外推到训练时未见过的长度。 相对位置可线性读出；正弦版还可能外推更长句。 positional encoding">
+<span class="pidx">§53</span>
+<div class="summary"><b>小结</b> · 相对位置可线性读出；正弦版还可能外推更长句。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We chose this function because we hypothesized it would allow the model to easily learn to attend by relative position, since for any fixed offset k, PE(pos+k) can be represented as a linear function of PE(pos). We also experimented with using learned positional embeddings instead, and found that the two versions produced nearly identical results. We chose the sinusoidal version because it may allow the model to extrapolate to sequence lengths longer than the ones encountered during training.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">选它是因为：对任意固定偏移 k，PE(pos+k) 可写成 PE(pos) 的线性函数，便于学相对位置。我们也试过可学习位置嵌入，结果几乎相同。选正弦版是因为它可能外推到训练时未见过的长度。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="positional encoding">positional encoding</span></div></article>
+</section>
+<section class="section" id="why"><h3>4 为什么用自注意力（接到稀疏的关键表） <span>5 段</span></h3>
+<article class="card para" data-idx="54" data-blob="in this section we compare various aspects of self-attention layers to the recurrent and convolutional layers commonly used for mapping one variable-length sequence of symbol representations (x_1, …, x_n) to another sequence of equal length (z_1, …, z_n), with x_i, z_i ∈ r^{d}. 本节把自注意力层与常用的循环层、卷积层比较：都是把变长符号表示序列 (x_1,…,x_n) 映到等长的 (z_1,…,z_n)。 比较轴：复杂度、并行、路径长度。 self-attention">
+<span class="pidx">§54</span>
+<div class="summary"><b>小结</b> · 比较轴：复杂度、并行、路径长度。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In this section we compare various aspects of self-attention layers to the recurrent and convolutional layers commonly used for mapping one variable-length sequence of symbol representations (x_1, …, x_n) to another sequence of equal length (z_1, …, z_n), with x_i, z_i ∈ R^{d}.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本节把自注意力层与常用的循环层、卷积层比较：都是把变长符号表示序列 (x_1,…,x_n) 映到等长的 (z_1,…,z_n)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="self-attention">self-attention</span></div></article>
+<article class="card para" data-idx="55" data-blob="one is the total computational complexity per layer. another is the amount of computation that can be parallelized, as measured by the minimum number of sequential operations required. the third is the path length between long-range dependencies in the network. the shorter these paths, the easier it is to learn long-range dependencies. 一是每层总计算复杂度。二是可并行的计算量（用所需最少顺序步数衡量）。三是网络中长程依赖的路径长度——路径越短，长程依赖越好学。 三指标：算多少、能否并行、远依赖要走几步。 long-range dependency parallelization">
+<span class="pidx">§55</span>
+<div class="summary"><b>小结</b> · 三指标：算多少、能否并行、远依赖要走几步。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">One is the total computational complexity per layer. Another is the amount of computation that can be parallelized, as measured by the minimum number of sequential operations required. The third is the path length between long-range dependencies in the network. The shorter these paths, the easier it is to learn long-range dependencies.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">一是每层总计算复杂度。二是可并行的计算量（用所需最少顺序步数衡量）。三是网络中长程依赖的路径长度——路径越短，长程依赖越好学。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="long-range dependency">long-range dependency</span><span class="term" data-term="parallelization">parallelization</span></div></article>
+<article class="card para" data-idx="56" data-blob="a self-attention layer connects all positions with a constant number of sequentially executed operations, whereas a recurrent layer requires o(n) sequential operations. in terms of computational complexity, self-attention layers are faster than recurrent layers when the sequence length n is smaller than the representation dimensionality d, which is most often the case with sentence representations used by state-of-the-art models in machine translations, such as word-piece and byte-pair representations. 自注意力用常数步顺序运算连接所有位置，循环层则需要 o(n) 步。当序列长度 n 小于表示维 d 时，自注意力比循环层更快——机器翻译里用 word-piece / bpe 时常常如此。 句长不长时，o(n² d) 仍可能比 rnn 的 o(n d²) 更香。 quadratic complexity">
+<span class="pidx">§56</span>
+<div class="summary"><b>小结</b> · 句长不长时，O(n² d) 仍可能比 RNN 的 O(n d²) 更香。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="原文表 1（复杂度） 最后一行已经在谈「限制每位置只看 r 个邻居」——这就是稀疏注意力的原型。 \begin{aligned}\text{self-attention}&amp;:\; o(n^2 d),\ \text{顺序步 }o(1),\ \text{最大路径 }o(1)\\ \text{recurrent}&amp;:\; o(n d^2),\ \text{顺序步 }o(n),\ \text{最大路径 }o(n)\\ \text{convolutional}&amp;:\; o(k n d^2),\ \text{顺序步 }o(1),\ \text{最大路径 }o(\log_k n)\\ \text{restricted self-attn}&amp;:\; o(r n d),\ \text{顺序步 }o(1),\ \text{最大路径 }o(n/r)\end{aligned}"><div class="math-tag">原文表 1（复杂度）</div><div class="math-eq">\[\begin{aligned}\text{Self-Attention}&amp;:\; O(n^2 d),\ \text{顺序步 }O(1),\ \text{最大路径 }O(1)\\ \text{Recurrent}&amp;:\; O(n d^2),\ \text{顺序步 }O(n),\ \text{最大路径 }O(n)\\ \text{Convolutional}&amp;:\; O(k n d^2),\ \text{顺序步 }O(1),\ \text{最大路径 }O(\log_k n)\\ \text{Restricted self-attn}&amp;:\; O(r n d),\ \text{顺序步 }O(1),\ \text{最大路径 }O(n/r)\end{aligned}\]</div><div class="math-note">最后一行已经在谈「限制每位置只看 r 个邻居」——这就是稀疏注意力的原型。</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">A self-attention layer connects all positions with a constant number of sequentially executed operations, whereas a recurrent layer requires O(n) sequential operations. In terms of computational complexity, self-attention layers are faster than recurrent layers when the sequence length n is smaller than the representation dimensionality d, which is most often the case with sentence representations used by state-of-the-art models in machine translations, such as word-piece and byte-pair representations.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">自注意力用常数步顺序运算连接所有位置，循环层则需要 O(n) 步。当序列长度 n 小于表示维 d 时，自注意力比循环层更快——机器翻译里用 word-piece / BPE 时常常如此。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="quadratic complexity">quadratic complexity</span></div></article>
+<article class="card para" data-idx="57" data-blob="to improve computational performance for tasks involving very long sequences, self-attention could be restricted to considering only a neighborhood of size r in the input sequence centered around the respective output position. this would increase the maximum path length to o(n/r). we plan to investigate this approach in future work. 对很长序列，可以把自注意力限制为：每个输出位置只看输入里以它为中心、大小为 r 的邻域。这会把最大路径长度变成 o(n/r)。我们计划在未来工作中研究这一方法。 原文已经点名「局部窗口」——sparse transformer / longformer 就是来做这件事的。 restricted self-attention sparse attention">
+<span class="pidx">§57</span>
+<div class="summary"><b>小结</b> · 原文已经点名「局部窗口」——Sparse Transformer / Longformer 就是来做这件事的。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">To improve computational performance for tasks involving very long sequences, self-attention could be restricted to considering only a neighborhood of size r in the input sequence centered around the respective output position. This would increase the maximum path length to O(n/r). We plan to investigate this approach in future work.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">对很长序列，可以把自注意力限制为：每个输出位置只看输入里以它为中心、大小为 r 的邻域。这会把最大路径长度变成 O(n/r)。我们计划在未来工作中研究这一方法。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="restricted self-attention">restricted self-attention</span><span class="term" data-term="sparse attention">sparse attention</span></div></article>
+<article class="card para" data-idx="58" data-blob="teaching note. read table 1’s last row as the on-ramp to this repo’s sparse track. full self-attention: every query sees every key, path length 1, cost n². restricted / sparse: each query sees r keys, cost ~ n r, but information may need several layers to travel. later longformer (sliding window + global tokens) and bigbird (window + global + random) are concrete designs of that r-neighborhood plus extra “hub” tokens so path length stays small. 导读。把表 1 最后一行当成通往本仓库稀疏路线的匝道。全自注意：每个 query 看所有 key，路径长度 1，代价 n²。限制/稀疏：每个 query 看 r 个 key，代价约 n r，但信息可能要走若干层。后来的 longformer（滑窗+全局 token）与 bigbird（窗口+全局+随机）就是把这个 r 邻域设计具体化，并加「枢纽」token 以保持短路径。 稀疏不是否定本文，而是接过本文自己写下的未来工作。 longformer bigbird sparse transformer">
+<span class="pidx">§58</span>
+<div class="summary"><b>小结</b> · 稀疏不是否定本文，而是接过本文自己写下的未来工作。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Teaching</div><div class="en">Teaching note. Read Table 1’s last row as the on-ramp to this repo’s sparse track. Full self-attention: every query sees every key, path length 1, cost n². Restricted / sparse: each query sees r keys, cost ~ n r, but information may need several layers to travel. Later Longformer (sliding window + global tokens) and BigBird (window + global + random) are concrete designs of that r-neighborhood plus extra “hub” tokens so path length stays small.</div></div>
+<div class="zh-block"><div class="label">导读</div><div class="zh">导读。把表 1 最后一行当成通往本仓库稀疏路线的匝道。全自注意：每个 query 看所有 key，路径长度 1，代价 n²。限制/稀疏：每个 query 看 r 个 key，代价约 n r，但信息可能要走若干层。后来的 Longformer（滑窗+全局 token）与 BigBird（窗口+全局+随机）就是把这个 r 邻域设计具体化，并加「枢纽」token 以保持短路径。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Longformer">Longformer</span><span class="term" data-term="BigBird">BigBird</span><span class="term" data-term="Sparse Transformer">Sparse Transformer</span></div></article>
+</section>
+<section class="section" id="train"><h3>5 训练要点（极简） <span>2 段</span></h3>
+<article class="card para" data-idx="59" data-blob="we trained on the standard wmt 2014 english-german dataset (~4.5m sentence pairs, 37k byte-pair tokens) and english-french (~36m sentences, 32k word-piece tokens). base model: d_model=512, d_ff=2048, h=8, p_drop=0.1, n=6. big model: d_model=1024, d_ff=4096, h=16. 数据：wmt14 英德约 450 万句对（37k bpe），英法约 3600 万句（32k word-piece）。base：512/2048/8 头/dropout 0.1/6 层。big：1024/4096/16 头。 记住 base 数字，后面读论文常拿它当单位。 d_model h n=6">
+<span class="pidx">§59</span>
+<div class="summary"><b>小结</b> · 记住 Base 数字，后面读论文常拿它当单位。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">We trained on the standard WMT 2014 English-German dataset (~4.5M sentence pairs, 37k byte-pair tokens) and English-French (~36M sentences, 32k word-piece tokens). Base model: d_model=512, d_ff=2048, h=8, P_drop=0.1, N=6. Big model: d_model=1024, d_ff=4096, h=16.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">数据：WMT14 英德约 450 万句对（37k BPE），英法约 3600 万句（32k word-piece）。Base：512/2048/8 头/dropout 0.1/6 层。Big：1024/4096/16 头。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="d_model">d_model</span><span class="term" data-term="h">h</span><span class="term" data-term="N=6">N=6</span></div></article>
+<article class="card para" data-idx="60" data-blob="adam optimizer with β1=0.9, β2=0.98, ε=10^{-9}. learning rate warmup for 4000 steps then inverse-sqrt decay. residual dropout p_drop=0.1 on embeddings and after each sub-layer. label smoothing ε_ls=0.1. adam：β1=0.9，β2=0.98，ε=10^{-9}。学习率 4000 步 warmup 再按步数平方根反比衰减。残差 dropout 0.1。标签平滑 0.1。 训练配方：warmup + dropout + label smoothing。 dropout warmup">
+<span class="pidx">§60</span>
+<div class="summary"><b>小结</b> · 训练配方：warmup + dropout + label smoothing。</div>
+<div class="math-stack"><div class="math-panel span2" data-blob="学习率  lrate = d_{\mathrm{model}}^{-0.5}\cdot \min\!\bigl(step^{-0.5},\; step\cdot warmup^{-1.5}\bigr)"><div class="math-tag">学习率</div><div class="math-eq">\[lrate = d_{\mathrm{model}}^{-0.5}\cdot \min\!\bigl(step^{-0.5},\; step\cdot warmup^{-1.5}\bigr)\]</div></div></div><div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Adam optimizer with β1=0.9, β2=0.98, ε=10^{-9}. Learning rate warmup for 4000 steps then inverse-sqrt decay. Residual dropout P_drop=0.1 on embeddings and after each sub-layer. Label smoothing ε_ls=0.1.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">Adam：β1=0.9，β2=0.98，ε=10^{-9}。学习率 4000 步 warmup 再按步数平方根反比衰减。残差 dropout 0.1。标签平滑 0.1。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="dropout">dropout</span><span class="term" data-term="warmup">warmup</span></div></article>
+</section>
+<section class="section" id="results"><h3>6 结果与变体（极简） <span>2 段</span></h3>
+<article class="card para" data-idx="61" data-blob="on wmt 2014 english-to-german, transformer (big) achieves 28.4 bleu, a new sota exceeding ensembles at a fraction of the training cost. english-to-french: 41.8 bleu single-model sota. wmt14 英德：transformer (big) 28.4 bleu，新 sota，训练成本远低于当时的集成系统。英法：41.8 bleu 单模型 sota。 质量与训练成本同时打赢。 bleu">
+<span class="pidx">§61</span>
+<div class="summary"><b>小结</b> · 质量与训练成本同时打赢。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">On WMT 2014 English-to-German, Transformer (big) achieves 28.4 BLEU, a new SOTA exceeding ensembles at a fraction of the training cost. English-to-French: 41.8 BLEU single-model SOTA.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">WMT14 英德：Transformer (big) 28.4 BLEU，新 SOTA，训练成本远低于当时的集成系统。英法：41.8 BLEU 单模型 SOTA。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="BLEU">BLEU</span></div></article>
+<article class="card para" data-idx="62" data-blob="table 3 variations: reducing heads from 8 to 1 drops bleu by 0.9; too many heads (32) also hurts slightly. removing positional encoding is catastrophic. replacing residual dropout or label smoothing also hurts. these ablations justify the default recipe you just learned. 表 3 变体：头从 8 减到 1，bleu 掉 0.9；头太多（32）也略伤。去掉位置编码是灾难。去掉残差 dropout 或标签平滑也会伤。这些消融就是在给你刚学的默认配方作证。 消融印象：单头不行；没 pe 更不行。 multi-head attention positional encoding">
+<span class="pidx">§62</span>
+<div class="summary"><b>小结</b> · 消融印象：单头不行；没 PE 更不行。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">Table 3 variations: reducing heads from 8 to 1 drops BLEU by 0.9; too many heads (32) also hurts slightly. Removing positional encoding is catastrophic. Replacing residual dropout or label smoothing also hurts. These ablations justify the default recipe you just learned.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">表 3 变体：头从 8 减到 1，BLEU 掉 0.9；头太多（32）也略伤。去掉位置编码是灾难。去掉残差 dropout 或标签平滑也会伤。这些消融就是在给你刚学的默认配方作证。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="multi-head attention">multi-head attention</span><span class="term" data-term="positional encoding">positional encoding</span></div></article>
+</section>
+<section class="section" id="next"><h3>读完之后：接到稀疏注意力 <span>3 段</span></h3>
+<article class="card para" data-idx="63" data-blob="you now have the full dense transformer: qkv projections, scaled softmax, multi-head, residual+ln, ffn, sinusoidal pe, and the o(n² d) cost. sparse attention keeps this formula and changes only who is allowed in the softmax—mask extra (i,j) pairs besides the causal ones. 到这里，稠密 transformer 已经齐了：qkv 投影、缩放 softmax、多头、残差+ln、ffn、正弦 pe，以及 o(n² d) 代价。稀疏注意力保留这套公式，只改 softmax 里允许谁——在因果掩码之外再禁掉更多 (i,j)。 稀疏 = 同一套 attention(q,k,v)，换一张更稀的掩码。 sparse attention attention mask">
+<span class="pidx">§63</span>
+<div class="summary"><b>小结</b> · 稀疏 = 同一套 Attention(Q,K,V)，换一张更稀的掩码。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">You now have the full dense Transformer: QKV projections, scaled softmax, multi-head, residual+LN, FFN, sinusoidal PE, and the O(n² d) cost. Sparse attention keeps this formula and changes only who is allowed in the softmax—mask extra (i,j) pairs besides the causal ones.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">到这里，稠密 Transformer 已经齐了：QKV 投影、缩放 softmax、多头、残差+LN、FFN、正弦 PE，以及 O(n² d) 代价。稀疏注意力保留这套公式，只改 softmax 里允许谁——在因果掩码之外再禁掉更多 (i,j)。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="sparse attention">sparse attention</span><span class="term" data-term="attention mask">attention mask</span></div></article>
+<article class="card para" data-idx="64" data-blob="in this repo, next on the sparse track: papers/sparse-attention (map of patterns) → papers/sparse-transformer (fixed factorized patterns) → papers/longformer (window + global) → papers/watts-strogatz (random-graph intuition) → papers/bigbird (window + global + random) → papers/nsa (trainable hierarchical sparse). flashattention is orthogonal: still full softmax, but io-aware. 本仓库稀疏路线：papers/sparse-attention（图案总览）→ papers/sparse-transformer（固定分解图案）→ papers/longformer（窗口+全局）→ papers/watts-strogatz（随机图直觉）→ papers/bigbird（窗口+全局+随机）→ papers/nsa（可训练层次稀疏）。flashattention 是另一轴：仍是全 softmax，只是更会走 io。 下一站打开稀疏专题即可，不必先跳到线性注意力。 sparse transformer longformer bigbird nsa">
+<span class="pidx">§64</span>
+<div class="summary"><b>小结</b> · 下一站打开稀疏专题即可，不必先跳到线性注意力。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">In this repo, next on the sparse track: papers/sparse-attention (map of patterns) → papers/sparse-transformer (fixed factorized patterns) → papers/longformer (window + global) → papers/watts-strogatz (random-graph intuition) → papers/bigbird (window + global + random) → papers/nsa (trainable hierarchical sparse). FlashAttention is orthogonal: still full softmax, but IO-aware.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">本仓库稀疏路线：papers/sparse-attention（图案总览）→ papers/sparse-transformer（固定分解图案）→ papers/longformer（窗口+全局）→ papers/watts-strogatz（随机图直觉）→ papers/bigbird（窗口+全局+随机）→ papers/nsa（可训练层次稀疏）。FlashAttention 是另一轴：仍是全 softmax，只是更会走 IO。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="Sparse Transformer">Sparse Transformer</span><span class="term" data-term="Longformer">Longformer</span><span class="term" data-term="BigBird">BigBird</span><span class="term" data-term="NSA">NSA</span></div></article>
+<article class="card para" data-idx="65" data-blob="a second track changes the formula rather than the mask: linear attention replaces softmax(qkᵀ)v by φ(q)(φ(k)ᵀ v) so the n×n matrix never appears. that starts at papers/linear-attention, then deltanet / gated deltanet / kda. do not mix the two stories on the first pass. 第二条路线改公式而不是改掩码：线性注意力用 φ(q)(φ(k)ᵀ v) 替换 softmax(qkᵀ)v，n×n 矩阵不再出现。从 papers/linear-attention 起，再到 deltanet / gated deltanet / kda。第一遍不要把两条故事拧在一起。 先走稀疏（改连边），再走线性（改核），两条都从本页的式 (1) 分叉。 linear attention deltanet kda">
+<span class="pidx">§65</span>
+<div class="summary"><b>小结</b> · 先走稀疏（改连边），再走线性（改核），两条都从本页的式 (1) 分叉。</div>
+<div class="pair lang">
+<div class="en-block"><div class="label">Original</div><div class="en">A second track changes the formula rather than the mask: linear attention replaces softmax(QKᵀ)V by φ(Q)(φ(K)ᵀ V) so the N×N matrix never appears. That starts at papers/linear-attention, then DeltaNet / Gated DeltaNet / KDA. Do not mix the two stories on the first pass.</div></div>
+<div class="zh-block"><div class="label">译文</div><div class="zh">第二条路线改公式而不是改掩码：线性注意力用 φ(Q)(φ(K)ᵀ V) 替换 softmax(QKᵀ)V，N×N 矩阵不再出现。从 papers/linear-attention 起，再到 DeltaNet / Gated DeltaNet / KDA。第一遍不要把两条故事拧在一起。</div></div>
+</div>
+<div class="terms"><span class="term" data-term="linear attention">linear attention</span><span class="term" data-term="DeltaNet">DeltaNet</span><span class="term" data-term="KDA">KDA</span></div></article>
+</section>
+<section class="section" id="glossary"><h3>名词重点解释 <span>55 条</span></h3><div class="refgrid">
+<div class="gitem" id="term-Transformer" data-blob="transformer 本文提出的编码器–解码器：只用注意力与逐位置 ffn，不用 rnn/cnn。"><b>Transformer</b><p>本文提出的编码器–解码器：只用注意力与逐位置 FFN，不用 RNN/CNN。</p></div>
+<div class="gitem" id="term-sequence transduction" data-blob="sequence transduction 把源序列映射成目标序列的任务，如翻译。"><b>sequence transduction</b><p>把源序列映射成目标序列的任务，如翻译。</p></div>
+<div class="gitem" id="term-encoder-decoder" data-blob="encoder-decoder 编码器读源句，解码器写目标句；中间用交叉注意力对齐。"><b>encoder-decoder</b><p>编码器读源句，解码器写目标句；中间用交叉注意力对齐。</p></div>
+<div class="gitem" id="term-encoder" data-blob="encoder n=6 层：每层多头自注意 + ffn。源句双向可见。"><b>encoder</b><p>N=6 层：每层多头自注意 + FFN。源句双向可见。</p></div>
+<div class="gitem" id="term-decoder" data-blob="decoder n=6 层：掩码自注意 + 交叉注意 + ffn。目标句因果可见。"><b>decoder</b><p>N=6 层：掩码自注意 + 交叉注意 + FFN。目标句因果可见。</p></div>
+<div class="gitem" id="term-attention" data-blob="attention 用 query 对 key 打分，softmax 成权重，再加权 value。"><b>attention</b><p>用 query 对 key 打分，softmax 成权重，再加权 value。</p></div>
+<div class="gitem" id="term-self-attention" data-blob="self-attention q/k/v 来自同一序列的注意力。"><b>self-attention</b><p>Q/K/V 来自同一序列的注意力。</p></div>
+<div class="gitem" id="term-encoder-decoder attention" data-blob="encoder-decoder attention q 来自解码器，k/v 来自编码器的交叉注意力。"><b>encoder-decoder attention</b><p>Q 来自解码器，K/V 来自编码器的交叉注意力。</p></div>
+<div class="gitem" id="term-Q" data-blob="q query：当前要读什么。"><b>Q</b><p>Query：当前要读什么。</p></div>
+<div class="gitem" id="term-K" data-blob="k key：每个位置的标签，用来被 query 匹配。"><b>K</b><p>Key：每个位置的标签，用来被 query 匹配。</p></div>
+<div class="gitem" id="term-V" data-blob="v value：匹配上之后真正混合的内容。"><b>V</b><p>Value：匹配上之后真正混合的内容。</p></div>
+<div class="gitem" id="term-compatibility function" data-blob="compatibility function query 与 key 有多配；本文用缩放点积。"><b>compatibility function</b><p>query 与 key 有多配；本文用缩放点积。</p></div>
+<div class="gitem" id="term-scaled dot-product attention" data-blob="scaled dot-product attention softmax(qkᵀ/√d_k) v。"><b>scaled dot-product attention</b><p>softmax(QKᵀ/√d_k) V。</p></div>
+<div class="gitem" id="term-softmax" data-blob="softmax 把一行分数变成非负且和为 1 的权重。"><b>softmax</b><p>把一行分数变成非负且和为 1 的权重。</p></div>
+<div class="gitem" id="term-d_k" data-blob="d_k 每个头里 query/key 的维度；本文 64。"><b>d_k</b><p>每个头里 query/key 的维度；本文 64。</p></div>
+<div class="gitem" id="term-d_v" data-blob="d_v 每个头里 value 的维度；本文 64。"><b>d_v</b><p>每个头里 value 的维度；本文 64。</p></div>
+<div class="gitem" id="term-d_model" data-blob="d_model 模型主宽度；base 为 512。"><b>d_model</b><p>模型主宽度；Base 为 512。</p></div>
+<div class="gitem" id="term-d_ff" data-blob="d_ff ffn 隐层宽度；base 为 2048。"><b>d_ff</b><p>FFN 隐层宽度；Base 为 2048。</p></div>
+<div class="gitem" id="term-multi-head attention" data-blob="multi-head attention h 组不同投影各做一次注意力，再拼接投影。"><b>multi-head attention</b><p>h 组不同投影各做一次注意力，再拼接投影。</p></div>
+<div class="gitem" id="term-h" data-blob="h 头数；base 为 8。"><b>h</b><p>头数；Base 为 8。</p></div>
+<div class="gitem" id="term-W^Q" data-blob="w^q 把输入投成 query 的矩阵（每头一块，或拼成大矩阵）。"><b>W^Q</b><p>把输入投成 query 的矩阵（每头一块，或拼成大矩阵）。</p></div>
+<div class="gitem" id="term-W^K" data-blob="w^k key 投影矩阵。"><b>W^K</b><p>key 投影矩阵。</p></div>
+<div class="gitem" id="term-W^V" data-blob="w^v value 投影矩阵。"><b>W^V</b><p>value 投影矩阵。</p></div>
+<div class="gitem" id="term-W^O" data-blob="w^o 多头拼接后的输出投影。"><b>W^O</b><p>多头拼接后的输出投影。</p></div>
+<div class="gitem" id="term-representation subspaces" data-blob="representation subspaces 不同头可以读不同的表示方向/关系类型。"><b>representation subspaces</b><p>不同头可以读不同的表示方向/关系类型。</p></div>
+<div class="gitem" id="term-causal masking" data-blob="causal masking 把未来位置的分数设为 −∞，保证自回归。"><b>causal masking</b><p>把未来位置的分数设为 −∞，保证自回归。</p></div>
+<div class="gitem" id="term-auto-regressive" data-blob="auto-regressive 生成位置 i 只依赖已经生成的 &lt;i。"><b>auto-regressive</b><p>生成位置 i 只依赖已经生成的 &lt;i。</p></div>
+<div class="gitem" id="term-attention mask" data-blob="attention mask 允许/禁止 (i,j) 配对的 0/1 或 −∞ 掩码。"><b>attention mask</b><p>允许/禁止 (i,j) 配对的 0/1 或 −∞ 掩码。</p></div>
+<div class="gitem" id="term-attention matrix" data-blob="attention matrix n×n 的分数或权重表；稠密时这就是 o(n²)。"><b>attention matrix</b><p>N×N 的分数或权重表；稠密时这就是 O(N²)。</p></div>
+<div class="gitem" id="term-residual" data-blob="residual x + sublayer(x)，让梯度与身份映射好走。"><b>residual</b><p>x + Sublayer(x)，让梯度与身份映射好走。</p></div>
+<div class="gitem" id="term-LayerNorm" data-blob="layernorm 在残差之后做的层归一化。"><b>LayerNorm</b><p>在残差之后做的层归一化。</p></div>
+<div class="gitem" id="term-FFN" data-blob="ffn 逐位置两层 mlp，中间 relu；不混合不同位置。"><b>FFN</b><p>逐位置两层 MLP，中间 ReLU；不混合不同位置。</p></div>
+<div class="gitem" id="term-ReLU" data-blob="relu max(0,·)，本文 ffn 的激活。"><b>ReLU</b><p>max(0,·)，本文 FFN 的激活。</p></div>
+<div class="gitem" id="term-embedding" data-blob="embedding token → d_model 向量。"><b>embedding</b><p>token → d_model 向量。</p></div>
+<div class="gitem" id="term-positional encoding" data-blob="positional encoding 加到嵌入上的位置信息；本文用正弦。"><b>positional encoding</b><p>加到嵌入上的位置信息；本文用正弦。</p></div>
+<div class="gitem" id="term-sinusoidal PE" data-blob="sinusoidal pe 不同频率的 sin/cos 位置编码。"><b>sinusoidal PE</b><p>不同频率的 sin/cos 位置编码。</p></div>
+<div class="gitem" id="term-N=6" data-blob="n=6 编码器/解码器层数。"><b>N=6</b><p>编码器/解码器层数。</p></div>
+<div class="gitem" id="term-RNN" data-blob="rnn 沿时间递推的网络；本文要丢掉它以便并行。"><b>RNN</b><p>沿时间递推的网络；本文要丢掉它以便并行。</p></div>
+<div class="gitem" id="term-LSTM" data-blob="lstm 带门控的 rnn 变体，2017 年前的序列主流。"><b>LSTM</b><p>带门控的 RNN 变体，2017 年前的序列主流。</p></div>
+<div class="gitem" id="term-parallelization" data-blob="parallelization 长度维上可同时算；自注意力顺序步为 o(1)。"><b>parallelization</b><p>长度维上可同时算；自注意力顺序步为 O(1)。</p></div>
+<div class="gitem" id="term-long-range dependency" data-blob="long-range dependency 相距很远的 token 之间的依赖；自注意力路径长度为 1。"><b>long-range dependency</b><p>相距很远的 token 之间的依赖；自注意力路径长度为 1。</p></div>
+<div class="gitem" id="term-quadratic complexity" data-blob="quadratic complexity 全注意力相对长度的 o(n² d) 代价。"><b>quadratic complexity</b><p>全注意力相对长度的 O(n² d) 代价。</p></div>
+<div class="gitem" id="term-restricted self-attention" data-blob="restricted self-attention 原文表 1：每位置只看 r 个邻居；稀疏注意力的种子。"><b>restricted self-attention</b><p>原文表 1：每位置只看 r 个邻居；稀疏注意力的种子。</p></div>
+<div class="gitem" id="term-sparse attention" data-blob="sparse attention softmax 只在允许的 (i,j) 上做；本仓库稀疏路线。"><b>sparse attention</b><p>softmax 只在允许的 (i,j) 上做；本仓库稀疏路线。</p></div>
+<div class="gitem" id="term-linear attention" data-blob="linear attention 用核特征避开 n×n 矩阵；本仓库线性路线。"><b>linear attention</b><p>用核特征避开 N×N 矩阵；本仓库线性路线。</p></div>
+<div class="gitem" id="term-additive attention" data-blob="additive attention bahdanau：用小网络打分而不是点积。"><b>additive attention</b><p>Bahdanau：用小网络打分而不是点积。</p></div>
+<div class="gitem" id="term-BLEU" data-blob="bleu 机器翻译自动指标；本文英德 28.4。"><b>BLEU</b><p>机器翻译自动指标；本文英德 28.4。</p></div>
+<div class="gitem" id="term-dropout" data-blob="dropout 残差分支上的随机丢弃；p_drop=0.1。"><b>dropout</b><p>残差分支上的随机丢弃；P_drop=0.1。</p></div>
+<div class="gitem" id="term-warmup" data-blob="warmup 前 4000 步拉高学习率再衰减。"><b>warmup</b><p>前 4000 步拉高学习率再衰减。</p></div>
+<div class="gitem" id="term-Sparse Transformer" data-blob="sparse transformer child et al.：固定稀疏分解图案。"><b>Sparse Transformer</b><p>Child et al.：固定稀疏分解图案。</p></div>
+<div class="gitem" id="term-Longformer" data-blob="longformer 滑窗局部 + 任务全局 token。"><b>Longformer</b><p>滑窗局部 + 任务全局 token。</p></div>
+<div class="gitem" id="term-BigBird" data-blob="bigbird 窗口 + 全局 + 随机块。"><b>BigBird</b><p>窗口 + 全局 + 随机块。</p></div>
+<div class="gitem" id="term-NSA" data-blob="nsa 可训练的层次稀疏注意力。"><b>NSA</b><p>可训练的层次稀疏注意力。</p></div>
+<div class="gitem" id="term-DeltaNet" data-blob="deltanet 在线性注意力状态上用 delta 规则改写。"><b>DeltaNet</b><p>在线性注意力状态上用 delta 规则改写。</p></div>
+<div class="gitem" id="term-KDA" data-blob="kda 通道级门控的 delta 线性注意力。"><b>KDA</b><p>通道级门控的 delta 线性注意力。</p></div>
+</div></section>
+<section class="section" id="refs"><h3>重点引用</h3><div class="refgrid">
+<div class="ref" data-blob="attention is all you need 原始 transformer；qkv / 多头 / 位置编码的定义页。"><span class="lv must">本篇</span><h4>Attention Is All You Need</h4><p>原始 Transformer；QKV / 多头 / 位置编码的定义页。</p><a href="./paper.pdf" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="稀疏注意力专题 同一套公式，改连边；从零走稀疏的地图。"><span class="lv imp">下一站</span><h4>稀疏注意力专题</h4><p>同一套公式，改连边；从零走稀疏的地图。</p><a href="../sparse-attention/index.html" target="_blank" rel="noopener">打开 →</a></div>
+<div class="ref" data-blob="sparse transformer 原文表 1「restricted self-attention」的早期落地。"><span class="lv imp">下一站</span><h4>Sparse Transformer</h4><p>原文表 1「restricted self-attention」的早期落地。</p><a href="../sparse-transformer/" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/1904.10509" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="longformer 滑窗 + 全局 token，长文档近线性。"><span class="lv imp">下一站</span><h4>Longformer</h4><p>滑窗 + 全局 token，长文档近线性。</p><a href="../longformer/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2004.05150" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="linear attention 另一分叉：不造 n×n，改核函数。先读完本页再去。"><span class="lv imp">对照</span><h4>Linear Attention</h4><p>另一分叉：不造 N×N，改核函数。先读完本页再去。</p><a href="../linear-attention/index.html" target="_blank" rel="noopener">打开 →</a> · <a href="https://arxiv.org/abs/2006.16236" target="_blank" rel="noopener">外链</a></div>
+<div class="ref" data-blob="bahdanau attention (2015) 加性注意力；本文点积注意力的对照。"><span class="lv ">背景</span><h4>Bahdanau attention (2015)</h4><p>加性注意力；本文点积注意力的对照。</p><a href="https://arxiv.org/abs/1409.0473" target="_blank" rel="noopener">打开 →</a></div>
+</div><p class="note" style="margin-top:28px">本页为学习用逐段精读；数字与公式以 PDF 为准。示意图为教学重绘。</p></section></main></div>
+
+<aside class="drawer" id="drawer"><button class="btn" id="closeDrawer">关闭</button>
+<h2>名词速查</h2><div id="drawerBody"></div></aside>
+<script>
+const body=document.body;const cards=[...document.querySelectorAll('.para')];let idx=0;
+const glossary={"Transformer":"\u672c\u6587\u63d0\u51fa\u7684\u7f16\u7801\u5668\u2013\u89e3\u7801\u5668\uff1a\u53ea\u7528\u6ce8\u610f\u529b\u4e0e\u9010\u4f4d\u7f6e FFN\uff0c\u4e0d\u7528 RNN/CNN\u3002",
+"sequence transduction":"\u628a\u6e90\u5e8f\u5217\u6620\u5c04\u6210\u76ee\u6807\u5e8f\u5217\u7684\u4efb\u52a1\uff0c\u5982\u7ffb\u8bd1\u3002",
+"encoder-decoder":"\u7f16\u7801\u5668\u8bfb\u6e90\u53e5\uff0c\u89e3\u7801\u5668\u5199\u76ee\u6807\u53e5\uff1b\u4e2d\u95f4\u7528\u4ea4\u53c9\u6ce8\u610f\u529b\u5bf9\u9f50\u3002",
+"encoder":"N=6 \u5c42\uff1a\u6bcf\u5c42\u591a\u5934\u81ea\u6ce8\u610f + FFN\u3002\u6e90\u53e5\u53cc\u5411\u53ef\u89c1\u3002",
+"decoder":"N=6 \u5c42\uff1a\u63a9\u7801\u81ea\u6ce8\u610f + \u4ea4\u53c9\u6ce8\u610f + FFN\u3002\u76ee\u6807\u53e5\u56e0\u679c\u53ef\u89c1\u3002",
+"attention":"\u7528 query \u5bf9 key \u6253\u5206\uff0csoftmax \u6210\u6743\u91cd\uff0c\u518d\u52a0\u6743 value\u3002",
+"self-attention":"Q/K/V \u6765\u81ea\u540c\u4e00\u5e8f\u5217\u7684\u6ce8\u610f\u529b\u3002",
+"encoder-decoder attention":"Q \u6765\u81ea\u89e3\u7801\u5668\uff0cK/V \u6765\u81ea\u7f16\u7801\u5668\u7684\u4ea4\u53c9\u6ce8\u610f\u529b\u3002",
+"Q":"Query\uff1a\u5f53\u524d\u8981\u8bfb\u4ec0\u4e48\u3002",
+"K":"Key\uff1a\u6bcf\u4e2a\u4f4d\u7f6e\u7684\u6807\u7b7e\uff0c\u7528\u6765\u88ab query \u5339\u914d\u3002",
+"V":"Value\uff1a\u5339\u914d\u4e0a\u4e4b\u540e\u771f\u6b63\u6df7\u5408\u7684\u5185\u5bb9\u3002",
+"compatibility function":"query \u4e0e key \u6709\u591a\u914d\uff1b\u672c\u6587\u7528\u7f29\u653e\u70b9\u79ef\u3002",
+"scaled dot-product attention":"softmax(QK\u1d40/\u221ad_k) V\u3002",
+"softmax":"\u628a\u4e00\u884c\u5206\u6570\u53d8\u6210\u975e\u8d1f\u4e14\u548c\u4e3a 1 \u7684\u6743\u91cd\u3002",
+"d_k":"\u6bcf\u4e2a\u5934\u91cc query/key \u7684\u7ef4\u5ea6\uff1b\u672c\u6587 64\u3002",
+"d_v":"\u6bcf\u4e2a\u5934\u91cc value \u7684\u7ef4\u5ea6\uff1b\u672c\u6587 64\u3002",
+"d_model":"\u6a21\u578b\u4e3b\u5bbd\u5ea6\uff1bBase \u4e3a 512\u3002",
+"d_ff":"FFN \u9690\u5c42\u5bbd\u5ea6\uff1bBase \u4e3a 2048\u3002",
+"multi-head attention":"h \u7ec4\u4e0d\u540c\u6295\u5f71\u5404\u505a\u4e00\u6b21\u6ce8\u610f\u529b\uff0c\u518d\u62fc\u63a5\u6295\u5f71\u3002",
+"h":"\u5934\u6570\uff1bBase \u4e3a 8\u3002",
+"W^Q":"\u628a\u8f93\u5165\u6295\u6210 query \u7684\u77e9\u9635\uff08\u6bcf\u5934\u4e00\u5757\uff0c\u6216\u62fc\u6210\u5927\u77e9\u9635\uff09\u3002",
+"W^K":"key \u6295\u5f71\u77e9\u9635\u3002",
+"W^V":"value \u6295\u5f71\u77e9\u9635\u3002",
+"W^O":"\u591a\u5934\u62fc\u63a5\u540e\u7684\u8f93\u51fa\u6295\u5f71\u3002",
+"representation subspaces":"\u4e0d\u540c\u5934\u53ef\u4ee5\u8bfb\u4e0d\u540c\u7684\u8868\u793a\u65b9\u5411/\u5173\u7cfb\u7c7b\u578b\u3002",
+"causal masking":"\u628a\u672a\u6765\u4f4d\u7f6e\u7684\u5206\u6570\u8bbe\u4e3a \u2212\u221e\uff0c\u4fdd\u8bc1\u81ea\u56de\u5f52\u3002",
+"auto-regressive":"\u751f\u6210\u4f4d\u7f6e i \u53ea\u4f9d\u8d56\u5df2\u7ecf\u751f\u6210\u7684 <i\u3002",
+"attention mask":"\u5141\u8bb8/\u7981\u6b62 (i,j) \u914d\u5bf9\u7684 0/1 \u6216 \u2212\u221e \u63a9\u7801\u3002",
+"attention matrix":"N\u00d7N \u7684\u5206\u6570\u6216\u6743\u91cd\u8868\uff1b\u7a20\u5bc6\u65f6\u8fd9\u5c31\u662f O(N\u00b2)\u3002",
+"residual":"x + Sublayer(x)\uff0c\u8ba9\u68af\u5ea6\u4e0e\u8eab\u4efd\u6620\u5c04\u597d\u8d70\u3002",
+"LayerNorm":"\u5728\u6b8b\u5dee\u4e4b\u540e\u505a\u7684\u5c42\u5f52\u4e00\u5316\u3002",
+"FFN":"\u9010\u4f4d\u7f6e\u4e24\u5c42 MLP\uff0c\u4e2d\u95f4 ReLU\uff1b\u4e0d\u6df7\u5408\u4e0d\u540c\u4f4d\u7f6e\u3002",
+"ReLU":"max(0,\u00b7)\uff0c\u672c\u6587 FFN \u7684\u6fc0\u6d3b\u3002",
+"embedding":"token \u2192 d_model \u5411\u91cf\u3002",
+"positional encoding":"\u52a0\u5230\u5d4c\u5165\u4e0a\u7684\u4f4d\u7f6e\u4fe1\u606f\uff1b\u672c\u6587\u7528\u6b63\u5f26\u3002",
+"sinusoidal PE":"\u4e0d\u540c\u9891\u7387\u7684 sin/cos \u4f4d\u7f6e\u7f16\u7801\u3002",
+"N=6":"\u7f16\u7801\u5668/\u89e3\u7801\u5668\u5c42\u6570\u3002",
+"RNN":"\u6cbf\u65f6\u95f4\u9012\u63a8\u7684\u7f51\u7edc\uff1b\u672c\u6587\u8981\u4e22\u6389\u5b83\u4ee5\u4fbf\u5e76\u884c\u3002",
+"LSTM":"\u5e26\u95e8\u63a7\u7684 RNN \u53d8\u4f53\uff0c2017 \u5e74\u524d\u7684\u5e8f\u5217\u4e3b\u6d41\u3002",
+"parallelization":"\u957f\u5ea6\u7ef4\u4e0a\u53ef\u540c\u65f6\u7b97\uff1b\u81ea\u6ce8\u610f\u529b\u987a\u5e8f\u6b65\u4e3a O(1)\u3002",
+"long-range dependency":"\u76f8\u8ddd\u5f88\u8fdc\u7684 token \u4e4b\u95f4\u7684\u4f9d\u8d56\uff1b\u81ea\u6ce8\u610f\u529b\u8def\u5f84\u957f\u5ea6\u4e3a 1\u3002",
+"quadratic complexity":"\u5168\u6ce8\u610f\u529b\u76f8\u5bf9\u957f\u5ea6\u7684 O(n\u00b2 d) \u4ee3\u4ef7\u3002",
+"restricted self-attention":"\u539f\u6587\u8868 1\uff1a\u6bcf\u4f4d\u7f6e\u53ea\u770b r \u4e2a\u90bb\u5c45\uff1b\u7a00\u758f\u6ce8\u610f\u529b\u7684\u79cd\u5b50\u3002",
+"sparse attention":"softmax \u53ea\u5728\u5141\u8bb8\u7684 (i,j) \u4e0a\u505a\uff1b\u672c\u4ed3\u5e93\u7a00\u758f\u8def\u7ebf\u3002",
+"linear attention":"\u7528\u6838\u7279\u5f81\u907f\u5f00 N\u00d7N \u77e9\u9635\uff1b\u672c\u4ed3\u5e93\u7ebf\u6027\u8def\u7ebf\u3002",
+"additive attention":"Bahdanau\uff1a\u7528\u5c0f\u7f51\u7edc\u6253\u5206\u800c\u4e0d\u662f\u70b9\u79ef\u3002",
+"BLEU":"\u673a\u5668\u7ffb\u8bd1\u81ea\u52a8\u6307\u6807\uff1b\u672c\u6587\u82f1\u5fb7 28.4\u3002",
+"dropout":"\u6b8b\u5dee\u5206\u652f\u4e0a\u7684\u968f\u673a\u4e22\u5f03\uff1bP_drop=0.1\u3002",
+"warmup":"\u524d 4000 \u6b65\u62c9\u9ad8\u5b66\u4e60\u7387\u518d\u8870\u51cf\u3002",
+"Sparse Transformer":"Child et al.\uff1a\u56fa\u5b9a\u7a00\u758f\u5206\u89e3\u56fe\u6848\u3002",
+"Longformer":"\u6ed1\u7a97\u5c40\u90e8 + \u4efb\u52a1\u5168\u5c40 token\u3002",
+"BigBird":"\u7a97\u53e3 + \u5168\u5c40 + \u968f\u673a\u5757\u3002",
+"NSA":"\u53ef\u8bad\u7ec3\u7684\u5c42\u6b21\u7a00\u758f\u6ce8\u610f\u529b\u3002",
+"DeltaNet":"\u5728\u7ebf\u6027\u6ce8\u610f\u529b\u72b6\u6001\u4e0a\u7528 delta \u89c4\u5219\u6539\u5199\u3002",
+"KDA":"\u901a\u9053\u7ea7\u95e8\u63a7\u7684 delta \u7ebf\u6027\u6ce8\u610f\u529b\u3002"};
+function setMode(m){body.classList.remove('mode-both','mode-zh','mode-en');body.classList.add('mode-'+m);
+document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));}
+document.getElementById('modeSeg').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.mode);};
+function focusCard(i){if(!cards.length)return;idx=(i+cards.length)%cards.length;cards.forEach(c=>c.classList.remove('active'));
+const c=cards[idx];c.classList.add('active');c.scrollIntoView({behavior:'smooth',block:'center'});}
+const q=document.getElementById('q');q.oninput=()=>{const s=q.value.trim().toLowerCase();
+document.querySelectorAll('[data-blob]').forEach(el=>{el.classList.toggle('hidden-by-search',s&&!(el.dataset.blob||'').includes(s));});};
+const drawer=document.getElementById('drawer');const drawerBody=document.getElementById('drawerBody');
+document.getElementById('btnGlossary').onclick=()=>{drawerBody.innerHTML=Object.entries(glossary).map(([k,v])=>`<div class="gitem"><b>${k}</b><p>${v}</p></div>`).join('');drawer.classList.add('open');};
+document.getElementById('closeDrawer').onclick=()=>drawer.classList.remove('open');
+document.body.onclick=e=>{const t=e.target.closest('.term');if(!t)return;
+drawerBody.innerHTML=`<div class="gitem"><b>${t.dataset.term}</b><p>${glossary[t.dataset.term]||'暂无'}</p></div>`;drawer.classList.add('open');};
+const tocLinks=[...document.querySelectorAll('#toc a')];
+const sections=tocLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io=new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const id='#'+en.target.id;
+tocLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===id));});},
+{rootMargin:'-20% 0px -65% 0px',threshold:0.01});
+sections.forEach(s=>io.observe(s));
+document.onkeydown=e=>{if(e.target.matches('input,textarea'))return;
+if(e.key==='1')setMode('both');if(e.key==='2')setMode('zh');if(e.key==='3')setMode('en');
+if(e.key==='j'||e.key==='J'){e.preventDefault();focusCard(idx+1);}
+if(e.key==='k'||e.key==='K'){e.preventDefault();focusCard(idx-1);}
+if(e.key==='g'||e.key==='G')document.getElementById('btnGlossary').click();
+if(e.key==='/'){e.preventDefault();q.focus();};};
+</script></body></html>

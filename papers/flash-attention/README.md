@@ -9,6 +9,7 @@
 
 ## 关联
 
+- [原始 Transformer](../transformer/) — 先搞清全注意力公式
 - [Sparse Attention](../sparse-attention/) — 稀疏模式减少 Flash 内循环加载的 key 块
 
 ```bash

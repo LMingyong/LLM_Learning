@@ -374,6 +374,13 @@ GLOSSARY = [
 
 REFS = [
     {
+        "level": "前驱",
+        "title": "Attention Is All You Need",
+        "why": "稠密 softmax 注意力定义；本页从这里改核、躲开 N×N。",
+        "url": "../transformer/index.html",
+        "ext": "https://arxiv.org/abs/1706.03762",
+    },
+    {
         "level": "本篇",
         "title": "Transformers are RNNs (Linear Attention)",
         "why": "逐段精读对象；线性注意力经典源头。",

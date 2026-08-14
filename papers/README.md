@@ -13,10 +13,13 @@ papers/<slug>/
 - **单篇论文**：有 `paper.pdf`，精读在同目录 `index.html`。
 - **跨论文专题**：可无 `paper.pdf`，用 `index.html` 串联多篇。
 
+阅读顺序见仓库根目录 [`README.md`](../README.md)（从零 Transformer → 稀疏 / 线性两条线）。
+
 ## 已收录
 
 | 文件夹 | 说明 |
 |--------|------|
+| [transformer](./transformer/) | **原始 Transformer** (arXiv:1706.03762) — 从零起点 |
 | [longformer](./longformer/) | Longformer (arXiv:2004.05150) |
 | [bigbird](./bigbird/) | BigBird (arXiv:2007.14062) |
 | [watts-strogatz](./watts-strogatz/) | Watts–Strogatz (Nature 1998) |
